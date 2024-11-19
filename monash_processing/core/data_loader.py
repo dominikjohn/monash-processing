@@ -186,14 +186,35 @@ class DataLoader:
             self.logger.error(f"Error loading dataset {dataset_path} from {h5_file}: {str(e)}")
             raise
 
-
     def _save_auxiliary_data(self, data: np.ndarray, filename: str):
-        """Save auxiliary data as a separate file."""
+        """Save auxiliary data as a separate file.
+
+        Args:
+            data: np.ndarray to save
+            filename: str, name of file to save to
+
+        Raises:
+            OSError: If directory creation or file saving fails
+        """
         try:
-            np.save(self.results_dir / filename, data)
+            # Ensure the results directory exists
+            self.results_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create full file path and ensure it has .npy extension
+            filepath = self.results_dir / (filename if filename.endswith('.npy') else f"{filename}.npy")
+
+            # Save the data
+            np.save(filepath, data)
+
+            # Verify the file was created
+            if not filepath.exists():
+                raise OSError(f"File {filepath} was not created successfully")
+
+            self.logger.info(f"Successfully saved data to {filepath}")
+
         except Exception as e:
             self.logger.error(f"Failed to save auxiliary data to {filename}: {str(e)}")
-
+            raise  # Re-raise the exception after logging
 
     def _average_fields(self, data: np.ndarray) -> np.ndarray:
         """Average multiple fields along the first axis."""
