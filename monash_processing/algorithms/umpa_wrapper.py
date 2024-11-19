@@ -8,19 +8,12 @@ from monash_processing.core.data_loader import DataLoader
 class UMPAProcessor:
     """Wrapper for UMPA phase retrieval with projection-wise processing."""
 
-    def __init__(self, scan_path: Union[str, Path], scan_name: str, config: Optional[Dict] = None, data_loader: DataLoader = None):
+    def __init__(self, scan_path: Union[str, Path], scan_name: str, data_loader: DataLoader, w=1):
         self.logger = logging.getLogger(__name__)
-        self.config = config or {}
         self.scan_path = Path(scan_path)
         self.scan_name = scan_name
         self.data_loader = data_loader
-
-        # Default UMPA parameters
-        self.defaults = {
-            'window_size': 3,
-            'save_format': 'tiff',
-        }
-        self.defaults.update(self.config)
+        self.w = w
 
         # Output channels
         self.channels = ['dx', 'dy', 'T', 'df', 'f']
@@ -29,6 +22,7 @@ class UMPAProcessor:
         self.results_dir = self.scan_path / 'results' / self.scan_name
         for channel in self.channels:
             (self.results_dir / channel).mkdir(parents=True, exist_ok=True)
+        self.logger.info('Created channel subdirectories')
 
     def process_projection(self,
                            flats: np.ndarray,  # Shape: (N, X, Y)
@@ -45,7 +39,7 @@ class UMPAProcessor:
         try:
             dic = UMPA.match_unbiased(projection.astype(np.float64),
                                       flats.astype(np.float64),
-                                      3,
+                                      self.w,
                                       step=1,
                                       df=True)
 
