@@ -7,6 +7,7 @@ import re
 import tifffile
 from tqdm import tqdm
 
+
 class DataLoader:
     """Handles loading and organizing scan data from H5 files."""
 
@@ -72,7 +73,7 @@ class DataLoader:
 
         # Dark fields should not change too much between steps, so we can average them
         if dark:
-            flat_fields_array = np.average(flat_fields_array, axis=0) # Shape: (X, Y)
+            flat_fields_array = np.average(flat_fields_array, axis=0)  # Shape: (X, Y)
 
         # Save averaged flatfields to file
         self._save_auxiliary_data(flat_fields_array, filename)
@@ -81,22 +82,35 @@ class DataLoader:
 
         return flat_fields_array
 
-    def load_projections(self, projection_i: Optional[int] = None) -> np.ndarray:
+    def load_projections(self, projection_i: Optional[int] = None, step_i: Optional[int] = None) -> np.ndarray:
         """
-        Load projection data from all files.
+        Load projection data from files.
 
         Args:
             projection_i: If provided, loads only the specified projection index from each file.
-                          If None, loads all projections.
+                         If None, loads all projections.
+            step_i: If provided, loads only from the specified file index in h5_files.
+                    If None, loads from all files.
 
         Returns:
-            If projection_i is None: 4D array with shape (N, num_angles, X, Y)
-            If projection_i is specified: 3D array with shape (N, X, Y)
-            where N is the number of files
+            If projection_i is None:
+                - When file_i is None: 4D array with shape (N, num_angles, X, Y)
+                - When file_i is specified: 3D array with shape (num_angles, X, Y)
+            If projection_i is specified:
+                - When file_i is None: 3D array with shape (N, X, Y)
+                - When file_i is specified: 2D array with shape (X, Y)
+            where N is the number of files being loaded
         """
+        if step_i is not None:
+            if step_i >= len(self.h5_files):
+                raise ValueError(f"File index {step_i} out of range (max: {len(self.h5_files) - 1})")
+            h5_files_to_load = [self.h5_files[step_i]]
+        else:
+            h5_files_to_load = self.h5_files
+
         projections = []
 
-        for h5_file in self.h5_files:
+        for h5_file in h5_files_to_load:
             try:
                 with h5py.File(h5_file, 'r') as f:
                     dataset = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA']
@@ -119,6 +133,11 @@ class DataLoader:
                 raise
 
         projections_array = np.array(projections)
+
+        # If loading from a single file, remove the extra dimension
+        if step_i is not None:
+            projections_array = projections_array[0]
+
         self.logger.info(f"Loaded projections with shape {projections_array.shape}")
         return projections_array
 
@@ -149,6 +168,14 @@ class DataLoader:
         except Exception as e:
             self.logger.error(f"Failed to save projection {angle_i} to {tiff_path}: {str(e)}")
 
+    def perform_flatfield_correction(self, data: np.ndarray, flat_fields: np.ndarray,
+                                     dark_current: np.ndarray) -> np.ndarray:
+        """
+        Perform flatfield correction on the data.
+        """
+        corrected_data = (data - dark_current) / (flat_fields - dark_current)
+        return corrected_data
+
     def _load_raw_dataset(self, h5_file: Path, dataset_path: str) -> np.ndarray:
         """Load a specific dataset from an H5 file."""
         try:
@@ -159,12 +186,14 @@ class DataLoader:
             self.logger.error(f"Error loading dataset {dataset_path} from {h5_file}: {str(e)}")
             raise
 
+
     def _save_auxiliary_data(self, data: np.ndarray, filename: str):
         """Save auxiliary data as a separate file."""
         try:
             np.save(self.results_dir / filename, data)
         except Exception as e:
             self.logger.error(f"Failed to save auxiliary data to {filename}: {str(e)}")
+
 
     def _average_fields(self, data: np.ndarray) -> np.ndarray:
         """Average multiple fields along the first axis."""

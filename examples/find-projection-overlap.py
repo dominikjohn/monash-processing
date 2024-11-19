@@ -1,130 +1,98 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.signal import correlate
-from scipy.optimize import curve_fit
+from typing import Tuple
+import matplotlib.pyplot as plt
+from pathlib import Path
+from monash-processing.core.data_loader import ScanDataLoader
 
-def analyze_projection_overlap(proj1, proj2, max_shift=None, plot=True):
+def find_projection_offset(data_loader, flat_field, dark_current, angle_index1: int, angle_index2: int) -> Tuple[int, float]:
     """
-    Analyzes the overlap between two CT projections using cross-correlation
-    and provides visualization of the overlap region.
+    Find the vertical shift between two projections using cross-correlation.
 
-    Parameters:
-    -----------
-    proj1, proj2 : ndarray
-        The two projections to analyze (1D arrays)
-    max_shift : int, optional
-        Maximum pixel shift to consider
-    plot : bool
-        Whether to show diagnostic plots
+    Args:
+        data_loader: DataLoader instance
+        flat_field: Flat field image
+        dark_current: Dark current image
+        angle_index1: Index of first projection
+        angle_index2: Index of second projection (typically ~180 degrees apart)
 
     Returns:
-    --------
-    dict
-        Contains overlap_pixels, correlation_score, and suggested_overlap
+        Tuple of (optimal_shift, correlation_score)
     """
-    if max_shift is None:
-        max_shift = len(proj1) // 2
 
-    # Normalize projections
-    proj1_norm = (proj1 - np.mean(proj1)) / np.std(proj1)
-    proj2_norm = (proj2 - np.mean(proj2)) / np.std(proj2)
+    # Load the two projections
+    proj1 = data_loader.load_projections(angle_index1)
+    proj2 = data_loader.load_projections(angle_index2)
 
-    # Calculate cross-correlation
-    correlation = correlate(proj1_norm, proj2_norm, mode='full')
-    shifts = np.arange(-len(proj1) + 1, len(proj1))
+    # Perform flatfield correction
+    proj1 = data_loader.perform_flatfield_correction(proj1, flat_field, dark_current)
+    proj2 = data_loader.perform_flatfield_correction(proj2, flat_field, dark_current)
 
-    # Find best shift
-    valid_range = (abs(shifts) <= max_shift)
-    best_shift = shifts[valid_range][np.argmax(correlation[valid_range])]
-    max_corr = np.max(correlation[valid_range])
+    # Remove batch dimension if present for some reason
+    if proj1.ndim > 2:
+        proj1 = proj1.squeeze()
+    if proj2.ndim > 2:
+        proj2 = proj2.squeeze()
 
-    # Calculate suggested overlap
-    overlap_pixels = len(proj1) - abs(best_shift)
+    # Flip the second projection horizontally (since it's ~180 degrees rotated)
+    proj2_flipped = np.fliplr(proj2)
 
-    if plot:
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 10))
+    # Take multiple slices around the center
+    center_x = proj1.shape[0] // 2
+    num_cols = 10
+    start_y = center_x - num_cols // 2
+    end_y = center_x + num_cols // 2
 
-        # Plot original projections
-        ax1.plot(proj1, label='Projection 1')
-        ax1.plot(proj2, label='Projection 2')
-        ax1.set_title('Original Projections')
-        ax1.legend()
+    # Store shifts from each column pair
+    shifts = []
+    correlations = []
 
-        # Plot correlation
-        ax2.plot(shifts[valid_range], correlation[valid_range])
-        ax2.axvline(best_shift, color='r', linestyle='--')
-        ax2.set_title(f'Cross-correlation (Best shift: {best_shift} pixels)')
-        ax2.set_xlabel('Shift (pixels)')
+    # Correlate corresponding columns to find vertical shifts
+    for y in range(start_y, end_y):
+        col1 = proj1[y, :]
+        col2 = proj2_flipped[y, :]
 
-        # Plot aligned projections
-        if best_shift > 0:
-            aligned_proj2 = np.pad(proj2[:-best_shift], (best_shift, 0))
-        else:
-            aligned_proj2 = np.pad(proj2[-best_shift:], (0, -best_shift))
+        # Correlate these 1D arrays to find vertical shift
+        correlation = correlate(col1, col2, mode='full')
+        shift = correlation.argmax() - (len(col1) - 1)
 
-        ax3.plot(proj1, label='Projection 1')
-        ax3.plot(aligned_proj2, label='Projection 2 (aligned)')
-        ax3.axvspan(min(len(proj1) - overlap_pixels, len(proj1)),
-                    max(overlap_pixels, 0),
-                    alpha=0.2, color='g', label='Overlap region')
-        ax3.set_title(f'Aligned Projections (Overlap: {overlap_pixels} pixels)')
-        ax3.legend()
+        shifts.append(shift)
+        correlations.append(correlation.max())
 
-        plt.tight_layout()
-        plt.show()
+    # Use median shift as the result (more robust than mean)
+    optimal_shift = int(np.median(shifts))
+    max_correlation = np.mean(correlations)
 
-    return {
-        'overlap_pixels': overlap_pixels,
-        'correlation_score': max_corr,
-        'best_shift': best_shift
-    }
+    return optimal_shift, max_correlation
 
-def analyze_sinogram_overlap(sino1, sino2, angle_indices=None, max_shift=None):
-    """
-    Analyzes overlap across multiple projection angles in sinograms.
+# Set your parameters
+scan_path = Path("/path/to/scan")
+scan_name = "P6_ReverseOrder"
+pixel_size = 1.444e-6 # m
 
-    Parameters:
-    -----------
-    sino1, sino2 : ndarray
-        The two sinograms to analyze
-    angle_indices : list, optional
-        Specific angle indices to analyze
-    max_shift : int, optional
-        Maximum pixel shift to consider
+# Calculate indices for opposing projections (180 degrees apart)
+total_angles = 3640
+angle_per_step = 364 / total_angles
+steps_per_180 = int(180 / angle_per_step)
 
-    Returns:
-    --------
-    dict
-        Contains average overlap and statistics
-    """
-    if angle_indices is None:
-        # Sample a few angles across the sinogram
-        angle_indices = np.linspace(0, sino1.shape[0] - 1, 5).astype(int)
+loader = ScanDataLoader(scan_path, scan_name)
 
-    results = []
-    for idx in angle_indices:
-        result = analyze_projection_overlap(
-            sino1[idx], sino2[idx],
-            max_shift=max_shift, plot=False
-        )
-        results.append(result)
+# We are only using step 0 for matching -> Shape: X, Y
+flat_fields_step0 = loader.load_flat_fields()[0]
+dark_current = loader.load_flat_fields(dark=True) # Shape: X, Y
 
-    # Aggregate results
-    overlaps = [r['overlap_pixels'] for r in results]
-    correlations = [r['correlation_score'] for r in results]
+# Test a few pairs of projections around 180 degrees apart
+test_indices = [(0, steps_per_180),
+                (steps_per_180 // 2, 3 * steps_per_180 // 2),
+                (steps_per_180, 2 * steps_per_180)]
 
-    # Plot summary
-    plt.figure(figsize=(10, 6))
-    plt.plot(angle_indices, overlaps, 'o-')
-    plt.xlabel('Projection Index')
-    plt.ylabel('Overlap (pixels)')
-    plt.title(f'Overlap vs Projection Angle\nMean: {np.mean(overlaps):.1f} ± {np.std(overlaps):.1f} pixels')
-    plt.grid(True)
-    plt.show()
+results = []
+for idx1, idx2 in test_indices:
+    shift, correlation = find_projection_offset(loader, flat_fields_step0, dark_current, idx1, idx2)
+    results.append((idx1, idx2, shift, correlation))
+    print(f"Projections {idx1} and {idx2}: Shift = {shift}, Correlation = {correlation:.3f}")
 
-    return {
-        'mean_overlap': np.mean(overlaps),
-        'std_overlap': np.std(overlaps),
-        'mean_correlation': np.mean(correlations),
-        'overlap_by_angle': dict(zip(angle_indices, overlaps))
-    }
+# Find the most consistent shift
+shifts = [r[2] for r in results]
+median_shift = int(np.median(shifts))
+print(f"\nRecommended shift: {median_shift} pixels")

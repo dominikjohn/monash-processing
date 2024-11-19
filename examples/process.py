@@ -6,9 +6,10 @@ import h5py
 from algorithms.phase_integration import PhaseIntegrator
 from utils.utils import Utils
 import pyqtgraph as pg
+from pathlib import Path
 
 # Set your parameters
-scan_path = "/path/to/scan"
+scan_path = Path("/path/to/scan")
 scan_name = "P6_ReverseOrder"
 pixel_size = 1.444e-6 # m
 energy = 25 # keV
