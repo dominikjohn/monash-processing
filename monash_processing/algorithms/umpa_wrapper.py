@@ -6,7 +6,6 @@ import UMPA
 from monash_processing.core.data_loader import DataLoader
 import dask
 from dask.distributed import Client, progress
-import dask.array as da
 from dask.diagnostics import ProgressBar
 
 
@@ -51,12 +50,15 @@ class UMPAProcessor:
 
     def _process_single_projection(self,
                                    flats: np.ndarray,
-                                   projection: np.ndarray,
                                    angle_i: int) -> Dict[str, np.ndarray]:
         """
         Process a single projection (to be run in parallel).
+        Loads projection data within the function to optimize memory usage.
         """
         try:
+            # Load the projection for this angle
+            projection = self.data_loader.load_projections(projection_i=angle_i)
+
             dic = UMPA.match_unbiased(
                 projection.astype(np.float64),
                 flats.astype(np.float64),
@@ -69,6 +71,9 @@ class UMPAProcessor:
             for channel, data in dic.items():
                 self.data_loader.save_tiff(channel, angle_i, data)
 
+            # Free memory explicitly
+            del projection
+
             return {'angle': angle_i, 'status': 'success', **dic}
 
         except Exception as e:
@@ -77,33 +82,26 @@ class UMPAProcessor:
 
     def process_projections(self,
                             flats: np.ndarray,
-                            projections: Union[np.ndarray, List[np.ndarray]],
-                            angles: Optional[List[int]] = None) -> List[Dict]:
+                            num_angles: int) -> List[Dict]:
         """
         Process multiple projections in parallel using Dask.
+        Projections are loaded on-demand within each worker.
 
         Args:
             flats: Flat field images (N, X, Y)
-            projections: List of projections or single array
-            angles: List of angle indices (optional)
+            num_angles: Total number of angles to process
 
         Returns:
             List of dictionaries containing results for each projection
         """
-        if isinstance(projections, np.ndarray):
-            projections = [projections[i] for i in range(len(projections))]
-
-        if angles is None:
-            angles = list(range(len(projections)))
-
-        # Create Dask delayed objects for each projection
+        # Create Dask delayed objects for each angle
         delayed_results = [
-            dask.delayed(self._process_single_projection)(flats, proj, angle)
-            for proj, angle in zip(projections, angles)
+            dask.delayed(self._process_single_projection)(flats, angle_i)
+            for angle_i in range(num_angles)
         ]
 
         # Compute all results in parallel
-        self.logger.info(f'Processing {len(delayed_results)} projections in parallel')
+        self.logger.info(f'Processing {num_angles} projections in parallel')
         with ProgressBar():
             results = dask.compute(*delayed_results)
 

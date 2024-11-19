@@ -1,115 +1,69 @@
-from pathlib import Path
-import numpy as np
-import logging
-from typing import Dict, Optional, Union, List
-import UMPA
 from monash_processing.core.data_loader import DataLoader
-import dask
-from dask.distributed import Client, progress
-from dask.diagnostics import ProgressBar
+from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
+from monash_processing.algorithms.phase_integration import PhaseIntegrator
+from monash_processing.core.volume_builder import VolumeBuilder
+from tqdm import tqdm
+import h5py
+from monash_processing.utils.utils import Utils
+import pyqtgraph as pg
+from pathlib import Path
 
+# Set your parameters
+scan_path = Path("/data/mct/22203/")
+scan_name = "P6_ReverseOrder"
+pixel_size = 1.444e-6 # m
+energy = 25 # keV
+prop_distance = 0.158 #
+max_angle = 382
+umpa_w = 1
 
-class UMPAProcessor:
-    """Wrapper for UMPA phase retrieval with parallel processing using Dask."""
+# 1. Load reference data
+print(f"Loading data from {scan_path}, scan name: {scan_name}")
+loader = DataLoader(scan_path, scan_name)
+flat_fields = loader.load_flat_fields()
+dark_current = loader.load_flat_fields(dark=True)
 
-    def __init__(self,
-                 scan_path: Union[str, Path],
-                 scan_name: str,
-                 data_loader: DataLoader,
-                 w: float = 1,
-                 n_workers: Optional[int] = None):
-        """
-        Initialize the UMPA processor with Dask support.
+# Get number of projections (we need this for the loop)
+with h5py.File(loader.h5_files[0], 'r') as f:
+    num_angles = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA'].shape[0]
+    print(f"Number of projections: {num_angles}")
 
-        Args:
-            scan_path: Path to scan directory
-            scan_name: Name of the scan
-            data_loader: DataLoader instance
-            w: UMPA weight parameter
-            n_workers: Number of Dask workers (None for auto)
-        """
-        self.logger = logging.getLogger(__name__)
-        self.scan_path = Path(scan_path)
-        self.scan_name = scan_name
-        self.data_loader = data_loader
-        self.w = w
-        self.n_workers = n_workers
+# 2. Initialize preprocessor and UMPA processor
+print("Initializing processors")
+umpa_processor = UMPAProcessor(scan_path, scan_name, loader, umpa_w)
 
-        # Output channels
-        self.channels = ['dx', 'dy', 'T', 'df', 'f']
+# 3. Process each projection
+print("Processing projections")
 
-        # Create results directory
-        self.results_dir = self.scan_path / 'results' / self.scan_name
-        for channel in self.channels:
-            (self.results_dir / channel).mkdir(parents=True, exist_ok=True)
-        self.logger.info('Created channel subdirectories')
+# Initialize the processor
+processor = UMPAProcessor(
+    scan_path,
+    scan_name,
+    loader,
+    n_workers=50
+)
 
-        # Initialize Dask client
-        self.client = Client(n_workers=n_workers, threads_per_worker=1)
-        self.logger.info(f'Initialized Dask client with {len(self.client.scheduler_info()["workers"])} workers')
+# Process projections
+with processor:
+    results = processor.process_projections(
+        flats=flat_fields,
+        num_angles=180  # Or however many angles you have
+    )
 
-    def _process_single_projection(self,
-                                   flats: np.ndarray,
-                                   angle_i: int) -> Dict[str, np.ndarray]:
-        """
-        Process a single projection (to be run in parallel).
-        Loads projection data within the function to optimize memory usage.
-        """
-        try:
-            # Load the projection for this angle
-            projection = self.data_loader.load_projections(projection_i=angle_i)
+# 4. Phase integrate
+print("Phase integrating")
+area_left, area_right = Utils.select_areas(loader.load_projections(projection_i=0)[0])
+phase_integrator = PhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
 
-            dic = UMPA.match_unbiased(
-                projection.astype(np.float64),
-                flats.astype(np.float64),
-                self.w,
-                step=1,
-                df=True
-            )
+for angle_i in tqdm(range(num_angles), desc="Integrating projections"):
+    phase_integrator.integrate_single(angle_i)
 
-            # Save results
-            for channel, data in dic.items():
-                self.data_loader.save_tiff(channel, angle_i, data)
+# 5. Reconstruct volume
+print("Reconstructing volume")
+volume_builder = VolumeBuilder()
+volume = volume_builder.reconstruct()
 
-            # Free memory explicitly
-            del projection
+pg.image(volume)
 
-            return {'angle': angle_i, 'status': 'success', **dic}
-
-        except Exception as e:
-            self.logger.error(f"UMPA processing failed for angle {angle_i}: {str(e)}")
-            return {'angle': angle_i, 'status': 'error', 'error': str(e)}
-
-    def process_projections(self,
-                            flats: np.ndarray,
-                            num_angles: int) -> List[Dict]:
-        """
-        Process multiple projections in parallel using Dask.
-        Projections are loaded on-demand within each worker.
-
-        Args:
-            flats: Flat field images (N, X, Y)
-            num_angles: Total number of angles to process
-
-        Returns:
-            List of dictionaries containing results for each projection
-        """
-        # Create Dask delayed objects for each angle
-        delayed_results = [
-            dask.delayed(self._process_single_projection)(flats, angle_i)
-            for angle_i in range(num_angles)
-        ]
-
-        # Compute all results in parallel
-        self.logger.info(f'Processing {num_angles} projections in parallel')
-        with ProgressBar():
-            results = dask.compute(*delayed_results)
-
-        return list(results)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.client.close()
-        self.logger.info('Closed Dask client')
+# Now you have all variables in your interactive namespace
+# and can inspect/modify them as needed
