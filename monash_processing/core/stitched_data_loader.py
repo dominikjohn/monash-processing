@@ -3,7 +3,7 @@ from pathlib import Path
 from tqdm import tqdm
 import tifffile
 from typing import Union
-from core.data_loader import DataLoader
+from monash_processing.core.data_loader import DataLoader
 
 class StitchedDataLoader(DataLoader):
     """Extends DataLoader to handle stitching of opposing projections."""

@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import rasterio.fill as rs
 import scipy.constants
-from core.data_loader import DataLoader
+from monash_processing.core.data_loader import DataLoader
 
 class PhaseIntegrator:
 

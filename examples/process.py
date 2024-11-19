@@ -1,4 +1,4 @@
-from monash_processing.core.data_loader import ScanDataLoader
+from monash_processing.core.data_loader import DataLoader
 from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.algorithms.phase_integration import PhaseIntegrator
 from monash_processing.core.volume_builder import VolumeBuilder
@@ -18,7 +18,7 @@ max_angle = 382
 
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
-loader = ScanDataLoader(scan_path, scan_name)
+loader = DataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
 

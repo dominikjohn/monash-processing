@@ -1,4 +1,4 @@
-from core.data_loader import DataLoader
+from monash_processing.core.data_loader import DataLoader
 import numpy as np
 import scipy.constants
 from scipy.signal import savgol_filter

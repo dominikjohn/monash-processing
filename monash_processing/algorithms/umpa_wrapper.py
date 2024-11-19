@@ -3,7 +3,7 @@ import numpy as np
 import logging
 from typing import Dict, Optional, Union
 import UMPA
-from core.data_loader import DataLoader
+from monash_processing.core.data_loader import DataLoader
 
 class UMPAProcessor:
     """Wrapper for UMPA phase retrieval with projection-wise processing."""
