@@ -60,7 +60,7 @@ class DataLoader:
 
         for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
             try:
-                prefix = 'FLAT_FIELD/BEFORE' if not dark else 'DARK_FIELD/AFTER'
+                prefix = 'FLAT_FIELD/BEFORE' if not dark else 'DARK_FIELD/BEFORE'
                 data = self._load_raw_dataset(h5_file, prefix)
                 # Average multiple flat fields for this file
                 averaged_flat = self._average_fields(data)
