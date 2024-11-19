@@ -1,9 +1,9 @@
 from monash_processing.core.data_loader import ScanDataLoader
 from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
+from monash_processing.algorithms.phase_integration import PhaseIntegrator
 from monash_processing.core.volume_builder import VolumeBuilder
 from tqdm import tqdm
 import h5py
-from algorithms.phase_integration import PhaseIntegrator
 from utils.utils import Utils
 import pyqtgraph as pg
 from pathlib import Path
