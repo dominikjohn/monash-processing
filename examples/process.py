@@ -4,12 +4,12 @@ from monash_processing.algorithms.phase_integration import PhaseIntegrator
 from monash_processing.core.volume_builder import VolumeBuilder
 from tqdm import tqdm
 import h5py
-from utils.utils import Utils
+from monash_processing.utils.utils import Utils
 import pyqtgraph as pg
 from pathlib import Path
 
 # Set your parameters
-scan_path = Path("/path/to/scan")
+scan_path = Path("/data/mct/22203/")
 scan_name = "P6_ReverseOrder"
 pixel_size = 1.444e-6 # m
 energy = 25 # keV

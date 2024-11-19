@@ -16,6 +16,8 @@ setup(
         'matplotlib',
         'scikit-image',
         'rasterio',
+        'joblib',
+        "opencv-python",
     ],
     author="Dominik John",
     author_email="dominik.john@monash.edu",
