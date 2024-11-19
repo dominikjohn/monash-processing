@@ -2,6 +2,8 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 import tifffile
+from typing import Union
+from core.data_loader import DataLoader
 
 class StitchedDataLoader(DataLoader):
     """Extends DataLoader to handle stitching of opposing projections."""
@@ -14,44 +16,6 @@ class StitchedDataLoader(DataLoader):
         # Create subdirectory for projections
         self.projections_dir = self.stitched_dir / 'projections'
         self.projections_dir.mkdir(parents=True, exist_ok=True)
-
-    def _save_stitched_data(self, projections: np.ndarray, flat_fields: np.ndarray,
-                            dark_current: np.ndarray) -> None:
-        """
-        Save stitched data to the stitched directory.
-        Projections are saved as individual TIFFs.
-        Flats and darks are saved as NPY files.
-
-        Args:
-            projections: Stitched projections array (Shape: N_steps, N_angles, X, Y)
-            flat_fields: Stitched flat fields array (Shape: N_steps, X, Y)
-            dark_current: Dark current array (Shape: X, Y)
-        """
-        self.logger.info("Saving stitched data...")
-
-        # Save projections as individual TIFF files
-        for step_idx in tqdm(range(projections.shape[0]), desc="Saving projections"):
-            step_dir = self.projections_dir / f'step_{step_idx:04d}'
-            step_dir.mkdir(exist_ok=True)
-
-            for angle_idx in range(projections.shape[1]):
-                tiff_path = step_dir / f'projection_{angle_idx:04d}.tiff'
-                tifffile.imwrite(tiff_path, projections[step_idx, angle_idx])
-
-        # Save flat fields and dark current as NPY files in stitched directory
-        np.save(self.stitched_dir / 'stitched_flat_fields.npy', flat_fields)
-        np.save(self.stitched_dir / 'stitched_dark_current.npy', dark_current)
-
-        # Save metadata about the stitching process
-        metadata = {
-            'pixel_shift': self.pixel_shift,
-            'n_steps': projections.shape[0],
-            'n_angles': projections.shape[1],
-            'image_shape': projections.shape[2:]
-        }
-        np.save(self.stitched_dir / 'stitching_metadata.npy', metadata)
-
-        self.logger.info(f"Saved all stitched data to {self.stitched_dir}")
 
     def load_stitched_projection(self, step_idx: int, angle_idx: int) -> np.ndarray:
         """
@@ -169,6 +133,9 @@ class StitchedDataLoader(DataLoader):
             stitched_proj = self._combine_projections(proj1, proj2_processed)
             stitched.append(stitched_proj)
 
+        # Stitch dark current to match dimensions
+        stitched_dark = self._process_flat_field(dark_current)
+
         # Process flat field
         stitched_flat = self._process_flat_field(flat_field)
 
@@ -191,19 +158,54 @@ class StitchedDataLoader(DataLoader):
         return shifted
 
     def _combine_projections(self, proj1: np.ndarray, proj2: np.ndarray) -> np.ndarray:
-        """Combine two opposing projections with weighting."""
-        # Create weight arrays for smooth transition
-        w1 = np.linspace(1, 0, proj1.shape[1])
-        w2 = np.linspace(0, 1, proj2.shape[1])
+        """
+        Combine two opposing projections with weighting, only in valid overlapping regions.
+        Zero or near-zero values are considered invalid data.
+        """
+        # Define threshold for considering a pixel as valid data
+        valid_threshold = 1e-6
 
-        # Apply weights and combine
-        weighted_proj1 = proj1 * w1[np.newaxis, :]
-        weighted_proj2 = proj2 * w2[np.newaxis, :]
+        # Create masks for valid data
+        valid_mask1 = proj1 > valid_threshold
+        valid_mask2 = proj2 > valid_threshold
 
-        return weighted_proj1 + weighted_proj2
+        # Find overlapping region
+        overlap_mask = valid_mask1 & valid_mask2
+
+        # Initialize output array
+        result = np.zeros_like(proj1)
+
+        # Where only proj1 is valid, use proj1
+        result[valid_mask1 & ~valid_mask2] = proj1[valid_mask1 & ~valid_mask2]
+
+        # Where only proj2 is valid, use proj2
+        result[~valid_mask1 & valid_mask2] = proj2[~valid_mask1 & valid_mask2]
+
+        # In overlapping region, apply weighted average
+        overlap_indices = np.where(overlap_mask)
+        if len(overlap_indices[1]) > 0:  # If there is overlap
+            # Find start and end of overlap region
+            overlap_start = np.min(overlap_indices[1])
+            overlap_end = np.max(overlap_indices[1])
+            overlap_length = overlap_end - overlap_start + 1
+
+            # Create weights for overlap region
+            w1 = np.linspace(1, 0, overlap_length)
+            w2 = np.linspace(0, 1, overlap_length)
+
+            # Apply weights only in overlap region
+            overlap_slice = slice(overlap_start, overlap_end + 1)
+            result[:, overlap_slice] = (
+                    proj1[:, overlap_slice] * w1[np.newaxis, :] +
+                    proj2[:, overlap_slice] * w2[np.newaxis, :]
+            )
+
+        return result
 
     def _process_flat_field(self, flat_field: np.ndarray) -> np.ndarray:
-        """Process flat field similar to projections."""
+        """
+        Process flat field similar to projections, considering valid data regions.
+        """
         # Flip and shift similar to projections
         flipped_flat = np.fliplr(flat_field)
 
@@ -213,11 +215,43 @@ class StitchedDataLoader(DataLoader):
             shifted_flat = np.pad(flipped_flat, ((abs(self.pixel_shift), 0), (0, 0)), mode='edge')[
                            :flipped_flat.shape[0], :]
 
-        # Combine original and processed flat fields
-        w1 = np.linspace(1, 0, flat_field.shape[1])
-        w2 = np.linspace(0, 1, shifted_flat.shape[1])
+        # Use same combination logic as projections
+        return self._combine_projections(flat_field, shifted_flat)
 
-        weighted_flat1 = flat_field * w1[np.newaxis, :]
-        weighted_flat2 = shifted_flat * w2[np.newaxis, :]
+    def _save_stitched_data(self, projections: np.ndarray, flat_fields: np.ndarray,
+                            dark_current: np.ndarray) -> None:
+        """
+        Save stitched data to the stitched directory.
+        Projections are saved as individual TIFFs.
+        Flats and darks are saved as NPY files.
 
-        return weighted_flat1 + weighted_flat2
+        Args:
+            projections: Stitched projections array (Shape: N_steps, N_angles, X, Y)
+            flat_fields: Stitched flat fields array (Shape: N_steps, X, Y)
+            dark_current: Dark current array (Shape: X, Y)
+        """
+        self.logger.info("Saving stitched data...")
+
+        # Save projections as individual TIFF files
+        for step_idx in tqdm(range(projections.shape[0]), desc="Saving projections"):
+            step_dir = self.projections_dir / f'step_{step_idx:04d}'
+            step_dir.mkdir(exist_ok=True)
+
+            for angle_idx in range(projections.shape[1]):
+                tiff_path = step_dir / f'projection_{angle_idx:04d}.tiff'
+                tifffile.imwrite(tiff_path, projections[step_idx, angle_idx])
+
+        # Save flat fields and dark current as NPY files in stitched directory
+        np.save(self.stitched_dir / 'stitched_flat_fields.npy', flat_fields)
+        np.save(self.stitched_dir / 'stitched_dark_current.npy', dark_current)
+
+        # Save metadata about the stitching process
+        metadata = {
+            'pixel_shift': self.pixel_shift,
+            'n_steps': projections.shape[0],
+            'n_angles': projections.shape[1],
+            'image_shape': projections.shape[2:]
+        }
+        np.save(self.stitched_dir / 'stitching_metadata.npy', metadata)
+
+        self.logger.info(f"Saved all stitched data to {self.stitched_dir}")
