@@ -4,97 +4,94 @@ import numpy as np
 from typing import Union, Optional
 import logging
 import re
-
+import tifffile
+from tqdm import tqdm
 
 class DataLoader:
     """Handles loading and organizing scan data from H5 files."""
 
     def __init__(self, scan_path: Union[str, Path], scan_name: str):
         self.scan_path = Path(scan_path)
+        self.scan_name = scan_name
         self.logger = logging.getLogger(__name__)
+        self.results_dir = self.scan_path / 'results' / self.scan_name
 
         def natural_sort_key(path):
             numbers = [int(text) if text.isdigit() else text.lower()
                        for text in re.split('([0-9]+)', str(path))]
             return numbers
 
+        # This pattern only matches scan names ending with a number
+        # and therefore discards files ending with _failed.h5 or similar
         self.h5_files = sorted(
-            list(self.scan_path.glob(f"{scan_name}*.h5")),
+            [f for f in self.scan_path.glob(f"{scan_name}*[0-9].h5")
+             if re.search(r'\d+\.h5$', str(f))],
             key=natural_sort_key
         )
 
         if not self.h5_files:
             raise FileNotFoundError(f"No H5 files found matching pattern {scan_name}*.h5 in {scan_path}")
 
-        self.logger.info(f"Found {len(self.h5_files)} H5 files")
-
-    def _load_dataset(self, h5_file: Path, dataset_path: str) -> np.ndarray:
-        """Load a specific dataset from an H5 file."""
-        try:
-            with h5py.File(h5_file, 'r') as f:
-                data = f['EXPERIMENT/SCANS/00_00/' + dataset_path + '/DATA'][:]
-                return data
-        except Exception as e:
-            self.logger.error(f"Error loading dataset {dataset_path} from {h5_file}: {str(e)}")
-            raise
-
-    def _average_fields(self, data: np.ndarray) -> np.ndarray:
-        """Average multiple fields along the first axis."""
-        if data.ndim < 3:
-            raise ValueError(f"Expected at least 3D data for averaging, got shape {data.shape}")
-
-        # Average along first axis (number of fields)
-        averaged_data = np.mean(data, axis=0)
-        self.logger.debug(f"Averaged fields from shape {data.shape} to {averaged_data.shape}")
-        return averaged_data
-
-    def load_dark_currents(self) -> np.ndarray:
-        """Load dark field data from all files and combine, averaging multiple fields per file."""
-        dark_currents = []
-
+        self.logger.info(f"Found {len(self.h5_files)} H5 files:")
+        # list the names of the h5 files
         for h5_file in self.h5_files:
+            self.logger.info(f"  {h5_file}")
+
+    def load_flat_fields(self, dark=False) -> np.ndarray:
+        """Load flat field data from all files and combine, averaging multiple fields per file."""
+
+        type = "flat" if not dark else "dark"
+        filename = 'averaged_flatfields.npy' if not dark else 'averaged_darkfields.npy'
+
+        # Check if averaged flatfield file already exists
+        averaged_flatfield_file = self.results_dir / filename
+        if averaged_flatfield_file.exists():
             try:
-                data = self._load_dataset(h5_file, 'DARK_FIELD/BEFORE')
-                # Average multiple dark fields for this file
-                averaged_dark = self._average_fields(data)
-                dark_currents.append(averaged_dark)
+                flat_fields_array = np.load(averaged_flatfield_file)
+                self.logger.info(f"Loaded averaged {type} from {averaged_flatfield_file}")
+                return flat_fields_array
             except Exception as e:
-                self.logger.error(f"Failed to load/average dark field from {h5_file}: {str(e)}")
+                self.logger.error(f"Failed to load averaged flatfield from {averaged_flatfield_file}: {str(e)}")
                 raise
 
-        dark_currents_array = np.array(dark_currents)  # Shape: (N, X, Y)
-        self.logger.info(f"Loaded and averaged dark currents with shape {dark_currents_array.shape}")
-        return dark_currents_array
-
-    def load_flat_fields(self) -> np.ndarray:
-        """Load flat field data from all files and combine, averaging multiple fields per file."""
+        self.logger.info(f"Averaged flatfield file not found, loading and averaging flat fields from raw data")
         flat_fields = []
 
-        for h5_file in self.h5_files:
+        for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
             try:
-                data = self._load_dataset(h5_file, 'FLAT_FIELDS/BEFORE')
+                prefix = 'FLAT_FIELDS/BEFORE' if not dark else 'FLAT_FIELDS/AFTER'
+                data = self._load_raw_dataset(h5_file, prefix)
                 # Average multiple flat fields for this file
                 averaged_flat = self._average_fields(data)
                 flat_fields.append(averaged_flat)
             except Exception as e:
-                self.logger.error(f"Failed to load/average flat field from {h5_file}: {str(e)}")
+                self.logger.error(f"Failed to load/average {type} field from {h5_file}: {str(e)}")
                 raise
 
         flat_fields_array = np.array(flat_fields)  # Shape: (N, X, Y)
-        self.logger.info(f"Loaded and averaged flat fields with shape {flat_fields_array.shape}")
+
+        # Dark fields should not change too much between steps, so we can average them
+        if dark:
+            flat_fields_array = np.average(flat_fields_array, axis=0) # Shape: (X, Y)
+
+        # Save averaged flatfields to file
+        self._save_auxiliary_data(flat_fields_array, filename)
+
+        self.logger.info(f"Loaded and averaged {type} fields with shape {flat_fields_array.shape}")
+
         return flat_fields_array
 
-    def load_projections(self, projection_idx: Optional[int] = None) -> np.ndarray:
+    def load_projections(self, projection_i: Optional[int] = None) -> np.ndarray:
         """
         Load projection data from all files.
 
         Args:
-            projection_idx: If provided, loads only the specified projection index from each file.
+            projection_i: If provided, loads only the specified projection index from each file.
                           If None, loads all projections.
 
         Returns:
-            If projection_idx is None: 4D array with shape (N, num_angles, X, Y)
-            If projection_idx is specified: 3D array with shape (N, X, Y)
+            If projection_i is None: 4D array with shape (N, num_angles, X, Y)
+            If projection_i is specified: 3D array with shape (N, X, Y)
             where N is the number of files
         """
         projections = []
@@ -104,14 +101,14 @@ class DataLoader:
                 with h5py.File(h5_file, 'r') as f:
                     dataset = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA']
 
-                    if projection_idx is not None:
+                    if projection_i is not None:
                         # Check if projection index is valid
-                        if projection_idx >= dataset.shape[0]:
-                            raise ValueError(f"Projection index {projection_idx} out of range "
+                        if projection_i >= dataset.shape[0]:
+                            raise ValueError(f"Projection index {projection_i} out of range "
                                              f"(max: {dataset.shape[0] - 1}) in file {h5_file}")
 
                         # Load only the specified projection
-                        data = dataset[projection_idx:projection_idx + 1][0]  # Remove singleton dimension
+                        data = dataset[projection_i:projection_i + 1][0]  # Remove singleton dimension
                     else:
                         # Load all projections
                         data = dataset[:]
@@ -124,3 +121,57 @@ class DataLoader:
         projections_array = np.array(projections)
         self.logger.info(f"Loaded projections with shape {projections_array.shape}")
         return projections_array
+
+    def load_processed_projection(self, projection_i: int, channel: str) -> np.ndarray:
+        """Load a single processed projection from a specific channel."""
+
+        # Load from TIFF files
+        tiff_path = self.results_dir / channel / f'projection_{projection_i:04d}.tiff'
+        data = np.array(tifffile.imread(tiff_path))
+
+        return data
+
+    def save_tiff(self,
+                  channel: str,
+                  angle_i: int,
+                  data: np.ndarray):
+        """Save results as separate TIFF files."""
+        channel_dir = self.results_dir / channel
+        channel_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            tiff_path = channel_dir / f'projection_{angle_i:04d}.tiff'
+
+            tifffile.imwrite(
+                tiff_path,
+                data
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to save projection {angle_i} to {tiff_path}: {str(e)}")
+
+    def _load_raw_dataset(self, h5_file: Path, dataset_path: str) -> np.ndarray:
+        """Load a specific dataset from an H5 file."""
+        try:
+            with h5py.File(h5_file, 'r') as f:
+                data = f['EXPERIMENT/SCANS/00_00/' + dataset_path + '/DATA'][:]
+                return data
+        except Exception as e:
+            self.logger.error(f"Error loading dataset {dataset_path} from {h5_file}: {str(e)}")
+            raise
+
+    def _save_auxiliary_data(self, data: np.ndarray, filename: str):
+        """Save auxiliary data as a separate file."""
+        try:
+            np.save(self.results_dir / filename, data)
+        except Exception as e:
+            self.logger.error(f"Failed to save auxiliary data to {filename}: {str(e)}")
+
+    def _average_fields(self, data: np.ndarray) -> np.ndarray:
+        """Average multiple fields along the first axis."""
+        if data.ndim < 3:
+            raise ValueError(f"Expected at least 3D data for averaging, got shape {data.shape}")
+
+        # Average along first axis (number of fields)
+        averaged_data = np.mean(data, axis=0)
+        self.logger.debug(f"Averaged fields from shape {data.shape} to {averaged_data.shape}")
+        return averaged_data
