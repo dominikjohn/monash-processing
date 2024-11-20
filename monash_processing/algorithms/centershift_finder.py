@@ -100,7 +100,7 @@ class ReconstructionCalibrator:
 
         # Convert to vector geometry
         proj_geom = astra.functions.geom_2vec(proj_geom)
-        proj_geom = astra.functions.geom_postalignment(proj_geom, [center_shift, 0])
+        #proj_geom = astra.functions.geom_postalignment(proj_geom, [center_shift, 0])
 
         # Create ASTRA objects
         sino_3d = np.tile(sinogram.T.reshape(n_det, n_proj, 1), (1, 1, 30))
