@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import tqdm
 import tifffile
 import astra
-
+from scipy.ndimage import shift as scipy_shift
 
 class VolumeBuilder:
     def __init__(self, pixel_size, max_angle, channel, data_loader, center_shift=0, method='FBP', num_iterations=150, debug=False):
@@ -61,6 +61,72 @@ class VolumeBuilder:
 
         return np.array(projections), angles[valid_angles_mask]
 
+    @staticmethod
+    def apply_centershift(projections, center_shift):
+        """
+        Apply center shift to projections.
+        :param projections:
+        :param center_shift:
+        :return:
+        """
+
+        return scipy_shift(projections, (0, 0, center_shift), mode='nearest', order=1)
+
+    @staticmethod
+    def reconstruct_slice(projections, angles, pixel_size):
+        """
+        Reconstruct a single slice using FBP algorithm with ASTRA Toolbox.
+        Args:
+            projections: 2D numpy array of projection data (projections, rows, cols)
+            angles: Array of projection angles in radians
+            pixel_size: Size of detector pixels in mm
+            detector_cols: Number of detector columns
+
+        Returns:
+            2D numpy array of reconstructed slice
+        """
+
+        # Make sure this is a 2D object instead of (angles, 1, cols)
+        projection_slices = np.squeeze(projections)
+        detector_cols = projection_slices.shape[1]
+
+        vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
+
+        # Create projection geometry with center shift
+        proj_geom = astra.create_proj_geom('parallel',
+                                           1.,
+                                           detector_cols,
+                                           angles)
+
+        # Create sinogram
+        sino_id = astra.data2d.create('-sino', proj_geom, projection_slices)
+
+        # Create reconstruction volume
+        rec_id = astra.data2d.create('-vol', vol_geom)
+
+        proj_id = astra.create_projector('line', proj_geom, vol_geom)
+
+        # Create FBP configuration
+        cfg = astra.astra_dict('FBP_CUDA')
+        cfg['ProjectorId'] = proj_id
+        cfg['ProjectionDataId'] = sino_id
+        cfg['ReconstructionDataId'] = rec_id
+        cfg['option'] = {'FilterType': 'Ram-Lak'}
+
+        # Create and run the algorithm
+        alg_id = astra.algorithm.create(cfg)
+        astra.algorithm.run(alg_id)
+
+        # Get the result
+        result = astra.data2d.get(rec_id)
+
+        # Clean up
+        astra.algorithm.delete(alg_id)
+        astra.data2d.delete(rec_id)
+        astra.data2d.delete(sino_id)
+
+        return result  # Return the single slice
+
     def reconstruct(self):
         try:
             # Load projections and get valid angles
@@ -75,8 +141,8 @@ class VolumeBuilder:
             vol_geom = astra.create_vol_geom(detector_cols, detector_cols, detector_rows)
 
             center_col = detector_cols / 2 + self.center_shift
-            proj_geom = astra.create_proj_geom('parallel3d',
-                                               self.pixel_size,
+            proj_geom = astra.create_proj_geom('parallel',
+                                               1.,
                                                self.pixel_size,
                                                detector_cols, detector_rows,
                                                angles,

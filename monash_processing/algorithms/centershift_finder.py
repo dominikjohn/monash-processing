@@ -3,7 +3,9 @@ from pathlib import Path
 from tqdm import tqdm
 import tifffile
 import astra
-from scipy.ndimage import shift as scipy_shift
+
+from core.volume_builder import VolumeBuilder
+
 
 class ReconstructionCalibrator:
     def __init__(self, data_loader):
@@ -63,28 +65,21 @@ class ReconstructionCalibrator:
             except Exception as e:
                 raise RuntimeError(f"Failed to load projection {idx}: {str(e)}")
 
-        # Create reconstructions with different shifts
+        # Select one slice for the preview
+        sliced_projections = projections[:, slice_idx:slice_idx + 1, :]
 
         shifts = np.linspace(test_range[0], test_range[1], 10)
         print("Computing reconstructions with different center shifts...")
 
         for shift in tqdm(shifts):
             print('Current shift:', shift)
-            shifted_projections = []
-            for projection in projections:
-                #shifted_projection = np.roll(projection, shift, axis=1)
-                shifted_projection = scipy_shift(projection, (0, shift), mode='nearest', order=1)
-                shifted_projections.append(shifted_projection)
-            shifted_projections = np.array(shifted_projections)
+            shifted_projections = VolumeBuilder.apply_centershift(sliced_projections, shift)
 
             # Reconstruct with center shift
-            recon = self._reconstruct_slice(
+            recon = VolumeBuilder.reconstruct_slice(
                 projections=shifted_projections,
                 angles=angles,
                 pixel_size=pixel_size,
-                slice_idx=slice_idx,
-                center_shift=shift,
-                detector_cols=detector_cols
             )
 
             # Save reconstruction
@@ -103,60 +98,3 @@ class ReconstructionCalibrator:
                 print("Please enter a valid number")
 
         return chosen_shift
-
-    def _reconstruct_slice(self, projections, angles, pixel_size, slice_idx, center_shift, detector_cols):
-        """
-        Reconstruct a single slice using FBP algorithm with 3D parallel beam geometry.
-
-        Args:
-            projections: 3D numpy array of projection data (projections, rows, cols)
-            angles: Array of projection angles in radians
-            pixel_size: Size of detector pixels in mm
-            slice_idx: Index of slice to reconstruct
-            center_shift: Shift of rotation center in pixels
-            detector_cols: Number of detector columns
-
-        Returns:
-            2D numpy array of reconstructed slice
-        """
-        # Extract the slice
-        slice_projections = projections[:, slice_idx:slice_idx + 1, :]
-
-        vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
-
-        # Create projection geometry with center shift
-        #TODO
-        center_col = detector_cols / 2 + center_shift
-        proj_geom = astra.create_proj_geom('parallel',
-                                           1.,
-                                           detector_cols,
-                                           angles)
-
-        # Create sinogram
-        sino_id = astra.data2d.create('-sino', proj_geom, np.squeeze(slice_projections))
-
-        # Create reconstruction volume
-        rec_id = astra.data2d.create('-vol', vol_geom)
-
-        proj_id = astra.create_projector('line', proj_geom, vol_geom)
-
-        # Create FBP configuration
-        cfg = astra.astra_dict('FBP')
-        cfg['ProjectorId'] = proj_id
-        cfg['ProjectionDataId'] = sino_id
-        cfg['ReconstructionDataId'] = rec_id
-        cfg['option'] = {'FilterType': 'Ram-Lak'}
-
-        # Create and run the algorithm
-        alg_id = astra.algorithm.create(cfg)
-        astra.algorithm.run(alg_id)
-
-        # Get the result
-        result = astra.data2d.get(rec_id)
-
-        # Clean up
-        astra.algorithm.delete(alg_id)
-        astra.data2d.delete(rec_id)
-        astra.data2d.delete(sino_id)
-
-        return result  # Return the single slice
