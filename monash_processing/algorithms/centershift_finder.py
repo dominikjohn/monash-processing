@@ -9,10 +9,10 @@ class ReconstructionCalibrator:
     def __init__(self, data_loader):
         self.data_loader = data_loader
 
-    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=900):
+    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=100):
         """
         Creates reconstructions with different center shifts and saves them as files.
-        Uses 2D geometry with FBP algorithm and implements center shift using numpy roll.
+        Uses 3D parallel beam geometry with FBP algorithm.
 
         Args:
             max_angle: Maximum angle in degrees
@@ -31,44 +31,56 @@ class ReconstructionCalibrator:
         tiff_files = sorted(input_dir.glob('projection_*.tiff'))
         total_projs = len(tiff_files)
 
-        # Calculate indices to load
-        indices = np.linspace(0, total_projs - 1, num_projections, dtype=int)
-        angles = np.linspace(0, np.deg2rad(max_angle), total_projs)[indices]
+        # Calculate angles (up to 180 degrees)
+        all_angles = np.linspace(0, np.deg2rad(max_angle), total_projs)
+        valid_angles_mask = all_angles <= np.pi
+        valid_indices = np.where(valid_angles_mask)[0]
+
+        # Select subset of indices for preview
+        if len(valid_indices) > num_projections:
+            indices = np.linspace(0, len(valid_indices) - 1, num_projections, dtype=int)
+            valid_indices = valid_indices[indices]
+            angles = all_angles[valid_indices]
+        else:
+            angles = all_angles[valid_angles_mask]
 
         # Load first projection to get dimensions
-        first_proj = np.array(tifffile.imread(tiff_files[0]))
-        height, width = first_proj.shape
+        first_proj = tifffile.imread(tiff_files[0])
+        detector_rows, detector_cols = first_proj.shape
 
         if slice_idx is None:
-            slice_idx = height // 2
+            slice_idx = detector_rows // 2
 
-        # Initialize sinogram array
-        sinogram = np.zeros((len(indices), width))
+        # Initialize projections array
+        projections = np.zeros((len(valid_indices), detector_rows, detector_cols))
 
-        # Load projections and extract sinogram
-        print("Loading projections and creating sinogram...")
-        for i, idx in enumerate(tqdm(indices)):
+        # Load projections
+        print("Loading projections...")
+        for i, idx in enumerate(tqdm(valid_indices)):
             try:
-                proj = np.array(tifffile.imread(tiff_files[idx]))
-                sinogram[i, :] = proj[slice_idx, :]
+                proj = tifffile.imread(tiff_files[idx])
+                projections[i] = proj
             except Exception as e:
-                print(f"Error loading projection {idx}: {e}")
-                continue
+                raise RuntimeError(f"Failed to load projection {idx}: {str(e)}")
 
         # Create reconstructions with different shifts
         shifts = np.arange(-40, 41, 10)  # Test range from -40 to +40
         print("Computing reconstructions with different center shifts...")
 
         for shift in tqdm(shifts):
-            # Apply center shift using numpy roll
-            shifted_sinogram = np.array([np.roll(row, int(shift)) for row in sinogram])
-
-            # Reconstruct with shifted data
-            recon = self._reconstruct_slice(shifted_sinogram, angles, pixel_size)
+            # Reconstruct with center shift
+            recon = self._reconstruct_slice(
+                projections=projections,
+                angles=angles,
+                pixel_size=pixel_size,
+                slice_idx=slice_idx,
+                center_shift=shift,
+                detector_cols=detector_cols
+            )
 
             # Save reconstruction
             filename = preview_dir / f'center_shift_{shift:+.1f}.tiff'
-            tifffile.imwrite(filename, recon)
+            tifffile.imwrite(filename, recon.astype(np.float32))
 
         print(f"\nReconstructed slices saved in: {preview_dir}")
         print("Examine the files and note which shift gives the best reconstruction.")
@@ -83,52 +95,57 @@ class ReconstructionCalibrator:
 
         return chosen_shift
 
-    def _reconstruct_slice(self, sinogram, angles, pixel_size):
+    def _reconstruct_slice(self, projections, angles, pixel_size, slice_idx, center_shift, detector_cols):
         """
-        Reconstruct a single slice using FBP algorithm with 2D geometry.
+        Reconstruct a single slice using FBP algorithm with 3D parallel beam geometry.
 
         Args:
-            sinogram: 2D numpy array of projection data
+            projections: 3D numpy array of projection data (projections, rows, cols)
             angles: Array of projection angles in radians
             pixel_size: Size of detector pixels in mm
+            slice_idx: Index of slice to reconstruct
+            center_shift: Shift of rotation center in pixels
+            detector_cols: Number of detector columns
 
         Returns:
             2D numpy array of reconstructed slice
         """
-        n_proj, n_det = sinogram.shape
+        # Extract the slice
+        slice_projections = projections[:, slice_idx:slice_idx + 1, :]
 
-        # Create volume geometry
-        vol_geom = astra.create_vol_geom(n_det, n_det)
+        # Create volume geometry (single slice)
+        vol_geom = astra.create_vol_geom(detector_cols, detector_cols, 1)
 
-        # Create parallel beam geometry
-        proj_geom = astra.create_proj_geom('parallel', pixel_size, n_det, angles)
+        # Create projection geometry with center shift
+        #TODO
+        center_col = detector_cols / 2 + center_shift
+        proj_geom = astra.create_proj_geom('parallel',
+                                           pixel_size,
+                                           detector_cols,
+                                           angles)
 
-        # Create projector
-        proj_id = astra.create_projector('line', proj_geom, vol_geom)
+        # Create sinogram
+        sino_id = astra.data3d.create('-sino', proj_geom, slice_projections.transpose(2, 0, 1))
 
-        # Create ASTRA objects
-        sino_id = astra.data2d.create('-sino', proj_geom, sinogram)
-        vol_id = astra.data2d.create('-vol', vol_geom)
+        # Create reconstruction volume
+        rec_id = astra.data2d.create('-vol', vol_geom)
 
         # Create FBP configuration
         cfg = astra.astra_dict('FBP')
-        cfg['ProjectorId'] = proj_id
         cfg['ProjectionDataId'] = sino_id
-        cfg['ReconstructionDataId'] = vol_id
+        cfg['ReconstructionDataId'] = rec_id
+        cfg['option'] = {'FilterType': 'Ram-Lak'}
 
-        # Set up the FBP algorithm
+        # Create and run the algorithm
         alg_id = astra.algorithm.create(cfg)
-
-        # Run the reconstruction
-        astra.algorithm.run(alg_id, 1)
+        astra.algorithm.run(alg_id)
 
         # Get the result
-        result = astra.data2d.get(vol_id)
+        result = astra.data2d.get(rec_id)
 
-        # Clean up ASTRA objects
+        # Clean up
         astra.algorithm.delete(alg_id)
-        astra.data2d.delete(vol_id)
-        astra.data2d.delete(sino_id)
-        astra.projector.delete(proj_id)
+        astra.data3d.delete(rec_id)
+        astra.data3d.delete(sino_id)
 
-        return result
+        return result  # Return the single slice
