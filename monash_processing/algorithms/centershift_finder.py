@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import astra
 from pathlib import Path
 from tqdm import tqdm
@@ -7,29 +6,30 @@ import tifffile
 
 
 class ReconstructionCalibrator:
-    """Tools for calibrating and optimizing tomographic reconstruction parameters."""
-
     def __init__(self, data_loader):
         self.data_loader = data_loader
 
-    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=900):
+    def find_center_shift(self, max_angle, slice_idx=None, num_projections=900):
         """
-        Shows reconstructions with different center shifts in a grid.
+        Creates reconstructions with different center shifts and saves them as files.
 
         Args:
             max_angle: Maximum angle in degrees
-            pixel_size: Pixel size in meters
             slice_idx: Optional specific slice to use (defaults to middle)
             num_projections: Number of projections to load for preview
         """
         print("Loading subset of projections for center calibration...")
 
-        # Properly handle path
+        # Setup paths
         input_dir = Path(self.data_loader.results_dir) / 'phi'
+        preview_dir = Path(self.data_loader.results_dir) / 'center_preview'
+        preview_dir.mkdir(exist_ok=True)
+
+        # Load projections
         tiff_files = sorted(input_dir.glob('projection_*.tiff'))
         total_projs = len(tiff_files)
 
-        # Calculate indices to load (evenly spaced)
+        # Calculate indices to load
         indices = np.linspace(0, total_projs - 1, num_projections, dtype=int)
         angles = np.linspace(0, np.deg2rad(max_angle), total_projs)[indices]
 
@@ -47,29 +47,22 @@ class ReconstructionCalibrator:
         if slice_idx is None:
             slice_idx = projections.shape[1] // 2
 
-        # Extract the slice from all projections
+        # Extract the slice
         sinogram = projections[:, slice_idx, :]
-        n_proj, n_cols = sinogram.shape
 
-        # Create a grid of reconstructions with different shifts
-        shifts = [-10, -5, -2, 0, 2, 5, 10]
-        reconstructions = []
+        # Create reconstructions with different shifts
+        shifts = [-15, -10, -5, -2, 1, 0, 1, 2, 5, 10, 15]
 
         print("Computing reconstructions with different center shifts...")
         for shift in tqdm(shifts):
-            reconstructions.append(self._reconstruct_slice(sinogram, angles, shift, pixel_size))
+            recon = self._reconstruct_slice(sinogram, angles, shift)
 
-        # Display results
-        fig, axes = plt.subplots(1, len(shifts), figsize=(20, 4))
-        fig.suptitle('Center Shift Preview - Close window and enter chosen shift value')
+            # Save reconstruction
+            filename = preview_dir / f'center_shift_{shift:+.1f}.tiff'
+            tifffile.imwrite(filename, recon)
 
-        for ax, recon, shift in zip(axes, reconstructions, shifts):
-            ax.imshow(recon, cmap='gray')
-            ax.set_title(f'Shift: {shift}')
-            ax.axis('off')
-
-        plt.tight_layout()
-        plt.show()
+        print(f"\nReconstructed slices saved in: {preview_dir}")
+        print("Examine the files and note which shift gives the best reconstruction.")
 
         # Ask for user input
         while True:
@@ -83,7 +76,7 @@ class ReconstructionCalibrator:
 
         return chosen_shift
 
-    def _reconstruct_slice(self, sinogram, angles, center_shift, pixel_size):
+    def _reconstruct_slice(self, sinogram, angles, center_shift):
         """Reconstruct a single slice with given center shift."""
         n_proj, n_cols = sinogram.shape
 
@@ -91,7 +84,7 @@ class ReconstructionCalibrator:
         vol_geom = astra.create_vol_geom(n_cols, n_cols)
         center_col = n_cols / 2 + center_shift
         proj_geom = astra.create_proj_geom('parallel',
-                                           pixel_size,
+                                           1.0,
                                            n_cols,
                                            angles)
 
