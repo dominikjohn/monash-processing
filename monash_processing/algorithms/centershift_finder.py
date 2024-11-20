@@ -96,7 +96,7 @@ class ReconstructionCalibrator:
         rec_id = astra.data2d.create('-vol', vol_geom)
 
         # Set up the reconstruction
-        cfg = astra.astra_dict('FBP')
+        cfg = astra.astra_dict('BP')
         cfg['ProjectorId'] = astra.create_projector('line', proj_geom_vec, vol_geom)
         cfg['ProjectionDataId'] = sino_id
         cfg['ReconstructionDataId'] = rec_id
