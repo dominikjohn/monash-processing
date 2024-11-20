@@ -51,7 +51,7 @@ class ReconstructionCalibrator:
         sinogram = projections[:, slice_idx, :]
 
         # Create reconstructions with different shifts
-        shifts = np.arange(-40, 40, 4)  # Changed to test range from -10 to +10
+        shifts = np.arange(-10, 11, 2)  # Test range from -10 to +10
 
         print("Computing reconstructions with different center shifts...")
         for shift in tqdm(shifts):
@@ -78,7 +78,7 @@ class ReconstructionCalibrator:
 
     def _reconstruct_slice(self, sinogram, angles, center_shift):
         """
-        Reconstruct a single slice using FBP with center shift correction.
+        Reconstruct a single slice using FDK with center shift correction.
 
         Args:
             sinogram: 2D numpy array of projection data
@@ -93,41 +93,33 @@ class ReconstructionCalibrator:
         # Create volume geometry
         vol_geom = astra.create_vol_geom(n_cols, n_cols)
 
-        # Calculate the center of the projections
-        center = n_cols // 2
-
-        # Calculate new center with shift
-        new_center = center + center_shift / 2
-
-        # Create shifted sinogram by padding and cropping
-        pad_size = int(abs(center_shift)) + 1
-        padded_sinogram = np.pad(sinogram, ((0, 0), (pad_size, pad_size)), mode='edge')
-
-        # Extract the properly centered region
-        start_col = pad_size + int(center_shift / 2)
-        shifted_sinogram = padded_sinogram[:, start_col:start_col + n_cols]
-
-        # Create regular parallel beam geometry
+        # Create parallel beam geometry and convert to vector
         proj_geom = astra.create_proj_geom('parallel', 1.0, n_cols, angles)
+        proj_geom = astra.geom_2vec(proj_geom)
+
+        # Apply center shift
+        proj_geom = astra.geom_postalignment(proj_geom, center_shift)
 
         # Create ASTRA objects
-        sino_id = astra.data2d.create('-sino', proj_geom, shifted_sinogram)
-        rec_id = astra.data2d.create('-vol', vol_geom)
+        sino_id = astra.data3d.create('-sino', proj_geom, sinogram.reshape(n_proj, n_cols, 1))
+        vol_id = astra.data3d.create('-vol', vol_geom)
 
-        # Create FBP configuration
-        cfg = astra.astra_dict('FBP')
-        cfg['ProjectorId'] = astra.create_projector('linear', proj_geom, vol_geom)
+        # Create FDK configuration
+        cfg = astra.astra_dict('FDK_CUDA')
         cfg['ProjectionDataId'] = sino_id
-        cfg['ReconstructionDataId'] = rec_id
+        cfg['ReconstructionDataId'] = vol_id
 
         # Run the reconstruction
         alg_id = astra.algorithm.create(cfg)
         astra.algorithm.run(alg_id, 1)
-        result = astra.data2d.get(rec_id)
+
+        # Get the result and extract the middle slice
+        result = astra.data3d.get(vol_id)
+        result = result[:, :, 0]  # Extract 2D slice
 
         # Clean up ASTRA objects
         astra.algorithm.delete(alg_id)
-        astra.data2d.delete(rec_id)
-        astra.data2d.delete(sino_id)
+        astra.data3d.delete(vol_id)
+        astra.data3d.delete(sino_id)
 
         return result
