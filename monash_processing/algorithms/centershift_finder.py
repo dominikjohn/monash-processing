@@ -90,11 +90,6 @@ class ReconstructionCalibrator:
         """
         n_proj, n_det = sinogram.shape
 
-        # Print input data statistics
-        print(f"Sinogram shape: {sinogram.shape}")
-        print(f"Sinogram range: [{sinogram.min():.3f}, {sinogram.max():.3f}]")
-        print(f"Angles range: [{angles.min():.3f}, {angles.max():.3f}] radians")
-
         # Create volume geometry
         vol_geom = astra.create_vol_geom(n_det, n_det, 1)
 
@@ -125,10 +120,16 @@ class ReconstructionCalibrator:
 
         # Get the result and extract the 2D slice
         result = astra.data3d.get(vol_id)
-        print(f"Reconstruction range before slice: [{result.min():.3e}, {result.max():.3e}]")
-
         result = result[0, :, :]
-        print(f"Reconstruction range after slice: [{result.min():.3e}, {result.max():.3e}]")
+
+        # Scale the result for 16-bit TIFF output
+        if result.max() > result.min():
+            # Normalize to [0, 1] range
+            result = (result - result.min()) / (result.max() - result.min())
+            # Scale to 16-bit range
+            result = (result * 65535).astype(np.uint16)
+        else:
+            result = np.zeros(result.shape, dtype=np.uint16)
 
         # Clean up ASTRA objects
         astra.algorithm.delete(alg_id)
