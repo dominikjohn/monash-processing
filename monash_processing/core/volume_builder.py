@@ -3,7 +3,6 @@ from tqdm import tqdm
 import tifffile
 import astra
 
-
 class VolumeBuilder:
     def __init__(self, pixel_size, max_angle, channel, data_loader, method='FBP', num_iterations=150, debug=False):
         """
@@ -56,38 +55,39 @@ class VolumeBuilder:
             projections = self.load_projections()
             print(f"Loaded projections shape: {projections.shape}")
 
-            # Create angles array
-            angles = np.linspace(0, self.max_angle_rad, projections.shape[0])
-
             # Get dimensions from projections
             n_proj, detector_rows, detector_cols = projections.shape
             print(f"Dimensions - Projections: {n_proj}, Detector rows: {detector_rows}, Detector cols: {detector_cols}")
+
+            # Create angles array
+            angles = np.linspace(0, self.max_angle_rad, n_proj)
 
             if self.debug:
                 print("DEBUG INFO:")
                 print(f"Angle range: {np.rad2deg(angles[0])} to {np.rad2deg(angles[-1])} degrees")
                 print(f"Memory usage of projections: {projections.nbytes / 1e9:.2f} GB")
 
-            # Create volume geometry (cubic volume)
+            # First reshape array to match ASTRA's expected format
+            projections_astra = np.transpose(projections, (1, 0, 2))
+
+            if self.debug:
+                print("\nArray shapes:")
+                print(f"Original projections: {projections.shape}")
+                print(f"Reshaped for ASTRA: {projections_astra.shape}")
+
+            # Create volume geometry
             vol_geom = astra.create_vol_geom(detector_cols, detector_cols, detector_rows)
 
-            # Create projection geometry with swapped dimensions to match ASTRA's expectations
+            # Create projection geometry
             proj_geom = astra.create_proj_geom('parallel3d',
                                                1.0, 1.0,
-                                               detector_cols, detector_rows,  # Note the swap here
+                                               detector_cols, detector_rows,
                                                angles)
 
             if self.debug:
                 print("\nGeometry Info:")
                 print(f"Volume Geometry: {vol_geom}")
                 print(f"Projection Geometry: {proj_geom}")
-                print(f"Projection data shape: {projections.shape}")
-
-            # Transpose projections to match ASTRA's expected format
-            projections_astra = np.transpose(projections, (0, 2, 1))
-
-            if self.debug:
-                print(f"Transposed projection shape: {projections_astra.shape}")
 
             # Create sinogram data
             sino_id = astra.data3d.create('-sino', proj_geom, projections_astra)
