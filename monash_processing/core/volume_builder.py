@@ -152,22 +152,7 @@ class VolumeBuilder:
                 raise
             else:
                 raise
-
-    def save_reconstruction(self, result):
-        """
-        Save reconstruction results as TIFF files in a phase_reco folder.
-
-        Args:
-            result: 3D numpy array of the reconstructed volume
-        """
-        print('Saving reconstruction slices...')
-        for i in tqdm(range(result.shape[0]), desc="Saving slices"):
-            self.data_loader.save_tiff(
-                channel='phase_reco',  # This will create a phase_reco folder
-                angle_i=i,  # Using i as the slice index
-                data=result[i]
-            )
-
+            
     @staticmethod
     def get_available_fbp_filters():
         """Returns list of available FBP filters"""
