@@ -51,7 +51,7 @@ class ReconstructionCalibrator:
         sinogram = projections[:, slice_idx, :]
 
         # Create reconstructions with different shifts
-        shifts = [-20, -15, -10, -5, -3, -2, -1, 0, 1, 2, 3, 5, 10, 15, 20]
+        shifts = [20, 22, 24, 26, 28, 30]
 
         print("Computing reconstructions with different center shifts...")
         for shift in tqdm(shifts):
@@ -96,7 +96,7 @@ class ReconstructionCalibrator:
         rec_id = astra.data2d.create('-vol', vol_geom)
 
         # Set up the reconstruction
-        cfg = astra.astra_dict('BP')
+        cfg = astra.astra_dict('SIRT')
         cfg['ProjectorId'] = astra.create_projector('line', proj_geom_vec, vol_geom)
         cfg['ProjectionDataId'] = sino_id
         cfg['ReconstructionDataId'] = rec_id
