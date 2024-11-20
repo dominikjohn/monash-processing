@@ -91,22 +91,20 @@ class ReconstructionCalibrator:
         n_proj, n_det = sinogram.shape
 
         # Create volume geometry
-        vol_geom = astra.create_vol_geom(n_det, n_det, 1)
+        vol_geom = astra.create_vol_geom(n_det, n_det, 30)
 
         # Create cone beam geometry with correct distances
         proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size,
-                                           n_det, 1, angles,
+                                           n_det, 30, angles,
                                            20, 0.15)  # 20m source-origin, 0.15m origin-detector
 
         # Convert to vector geometry
         proj_geom = astra.functions.geom_2vec(proj_geom)
-
-        # Apply center shift
-        proj_geom['Vectors'][:, 3] += center_shift * proj_geom['Vectors'][:, 6]
+        proj_geom = astra.functions.geom_postalignment(proj_geom, [center_shift, 0])
 
         # Create ASTRA objects
-        sino_reshaped = sinogram.T.reshape(n_det, n_proj, 1)
-        sino_id = astra.data3d.create('-sino', proj_geom, sino_reshaped)
+        sino_3d = np.tile(sinogram.T.reshape(n_det, n_proj, 1), (1, 1, 30))
+        sino_id = astra.data3d.create('-sino', proj_geom, sino_3d)
         vol_id = astra.data3d.create('-vol', vol_geom)
 
         # Create FDK configuration
@@ -121,15 +119,6 @@ class ReconstructionCalibrator:
         # Get the result and extract the 2D slice
         result = astra.data3d.get(vol_id)
         result = result[0, :, :]
-
-        # Scale the result for 16-bit TIFF output
-        if result.max() > result.min():
-            # Normalize to [0, 1] range
-            result = (result - result.min()) / (result.max() - result.min())
-            # Scale to 16-bit range
-            result = (result * 65535).astype(np.uint16)
-        else:
-            result = np.zeros(result.shape, dtype=np.uint16)
 
         # Clean up ASTRA objects
         astra.algorithm.delete(alg_id)
