@@ -90,7 +90,7 @@ class ReconstructionCalibrator:
         n_proj, n_cols = sinogram.shape
 
         # Create volume geometry
-        vol_geom = astra.create_vol_geom(n_cols, n_cols)
+        vol_geom = astra.create_vol_geom(n_cols, n_cols, 1)
 
         # Create parallel beam geometry and convert to vector
         proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size, n_cols, 1, angles, 20, 0.15)
