@@ -87,7 +87,7 @@ class VolumeBuilder:
             projections_astra = projections.transpose(2,0,1)
 
             # Create sinogram data
-            sino_id = astra.data3d.create('-sino', proj_geom, projections)
+            sino_id = astra.data3d.create('-sino', proj_geom, projections_astra)
 
             # Create reconstruction volume
             rec_id = astra.data3d.create('-vol', vol_geom)
