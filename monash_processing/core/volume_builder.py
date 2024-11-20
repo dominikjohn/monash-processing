@@ -75,13 +75,10 @@ class VolumeBuilder:
                 print(f"Angle range: {np.rad2deg(angles[0]):.1f}° to {np.rad2deg(angles[-1]):.1f}°")
                 print(f"Memory usage of projections: {projections.nbytes / 1e9:.2f} GB")
 
-            # First reshape array to match ASTRA's expected format
-            projections_astra = np.transpose(projections, (2, 1, 0))
-
             if self.debug:
                 print("\nArray shapes:")
                 print(f"Original projections: {projections.shape}")
-                print(f"Reshaped for ASTRA: {projections_astra.shape}")
+                print(f"Reshaped for ASTRA: {projections.shape}")
 
             # Create volume geometry
             vol_geom = astra.create_vol_geom(detector_cols, detector_cols, detector_rows)
@@ -98,7 +95,7 @@ class VolumeBuilder:
                 print(f"Projection Geometry: {proj_geom}")
 
             # Create sinogram data
-            sino_id = astra.data3d.create('-sino', proj_geom, projections_astra)
+            sino_id = astra.data3d.create('-sino', proj_geom, projections)
 
             # Create reconstruction volume
             rec_id = astra.data3d.create('-vol', vol_geom)
