@@ -5,7 +5,7 @@ import astra
 
 
 class VolumeBuilder:
-    def __init__(self, pixel_size, max_angle, channel, data_loader, method='FBP', num_iterations=150, debug=False):
+    def __init__(self, pixel_size, max_angle, channel, data_loader, center_shift=0, method='FBP', num_iterations=150, debug=False):
         """
         Args:
             pixel_size: Size of each pixel in physical units
@@ -23,6 +23,7 @@ class VolumeBuilder:
         self.method = method.upper()
         self.num_iterations = num_iterations
         self.debug = debug
+        self.center_shift = center_shift
 
         if self.method not in ['FBP', 'SIRT']:
             raise ValueError("Method must be either 'FBP' or 'SIRT'")
@@ -73,18 +74,20 @@ class VolumeBuilder:
             # Create volume geometry
             vol_geom = astra.create_vol_geom(detector_cols, detector_cols, detector_rows)
 
-            # Create projection geometry
+            center_col = detector_cols / 2 + self.center_shift
             proj_geom = astra.create_proj_geom('parallel3d',
-                                               1.0, 1.0,
+                                               self.pixel_size,
+                                               self.pixel_size,
                                                detector_cols, detector_rows,
-                                               angles)
+                                               angles,
+                                               center_col)  # Add center column
 
             if self.debug:
                 print("\nGeometry Info:")
                 print(f"Volume Geometry: {vol_geom}")
                 print(f"Projection Geometry: {proj_geom}")
 
-            projections_astra = projections.transpose(2,0,1)
+            projections_astra = projections.transpose(2, 0, 1)
 
             # Create sinogram data
             sino_id = astra.data3d.create('-sino', proj_geom, projections_astra)

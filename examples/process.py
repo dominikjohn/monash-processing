@@ -2,6 +2,7 @@ from monash_processing.algorithms.parallel_phase_integrator import ParallelPhase
 from monash_processing.core.data_loader import DataLoader
 from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.core.volume_builder import VolumeBuilder
+from monash_processing.algorithms.centershift_finder import ReconstructionCalibrator
 from tqdm import tqdm
 import h5py
 from monash_processing.utils.utils import Utils
@@ -60,8 +61,17 @@ area_right = np.s_[100:-100, -120:-20]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
 parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 
+
 # 5. Reconstruct volume
 print("Reconstructing volume")
+
+print('Find centershift')
+calibrator = ReconstructionCalibrator(loader)
+center_shift = calibrator.find_center_shift(
+    angles=np.linspace(0, np.pi, num_angles),
+    pixel_size=pixel_size
+)
+
 volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, method='FBP', debug=True)
 volume = volume_builder.reconstruct()
 
