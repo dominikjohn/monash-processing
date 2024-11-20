@@ -4,9 +4,10 @@ import rasterio.fill as rs
 import scipy.constants
 from monash_processing.core.data_loader import DataLoader
 
+
 class PhaseIntegrator:
 
-    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader : DataLoader):
+    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader: DataLoader):
         self.energy = energy
         self.prop_distance = prop_distance
         self.pixel_size = pixel_size
@@ -16,7 +17,7 @@ class PhaseIntegrator:
         self.area_left = area_left
         self.area_right = area_right
 
-    def     integrate_single(self, projection_i):
+    def integrate_single(self, projection_i):
 
         # Load dx, dy, f
         dx = self.data_loader.load_processed_projection(projection_i, 'dx')
@@ -145,7 +146,8 @@ class PhaseIntegrator:
 
         ######## Merge Masks
         merged_mask = error_mask + gauss_mask
-        opened_mask = cv2.morphologyEx(merged_mask.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(bool)
+        opened_mask = cv2.morphologyEx(merged_mask.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(
+            bool)
 
         rio_im = rs.fillnodata(image.copy(), np.invert(opened_mask), smoothing_iterations=0)
         dilated_mask = cv2.dilate(opened_mask.astype(np.uint8), np.ones((3, 3), np.uint8), iterations=5).astype(bool)

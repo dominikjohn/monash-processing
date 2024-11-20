@@ -17,6 +17,7 @@ energy = 25 # keV
 prop_distance = 0.158 #
 max_angle = 382
 umpa_w = 1
+n_workers = 50
 
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
@@ -57,7 +58,7 @@ print("Phase integrating")
 area_left = np.s_[100:-100, 20:120]
 area_right = np.s_[100:-100, -120:-20]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
-parallel_phase_integrator.integrate_parallel(num_angles)
+parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 
 # 5. Reconstruct volume
 print("Reconstructing volume")
