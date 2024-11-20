@@ -3,12 +3,13 @@ from tqdm import tqdm
 import tifffile
 import astra
 
+
 class VolumeBuilder:
     def __init__(self, pixel_size, max_angle, channel, data_loader, method='FBP', num_iterations=150, debug=False):
         """
         Args:
             pixel_size: Size of each pixel in physical units
-            max_angle: Maximum angle in degrees
+            max_angle: Maximum angle in degrees (will be cropped to 180°)
             channel: 'phase' or 'attenuation'
             data_loader: DataLoader instance
             method: 'FBP' or 'SIRT'
@@ -31,40 +32,47 @@ class VolumeBuilder:
         input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'att')
         tiff_files = sorted(input_dir.glob('projection_*.tiff'))
 
+        # Generate angles and create mask for <= 180°
+        angles = np.linspace(0, self.max_angle_rad, len(tiff_files))
+        valid_angles_mask = angles <= np.pi  # π radians = 180°
+        valid_indices = np.where(valid_angles_mask)[0]
+
         if self.debug:
-            print("DEBUG MODE: Loading only first projection")
+            print(f"Total projections: {len(tiff_files)}")
+            print(f"Projections up to 180°: {len(valid_indices)}")
+            print(f"Angle range used: 0 to {np.rad2deg(angles[valid_indices[-1]]):.1f}°")
+
+        if self.debug and len(tiff_files) > 0:
+            print("DEBUG MODE: Loading only first valid projection")
             first_proj = tifffile.imread(tiff_files[0])
-            projections = np.zeros((len(tiff_files), *first_proj.shape), dtype=first_proj.dtype)
+            projections = np.zeros((len(valid_indices), *first_proj.shape), dtype=first_proj.dtype)
             projections[0] = first_proj
             print(f"Debug array shape: {projections.shape}")
-            return projections
+            return projections, angles[valid_angles_mask]
 
         projections = []
-        for tiff_file in tqdm(tiff_files, desc=f"Loading {self.channel} projections", unit="file"):
+        for idx in tqdm(valid_indices, desc=f"Loading {self.channel} projections", unit="file"):
             try:
-                data = tifffile.imread(tiff_file)
+                data = tifffile.imread(tiff_files[idx])
                 projections.append(data)
             except Exception as e:
-                raise RuntimeError(f"Failed to load projection from {tiff_file}: {str(e)}")
+                raise RuntimeError(f"Failed to load projection from {tiff_files[idx]}: {str(e)}")
 
-        return np.array(projections)
+        return np.array(projections), angles[valid_angles_mask]
 
     def reconstruct(self):
         try:
-            # Load projections
-            projections = self.load_projections()
+            # Load projections and get valid angles
+            projections, angles = self.load_projections()
             print(f"Loaded projections shape: {projections.shape}")
 
             # Get dimensions from projections
             n_proj, detector_rows, detector_cols = projections.shape
             print(f"Dimensions - Projections: {n_proj}, Detector rows: {detector_rows}, Detector cols: {detector_cols}")
 
-            # Create angles array
-            angles = np.linspace(0, self.max_angle_rad, n_proj)
-
             if self.debug:
                 print("DEBUG INFO:")
-                print(f"Angle range: {np.rad2deg(angles[0])} to {np.rad2deg(angles[-1])} degrees")
+                print(f"Angle range: {np.rad2deg(angles[0]):.1f}° to {np.rad2deg(angles[-1]):.1f}°")
                 print(f"Memory usage of projections: {projections.nbytes / 1e9:.2f} GB")
 
             # First reshape array to match ASTRA's expected format

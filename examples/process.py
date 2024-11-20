@@ -15,7 +15,7 @@ scan_name = "P6_ReverseOrder"
 pixel_size = 1.444e-6 # m
 energy = 25 # keV
 prop_distance = 0.158 #
-max_angle = 382
+max_angle = 182
 umpa_w = 1
 n_workers = 50
 
