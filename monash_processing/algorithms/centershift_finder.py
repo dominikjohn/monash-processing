@@ -96,7 +96,7 @@ class ReconstructionCalibrator:
         # Create cone beam geometry and convert to vector
         # Parameters: pixel_size, pixel_size, detWidth, detHeight, angles, source_origin, origin_det
         proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size,
-                                           n_cols, 1, angles,
+                                           1, n_cols, angles,
                                            20, 0.15)  # Example distances
 
         # Convert to vector geometry
