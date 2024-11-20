@@ -93,7 +93,7 @@ class VolumeBuilder:
             rec_id = astra.data3d.create('-vol', vol_geom)
 
             if self.method == 'FBP':
-                cfg = astra.astra_dict('FBP3D_CUDA')
+                cfg = astra.astra_dict('BP3D_CUDA')
                 cfg['ProjectionDataId'] = sino_id
                 cfg['ReconstructionDataId'] = rec_id
                 cfg['option'] = {'FilterType': 'Ram-Lak'}
