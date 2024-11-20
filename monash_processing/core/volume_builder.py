@@ -76,7 +76,7 @@ class VolumeBuilder:
                 print(f"Memory usage of projections: {projections.nbytes / 1e9:.2f} GB")
 
             # First reshape array to match ASTRA's expected format
-            projections_astra = np.transpose(projections, (1, 0, 2))
+            projections_astra = np.transpose(projections, (2, 1, 0))
 
             if self.debug:
                 print("\nArray shapes:")
