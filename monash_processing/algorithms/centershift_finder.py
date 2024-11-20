@@ -130,8 +130,11 @@ class ReconstructionCalibrator:
         # Create reconstruction volume
         rec_id = astra.data2d.create('-vol', vol_geom)
 
+        proj_id = astra.create_projector('line', proj_geom, vol_geom)
+
         # Create FBP configuration
         cfg = astra.astra_dict('FBP')
+        cfg['ProjectorId'] = proj_id
         cfg['ProjectionDataId'] = sino_id
         cfg['ReconstructionDataId'] = rec_id
         cfg['option'] = {'FilterType': 'Ram-Lak'}
