@@ -4,12 +4,14 @@ from pathlib import Path
 from tqdm import tqdm
 import tifffile
 
+from examples.process import pixel_size
+
 
 class ReconstructionCalibrator:
     def __init__(self, data_loader):
         self.data_loader = data_loader
 
-    def find_center_shift(self, max_angle, slice_idx=None, num_projections=900):
+    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=900):
         """
         Creates reconstructions with different center shifts and saves them as files.
 
@@ -51,11 +53,11 @@ class ReconstructionCalibrator:
         sinogram = projections[:, slice_idx, :]
 
         # Create reconstructions with different shifts
-        shifts = np.arange(-10, 11, 2)  # Test range from -10 to +10
+        shifts = np.arange(-40, 40, 10)  # Test range from -10 to +10
 
         print("Computing reconstructions with different center shifts...")
         for shift in tqdm(shifts):
-            recon = self._reconstruct_slice(sinogram, angles, shift)
+            recon = self._reconstruct_slice(sinogram, angles, shift, pixel_size)
 
             # Save reconstruction
             filename = preview_dir / f'center_shift_{shift:+.1f}.tiff'
@@ -76,7 +78,7 @@ class ReconstructionCalibrator:
 
         return chosen_shift
 
-    def _reconstruct_slice(self, sinogram, angles, center_shift):
+    def _reconstruct_slice(self, sinogram, angles, center_shift, pixel_size):
         """
         Reconstruct a single slice using FDK with center shift correction.
 
@@ -94,7 +96,7 @@ class ReconstructionCalibrator:
         vol_geom = astra.create_vol_geom(n_cols, n_cols)
 
         # Create parallel beam geometry and convert to vector
-        proj_geom = astra.create_proj_geom('parallel', 1.0, n_cols, angles)
+        proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size, n_cols, angles, 20, 0.15)
         proj_geom = astra.geom_2vec(proj_geom)
 
         # Apply center shift
