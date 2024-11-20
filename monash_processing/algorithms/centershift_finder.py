@@ -103,7 +103,7 @@ class ReconstructionCalibrator:
 
         # Run the reconstruction
         alg_id = astra.algorithm.create(cfg)
-        astra.algorithm.run(alg_id)
+        astra.algorithm.run(alg_id, 150)
         result = astra.data2d.get(rec_id)
 
         # Clean up
