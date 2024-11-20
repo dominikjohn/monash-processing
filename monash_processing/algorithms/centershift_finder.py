@@ -57,7 +57,7 @@ class ReconstructionCalibrator:
 
         print("Computing reconstructions with different center shifts...")
         for shift in tqdm(shifts):
-            reconstructions.append(self._reconstruct_slice(sinogram, angles, shift))
+            reconstructions.append(self._reconstruct_slice(sinogram, angles, shift, pixel_size))
 
         # Display results
         fig, axes = plt.subplots(1, len(shifts), figsize=(20, 4))
@@ -83,7 +83,7 @@ class ReconstructionCalibrator:
 
         return chosen_shift
 
-    def _reconstruct_slice(self, sinogram, angles, center_shift):
+    def _reconstruct_slice(self, sinogram, angles, center_shift, pixel_size):
         """Reconstruct a single slice with given center shift."""
         n_proj, n_cols = sinogram.shape
 
@@ -91,7 +91,7 @@ class ReconstructionCalibrator:
         vol_geom = astra.create_vol_geom(n_cols, n_cols)
         center_col = n_cols / 2 + center_shift
         proj_geom = astra.create_proj_geom('parallel',
-                                           self.pixel_size,
+                                           pixel_size,
                                            n_cols,
                                            angles)
 
