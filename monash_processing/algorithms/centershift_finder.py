@@ -51,7 +51,7 @@ class ReconstructionCalibrator:
         sinogram = projections[:, slice_idx, :]
 
         # Create reconstructions with different shifts
-        shifts = [20, 22, 24, 26, 28, 30]
+        shifts = [30, 35, 38, 40, 45]
 
         print("Computing reconstructions with different center shifts...")
         for shift in tqdm(shifts):
