@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider
 import astra
+from pathlib import Path
 from tqdm import tqdm
 import tifffile
-from pathlib import Path
+
 
 class ReconstructionCalibrator:
     """Tools for calibrating and optimizing tomographic reconstruction parameters."""
@@ -12,23 +12,20 @@ class ReconstructionCalibrator:
     def __init__(self, data_loader):
         self.data_loader = data_loader
 
-    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=100):
+    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=900):
         """
-        Interactive tool to find center shift using a single slice.
+        Shows reconstructions with different center shifts in a grid.
 
         Args:
             max_angle: Maximum angle in degrees
             pixel_size: Pixel size in meters
             slice_idx: Optional specific slice to use (defaults to middle)
-            num_projections: Number of projections to load for preview (default 100)
+            num_projections: Number of projections to load for preview
         """
         print("Loading subset of projections for center calibration...")
 
         # Properly handle path
         input_dir = Path(self.data_loader.results_dir) / 'phi'
-        if not input_dir.exists():
-            raise ValueError(f"Directory not found: {input_dir}")
-
         tiff_files = sorted(input_dir.glob('projection_*.tiff'))
         total_projs = len(tiff_files)
 
@@ -47,90 +44,75 @@ class ReconstructionCalibrator:
 
         projections = np.array(projections)
 
-        if projections.size == 0:
-            raise ValueError("No projections could be loaded!")
-
-        print(f"Loaded {len(projections)} projections")
-
         if slice_idx is None:
             slice_idx = projections.shape[1] // 2
-            print(f"Using middle slice (index {slice_idx})")
-
-        center_shift = self._preview_center_shift(
-            projections=projections,
-            angles=angles,
-            pixel_size=pixel_size,
-            slice_idx=slice_idx
-        )
-
-        return center_shift
-
-    def _preview_center_shift(self, projections, angles, pixel_size, slice_idx):
-        """Implementation of the interactive center shift preview."""
-        print("Preparing interactive preview...")
 
         # Extract the slice from all projections
         sinogram = projections[:, slice_idx, :]
         n_proj, n_cols = sinogram.shape
 
-        # Create figure and axes
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-        plt.subplots_adjust(bottom=0.25)
+        # Create a grid of reconstructions with different shifts
+        shifts = [-10, -5, -2, 0, 2, 5, 10]
+        reconstructions = []
 
-        def reconstruct_slice(center_shift):
-            # Create geometries
-            vol_geom = astra.create_vol_geom(n_cols, n_cols)
-            center_col = n_cols / 2 + center_shift
-            proj_geom = astra.create_proj_geom('parallel',
-                                               1.0,
-                                               n_cols,
-                                               angles)
+        print("Computing reconstructions with different center shifts...")
+        for shift in tqdm(shifts):
+            reconstructions.append(self._reconstruct_slice(sinogram, angles, shift))
 
-            # Create ASTRA objects
-            sino_id = astra.data2d.create('-sino', proj_geom, sinogram)
-            rec_id = astra.data2d.create('-vol', vol_geom)
+        # Display results
+        fig, axes = plt.subplots(1, len(shifts), figsize=(20, 4))
+        fig.suptitle('Center Shift Preview - Close window and enter chosen shift value')
 
-            # Set up the reconstruction
-            cfg = astra.astra_dict('FBP')
-            cfg['ProjectorId'] = astra.create_projector('line', proj_geom, vol_geom)
-            cfg['ProjectionDataId'] = sino_id
-            cfg['ReconstructionDataId'] = rec_id
+        for ax, recon, shift in zip(axes, reconstructions, shifts):
+            ax.imshow(recon, cmap='gray')
+            ax.set_title(f'Shift: {shift}')
+            ax.axis('off')
 
-            # Run the reconstruction
-            alg_id = astra.algorithm.create(cfg)
-            astra.algorithm.run(alg_id)
-            result = astra.data2d.get(rec_id)
-
-            # Clean up
-            astra.algorithm.delete(alg_id)
-            astra.data2d.delete(rec_id)
-            astra.data2d.delete(sino_id)
-
-            return result
-
-        print("Computing initial reconstruction...")
-        # Initial reconstruction
-        recon = reconstruct_slice(0)
-
-        # Show sinogram and initial reconstruction
-        sino_plot = ax1.imshow(sinogram, aspect='auto', cmap='gray')
-        ax1.set_title('Sinogram')
-
-        recon_plot = ax2.imshow(recon, cmap='gray')
-        ax2.set_title('Reconstruction')
-
-        # Create slider
-        ax_slider = plt.axes([0.15, 0.1, 0.65, 0.03])
-        slider = Slider(ax_slider, 'Center Shift', -10, 10, valinit=0, valstep=0.5)
-
-        def update(val):
-            recon = reconstruct_slice(slider.val)
-            recon_plot.set_array(recon)
-            ax2.set_title(f'Reconstruction (shift: {slider.val:.1f})')
-            fig.canvas.draw_idle()
-
-        slider.on_changed(update)
-
-        print("\nMove slider to adjust center shift. Close window when satisfied.")
+        plt.tight_layout()
         plt.show()
-        return slider.val
+
+        # Ask for user input
+        while True:
+            try:
+                chosen_shift = float(input("\nEnter the best center shift value (-10 to 10): "))
+                if -10 <= chosen_shift <= 10:
+                    break
+                print("Shift must be between -10 and 10")
+            except ValueError:
+                print("Please enter a valid number")
+
+        return chosen_shift
+
+    def _reconstruct_slice(self, sinogram, angles, center_shift):
+        """Reconstruct a single slice with given center shift."""
+        n_proj, n_cols = sinogram.shape
+
+        # Create geometries
+        vol_geom = astra.create_vol_geom(n_cols, n_cols)
+        center_col = n_cols / 2 + center_shift
+        proj_geom = astra.create_proj_geom('parallel',
+                                           self.pixel_size,
+                                           n_cols,
+                                           angles)
+
+        # Create ASTRA objects
+        sino_id = astra.data2d.create('-sino', proj_geom, sinogram)
+        rec_id = astra.data2d.create('-vol', vol_geom)
+
+        # Set up the reconstruction
+        cfg = astra.astra_dict('FBP')
+        cfg['ProjectorId'] = astra.create_projector('line', proj_geom, vol_geom)
+        cfg['ProjectionDataId'] = sino_id
+        cfg['ReconstructionDataId'] = rec_id
+
+        # Run the reconstruction
+        alg_id = astra.algorithm.create(cfg)
+        astra.algorithm.run(alg_id)
+        result = astra.data2d.get(rec_id)
+
+        # Clean up
+        astra.algorithm.delete(alg_id)
+        astra.data2d.delete(rec_id)
+        astra.data2d.delete(sino_id)
+
+        return result
