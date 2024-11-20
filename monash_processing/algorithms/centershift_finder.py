@@ -87,16 +87,17 @@ class ReconstructionCalibrator:
                                            n_cols,
                                            angles)
 
+        proj_geom_vec = astra.geom_2vec(proj_geom)
         # Apply center of rotation correction
-        proj_geom = astra.geom_postalignment(proj_geom, center_shift)
+        proj_geom_vec = astra.geom_postalignment(proj_geom, center_shift)
 
         # Create ASTRA objects and reconstruct
-        sino_id = astra.data2d.create('-sino', proj_geom, sinogram)
+        sino_id = astra.data2d.create('-sino', proj_geom_vec, sinogram)
         rec_id = astra.data2d.create('-vol', vol_geom)
 
         # Set up the reconstruction
         cfg = astra.astra_dict('FBP')
-        cfg['ProjectorId'] = astra.create_projector('line', proj_geom, vol_geom)
+        cfg['ProjectorId'] = astra.create_projector('line', proj_geom_vec, vol_geom)
         cfg['ProjectionDataId'] = sino_id
         cfg['ReconstructionDataId'] = rec_id
 
