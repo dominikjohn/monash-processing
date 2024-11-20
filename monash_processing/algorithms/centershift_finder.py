@@ -105,8 +105,9 @@ class ReconstructionCalibrator:
         # Apply center shift to vector geometry
         proj_geom['Vectors'][:, 3] += center_shift * proj_geom['Vectors'][:, 6]
 
-        # Create ASTRA objects - note the reshape to match detector dimensions
-        sino_id = astra.data3d.create('-sino', proj_geom, sinogram.reshape(n_det, n_proj, 1))
+        # Create ASTRA objects - correct reshape for sinogram
+        sino_reshaped = sinogram.reshape(n_proj, 1, n_det)  # Changed reshape order
+        sino_id = astra.data3d.create('-sino', proj_geom, sino_reshaped)
         vol_id = astra.data3d.create('-vol', vol_geom)
 
         # Create FDK configuration
