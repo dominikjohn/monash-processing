@@ -119,7 +119,7 @@ class ReconstructionCalibrator:
         #TODO
         center_col = detector_cols / 2 + center_shift
         proj_geom = astra.create_proj_geom('parallel',
-                                           1.,
+                                           1.44e-6,
                                            detector_cols,
                                            angles)
 
