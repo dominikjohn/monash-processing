@@ -97,16 +97,28 @@ class ReconstructionCalibrator:
         # Parameters: pixel_size, pixel_size, detWidth, detHeight, angles, source_origin, origin_det
         proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size,
                                            n_det, 1, angles,
-                                           20, 0.15)  # Example distances
+                                           200, 50)  # Increased distances
 
         # Convert to vector geometry
         proj_geom = astra.functions.geom_2vec(proj_geom)
 
-        # Apply center shift to vector geometry
+        # Print geometry info for debugging
+        print(
+            f"Volume geometry shape: {vol_geom['GridSliceCount']}, {vol_geom['GridRowCount']}, {vol_geom['GridColCount']}")
+        print(f"Projection vectors shape: {proj_geom['Vectors'].shape}")
+
+        # Verify vector components
+        print(f"First projection vector components:")
+        print(f"Source position: {proj_geom['Vectors'][0, 0:3]}")
+        print(f"Detector position: {proj_geom['Vectors'][0, 3:6]}")
+        print(f"Detector u: {proj_geom['Vectors'][0, 6:9]}")
+        print(f"Detector v: {proj_geom['Vectors'][0, 9:12]}")
+
+        # Apply center shift
         proj_geom['Vectors'][:, 3] += center_shift * proj_geom['Vectors'][:, 6]
 
-        # Create ASTRA objects - correct reshape for sinogram
-        sino_reshaped = sinogram.reshape(n_proj, 1, n_det)  # Changed reshape order
+        # Create ASTRA objects
+        sino_reshaped = sinogram.T.reshape(n_det, n_proj, 1)
         sino_id = astra.data3d.create('-sino', proj_geom, sino_reshaped)
         vol_id = astra.data3d.create('-vol', vol_geom)
 
@@ -115,12 +127,17 @@ class ReconstructionCalibrator:
         cfg['ProjectionDataId'] = sino_id
         cfg['ReconstructionDataId'] = vol_id
 
+        # Print configuration
+        print("\nFDK Configuration:")
+        print(cfg)
+
         # Run the reconstruction
         alg_id = astra.algorithm.create(cfg)
         astra.algorithm.run(alg_id, 1)
 
         # Get the result and extract the 2D slice
         result = astra.data3d.get(vol_id)
+        print(f"\nReconstruction result shape: {result.shape}")
         result = result[:, :, 0]  # Extract 2D slice
 
         # Clean up ASTRA objects
