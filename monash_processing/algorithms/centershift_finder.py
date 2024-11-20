@@ -51,7 +51,7 @@ class ReconstructionCalibrator:
         sinogram = projections[:, slice_idx, :]
 
         # Create reconstructions with different shifts
-        shifts = [43,44,45,46,47]
+        shifts = [43, 44, 45, 46, 47]
 
         print("Computing reconstructions with different center shifts...")
         for shift in tqdm(shifts):
@@ -77,36 +77,47 @@ class ReconstructionCalibrator:
         return chosen_shift
 
     def _reconstruct_slice(self, sinogram, angles, center_shift):
-        """Reconstruct a single slice with given center shift."""
+        """
+        Reconstruct a single slice using FBP with center shift correction.
+
+        Args:
+            sinogram: 2D numpy array of projection data
+            angles: Array of projection angles in radians
+            center_shift: Shift of the center of rotation in pixels
+
+        Returns:
+            2D numpy array of reconstructed slice
+        """
         n_proj, n_cols = sinogram.shape
 
-        # Create base geometries
+        # Create volume geometry
         vol_geom = astra.create_vol_geom(n_cols, n_cols)
-        proj_geom = astra.create_proj_geom('parallel',
-                                           1.0,
-                                           n_cols,
-                                           angles)
 
-        proj_geom_vec = astra.geom_2vec(proj_geom)
-        # Apply center of rotation correction
-        proj_geom_vec = astra.geom_postalignment(proj_geom, center_shift)
+        # Apply center shift to sinogram
+        shifted_sinogram = np.zeros_like(sinogram)
+        for i in range(len(angles)):
+            shift = center_shift * np.cos(angles[i])
+            shifted_sinogram[i] = np.roll(sinogram[i], int(round(shift)))
 
-        # Create ASTRA objects and reconstruct
-        sino_id = astra.data2d.create('-sino', proj_geom_vec, sinogram)
+        # Create regular parallel beam geometry
+        proj_geom = astra.create_proj_geom('parallel', 1.0, n_cols, angles)
+
+        # Create ASTRA objects
+        sino_id = astra.data2d.create('-sino', proj_geom, shifted_sinogram)
         rec_id = astra.data2d.create('-vol', vol_geom)
 
-        # Set up the reconstruction
-        cfg = astra.astra_dict('SIRT')
-        cfg['ProjectorId'] = astra.create_projector('line', proj_geom_vec, vol_geom)
+        # Create FBP configuration
+        cfg = astra.astra_dict('FBP')
+        cfg['ProjectorId'] = astra.create_projector('linear', proj_geom, vol_geom)
         cfg['ProjectionDataId'] = sino_id
         cfg['ReconstructionDataId'] = rec_id
 
         # Run the reconstruction
         alg_id = astra.algorithm.create(cfg)
-        astra.algorithm.run(alg_id, 150)
+        astra.algorithm.run(alg_id, 1)  # FBP only needs 1 iteration
         result = astra.data2d.get(rec_id)
 
-        # Clean up
+        # Clean up ASTRA objects
         astra.algorithm.delete(alg_id)
         astra.data2d.delete(rec_id)
         astra.data2d.delete(sino_id)
