@@ -135,7 +135,7 @@ class VolumeBuilder:
             if not self.debug:
                 print('Saving tomographic slices...')
                 for i in tqdm(range(result.shape[0])):
-                    self.data_loader.save_projection(
+                    self.data_loader.save_tiff(
                         channel=self.channel,
                         angle_i=i,
                         data=result[i])
@@ -152,7 +152,7 @@ class VolumeBuilder:
                 raise
             else:
                 raise
-            
+
     @staticmethod
     def get_available_fbp_filters():
         """Returns list of available FBP filters"""
