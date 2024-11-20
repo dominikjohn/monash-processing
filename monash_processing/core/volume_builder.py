@@ -84,6 +84,8 @@ class VolumeBuilder:
                 print(f"Volume Geometry: {vol_geom}")
                 print(f"Projection Geometry: {proj_geom}")
 
+            projections_astra = projections.transpose(2,0,1)
+
             # Create sinogram data
             sino_id = astra.data3d.create('-sino', proj_geom, projections)
 
