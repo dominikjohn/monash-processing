@@ -94,25 +94,12 @@ class ReconstructionCalibrator:
         vol_geom = astra.create_vol_geom(n_det, n_det, 1)
 
         # Create cone beam geometry and convert to vector
-        # Parameters: pixel_size, pixel_size, detWidth, detHeight, angles, source_origin, origin_det
         proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size,
                                            n_det, 1, angles,
-                                           200, 50)  # Increased distances
+                                           200, 50)
 
         # Convert to vector geometry
         proj_geom = astra.functions.geom_2vec(proj_geom)
-
-        # Print geometry info for debugging
-        print(
-            f"Volume geometry shape: {vol_geom['GridSliceCount']}, {vol_geom['GridRowCount']}, {vol_geom['GridColCount']}")
-        print(f"Projection vectors shape: {proj_geom['Vectors'].shape}")
-
-        # Verify vector components
-        print(f"First projection vector components:")
-        print(f"Source position: {proj_geom['Vectors'][0, 0:3]}")
-        print(f"Detector position: {proj_geom['Vectors'][0, 3:6]}")
-        print(f"Detector u: {proj_geom['Vectors'][0, 6:9]}")
-        print(f"Detector v: {proj_geom['Vectors'][0, 9:12]}")
 
         # Apply center shift
         proj_geom['Vectors'][:, 3] += center_shift * proj_geom['Vectors'][:, 6]
@@ -127,18 +114,13 @@ class ReconstructionCalibrator:
         cfg['ProjectionDataId'] = sino_id
         cfg['ReconstructionDataId'] = vol_id
 
-        # Print configuration
-        print("\nFDK Configuration:")
-        print(cfg)
-
         # Run the reconstruction
         alg_id = astra.algorithm.create(cfg)
         astra.algorithm.run(alg_id, 1)
 
         # Get the result and extract the 2D slice
         result = astra.data3d.get(vol_id)
-        print(f"\nReconstruction result shape: {result.shape}")
-        result = result[:, :, 0]  # Extract 2D slice
+        result = result[0, :, :]  # Extract first slice - changed from result[:, :, 0]
 
         # Clean up ASTRA objects
         astra.algorithm.delete(alg_id)
