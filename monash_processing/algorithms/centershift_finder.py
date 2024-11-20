@@ -80,16 +80,17 @@ class ReconstructionCalibrator:
         """Reconstruct a single slice with given center shift."""
         n_proj, n_cols = sinogram.shape
 
-        # Create geometries
+        # Create base geometries
         vol_geom = astra.create_vol_geom(n_cols, n_cols)
-        center_col = n_cols / 2 + center_shift
         proj_geom = astra.create_proj_geom('parallel',
                                            1.0,
                                            n_cols,
-                                           angles,
-                                           center_col)
+                                           angles)
 
-        # Create ASTRA objects
+        # Apply center of rotation correction
+        proj_geom = astra.geom_postalignment(proj_geom, center_shift)
+
+        # Create ASTRA objects and reconstruct
         sino_id = astra.data2d.create('-sino', proj_geom, sinogram)
         rec_id = astra.data2d.create('-vol', vol_geom)
 
