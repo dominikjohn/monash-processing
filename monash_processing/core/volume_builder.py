@@ -70,16 +70,6 @@ class VolumeBuilder:
             n_proj, detector_rows, detector_cols = projections.shape
             print(f"Dimensions - Projections: {n_proj}, Detector rows: {detector_rows}, Detector cols: {detector_cols}")
 
-            if self.debug:
-                print("DEBUG INFO:")
-                print(f"Angle range: {np.rad2deg(angles[0]):.1f}° to {np.rad2deg(angles[-1]):.1f}°")
-                print(f"Memory usage of projections: {projections.nbytes / 1e9:.2f} GB")
-
-            if self.debug:
-                print("\nArray shapes:")
-                print(f"Original projections: {projections.shape}")
-                print(f"Reshaped for ASTRA: {projections.shape}")
-
             # Create volume geometry
             vol_geom = astra.create_vol_geom(detector_cols, detector_cols, detector_rows)
 
