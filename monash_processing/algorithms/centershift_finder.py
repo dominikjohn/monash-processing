@@ -1,9 +1,9 @@
-# monash_processing/utils/reconstruction_utils.py
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 import astra
+from tqdm import tqdm
+
 
 class ReconstructionCalibrator:
     """Tools for calibrating and optimizing tomographic reconstruction parameters."""
@@ -11,21 +11,41 @@ class ReconstructionCalibrator:
     def __init__(self, data_loader):
         self.data_loader = data_loader
 
-    def find_center_shift(self, angles, pixel_size, slice_idx=None):
+    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=100):
         """
         Interactive tool to find center shift using a single slice.
 
         Args:
-            angles: Array of angles in radians
+            max_angle: Maximum angle in degrees
             pixel_size: Pixel size in meters
             slice_idx: Optional specific slice to use (defaults to middle)
-
-        Returns:
-            float: The selected center shift value
+            num_projections: Number of projections to load for preview (default 100)
         """
-        # Load projections
-        print("Loading projections for center calibration...")
-        projections = self.data_loader.load_projections()[0]  # Get first step
+        print("Loading subset of projections for center calibration...")
+
+        # Load projections spaced evenly through the angular range
+        tiff_files = sorted(self.data_loader.results_dir / 'phi'.glob('projection_*.tiff'))
+        total_projs = len(tiff_files)
+
+        # Calculate indices to load (evenly spaced)
+        indices = np.linspace(0, total_projs - 1, num_projections, dtype=int)
+        angles = np.linspace(0, np.deg2rad(max_angle), total_projs)[indices]
+
+        projections = []
+        for idx in tqdm(indices, desc="Loading projections"):
+            try:
+                data = np.array(tifffile.imread(tiff_files[idx]))
+                projections.append(data)
+            except Exception as e:
+                print(f"Error loading projection {idx}: {e}")
+                continue
+
+        projections = np.array(projections)
+
+        if projections.size == 0:
+            raise ValueError("No projections could be loaded!")
+
+        print(f"Loaded {len(projections)} projections")
 
         if slice_idx is None:
             slice_idx = projections.shape[1] // 2
@@ -42,6 +62,8 @@ class ReconstructionCalibrator:
 
     def _preview_center_shift(self, projections, angles, pixel_size, slice_idx):
         """Implementation of the interactive center shift preview."""
+        print("Preparing interactive preview...")
+
         # Extract the slice from all projections
         sinogram = projections[:, slice_idx, :]
         n_proj, n_cols = sinogram.shape
@@ -57,8 +79,7 @@ class ReconstructionCalibrator:
             proj_geom = astra.create_proj_geom('parallel',
                                                1.0,
                                                n_cols,
-                                               angles,
-                                               center_col)
+                                               angles)
 
             # Create ASTRA objects
             sino_id = astra.data2d.create('-sino', proj_geom, sinogram)
@@ -82,6 +103,7 @@ class ReconstructionCalibrator:
 
             return result
 
+        print("Computing initial reconstruction...")
         # Initial reconstruction
         recon = reconstruct_slice(0)
 
@@ -94,7 +116,7 @@ class ReconstructionCalibrator:
 
         # Create slider
         ax_slider = plt.axes([0.15, 0.1, 0.65, 0.03])
-        slider = Slider(ax_slider, 'Center Shift', -15, 15, valinit=0, valstep=0.5)
+        slider = Slider(ax_slider, 'Center Shift', -10, 10, valinit=0, valstep=0.5)
 
         def update(val):
             recon = reconstruct_slice(slider.val)
@@ -104,5 +126,6 @@ class ReconstructionCalibrator:
 
         slider.on_changed(update)
 
+        print("\nMove slider to adjust center shift. Close window when satisfied.")
         plt.show()
         return slider.val
