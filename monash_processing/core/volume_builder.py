@@ -104,7 +104,7 @@ class VolumeBuilder:
         # Create reconstruction volume
         rec_id = astra.data2d.create('-vol', vol_geom)
 
-        proj_id = astra.create_projector('line', proj_geom, vol_geom)
+        proj_id = astra.create_projector('cuda', proj_geom, vol_geom)
 
         # Create FBP configuration
         cfg = astra.astra_dict('FBP_CUDA')
