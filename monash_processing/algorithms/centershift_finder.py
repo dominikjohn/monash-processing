@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 import astra
 from tqdm import tqdm
-
+import tifffile
+from pathlib import Path
 
 class ReconstructionCalibrator:
     """Tools for calibrating and optimizing tomographic reconstruction parameters."""
@@ -23,8 +24,12 @@ class ReconstructionCalibrator:
         """
         print("Loading subset of projections for center calibration...")
 
-        # Load projections spaced evenly through the angular range
-        tiff_files = sorted(self.data_loader.results_dir / 'phi'.glob('projection_*.tiff'))
+        # Properly handle path
+        input_dir = Path(self.data_loader.results_dir) / 'phi'
+        if not input_dir.exists():
+            raise ValueError(f"Directory not found: {input_dir}")
+
+        tiff_files = sorted(input_dir.glob('projection_*.tiff'))
         total_projs = len(tiff_files)
 
         # Calculate indices to load (evenly spaced)

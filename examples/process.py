@@ -68,10 +68,11 @@ print("Reconstructing volume")
 print('Find centershift')
 calibrator = ReconstructionCalibrator(loader)
 center_shift = calibrator.find_center_shift(
-    angles=np.linspace(0, np.pi, num_angles),
+    max_angle=max_angle,
     pixel_size=pixel_size,
-    num_projections=900,
+    num_projections=100  # Adjust this number as needed
 )
+print(f"Found optimal center shift: {center_shift}")
 
 volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, method='FBP', debug=True)
 volume = volume_builder.reconstruct()
