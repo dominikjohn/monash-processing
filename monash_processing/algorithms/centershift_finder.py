@@ -125,7 +125,7 @@ class ReconstructionCalibrator:
                                            angles)
 
         # Create sinogram
-        sino_id = astra.data2d.create('-sino', proj_geom, slice_projections.transpose(2, 0, 1))
+        sino_id = astra.data2d.create('-sino', proj_geom, np.squeeze(slice_projections))
 
         # Create reconstruction volume
         rec_id = astra.data2d.create('-vol', vol_geom)
