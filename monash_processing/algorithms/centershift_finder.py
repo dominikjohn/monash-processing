@@ -4,9 +4,6 @@ from pathlib import Path
 from tqdm import tqdm
 import tifffile
 
-from examples.process import pixel_size
-
-
 class ReconstructionCalibrator:
     def __init__(self, data_loader):
         self.data_loader = data_loader
