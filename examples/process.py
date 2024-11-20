@@ -1,4 +1,4 @@
-from algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
+from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
 from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.core.volume_builder import VolumeBuilder

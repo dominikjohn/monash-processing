@@ -3,7 +3,7 @@ import dask
 import dask.bag as db
 from dask.distributed import Client, LocalCluster
 from tqdm import tqdm
-from monash_processing.core.phase_integrator import PhaseIntegrator
+from monash_processing.algorithms.phase_integration import PhaseIntegrator
 
 class ParallelPhaseIntegrator:
     def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader):
