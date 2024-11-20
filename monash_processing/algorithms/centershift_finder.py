@@ -1,8 +1,9 @@
 import numpy as np
-import astra
 from pathlib import Path
 from tqdm import tqdm
 import tifffile
+import astra
+
 
 class ReconstructionCalibrator:
     def __init__(self, data_loader):
@@ -11,9 +12,11 @@ class ReconstructionCalibrator:
     def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=900):
         """
         Creates reconstructions with different center shifts and saves them as files.
+        Uses 2D geometry with FBP algorithm and implements center shift using numpy roll.
 
         Args:
             max_angle: Maximum angle in degrees
+            pixel_size: Size of detector pixels in mm
             slice_idx: Optional specific slice to use (defaults to middle)
             num_projections: Number of projections to load for preview
         """
@@ -32,29 +35,36 @@ class ReconstructionCalibrator:
         indices = np.linspace(0, total_projs - 1, num_projections, dtype=int)
         angles = np.linspace(0, np.deg2rad(max_angle), total_projs)[indices]
 
-        projections = []
-        for idx in tqdm(indices, desc="Loading projections"):
+        # Load first projection to get dimensions
+        first_proj = np.array(tifffile.imread(tiff_files[0]))
+        height, width = first_proj.shape
+
+        if slice_idx is None:
+            slice_idx = height // 2
+
+        # Initialize sinogram array
+        sinogram = np.zeros((len(indices), width))
+
+        # Load projections and extract sinogram
+        print("Loading projections and creating sinogram...")
+        for i, idx in enumerate(tqdm(indices)):
             try:
-                data = np.array(tifffile.imread(tiff_files[idx]))
-                projections.append(data)
+                proj = np.array(tifffile.imread(tiff_files[idx]))
+                sinogram[i, :] = proj[slice_idx, :]
             except Exception as e:
                 print(f"Error loading projection {idx}: {e}")
                 continue
 
-        projections = np.array(projections)
-
-        if slice_idx is None:
-            slice_idx = projections.shape[1] // 2
-
-        # Extract the slice
-        sinogram = projections[:, slice_idx, :]
-
         # Create reconstructions with different shifts
-        shifts = np.arange(-40, 40, 10)  # Test range from -10 to +10
-
+        shifts = np.arange(-40, 41, 10)  # Test range from -40 to +40
         print("Computing reconstructions with different center shifts...")
+
         for shift in tqdm(shifts):
-            recon = self._reconstruct_slice(sinogram, angles, shift, pixel_size)
+            # Apply center shift using numpy roll
+            shifted_sinogram = np.array([np.roll(row, int(shift)) for row in sinogram])
+
+            # Reconstruct with shifted data
+            recon = self._reconstruct_slice(shifted_sinogram, angles, pixel_size)
 
             # Save reconstruction
             filename = preview_dir / f'center_shift_{shift:+.1f}.tiff'
@@ -66,23 +76,20 @@ class ReconstructionCalibrator:
         # Ask for user input
         while True:
             try:
-                chosen_shift = float(input("\nEnter the best center shift value (-10 to 10): "))
-                if -10 <= chosen_shift <= 10:
-                    break
-                print("Shift must be between -10 and 10")
+                chosen_shift = float(input("\nEnter the best center shift value: "))
+                break
             except ValueError:
                 print("Please enter a valid number")
 
         return chosen_shift
 
-    def _reconstruct_slice(self, sinogram, angles, center_shift, pixel_size):
+    def _reconstruct_slice(self, sinogram, angles, pixel_size):
         """
-        Reconstruct a single slice using FDK with center shift correction.
+        Reconstruct a single slice using FBP algorithm with 2D geometry.
 
         Args:
             sinogram: 2D numpy array of projection data
             angles: Array of projection angles in radians
-            center_shift: Shift of the center of rotation in pixels
             pixel_size: Size of detector pixels in mm
 
         Returns:
@@ -91,38 +98,32 @@ class ReconstructionCalibrator:
         n_proj, n_det = sinogram.shape
 
         # Create volume geometry
-        vol_geom = astra.create_vol_geom(n_det, n_det, 30)
+        vol_geom = astra.create_vol_geom(n_det, n_det)
 
-        # Create cone beam geometry with correct distances
-        proj_geom = astra.create_proj_geom('cone', 1, 1,
-                                           n_det, 30, angles,
-                                           20, 0.15)  # 20m source-origin, 0.15m origin-detector
-
-        # Convert to vector geometry
-        proj_geom = astra.functions.geom_2vec(proj_geom)
-        #proj_geom = astra.functions.geom_postalignment(proj_geom, [center_shift, 0])
+        # Create parallel beam geometry
+        proj_geom = astra.create_proj_geom('parallel', pixel_size, n_det, angles)
 
         # Create ASTRA objects
-        sino_3d = np.tile(sinogram.T.reshape(n_det, n_proj, 1), (1, 1, 30))
-        sino_id = astra.data3d.create('-sino', proj_geom, sino_3d)
-        vol_id = astra.data3d.create('-vol', vol_geom)
+        sino_id = astra.data2d.create('-sino', proj_geom, sinogram)
+        vol_id = astra.data2d.create('-vol', vol_geom)
 
-        # Create FDK configuration
-        cfg = astra.astra_dict('FDK_CUDA')
+        # Create FBP configuration
+        cfg = astra.astra_dict('FBP')
         cfg['ProjectionDataId'] = sino_id
         cfg['ReconstructionDataId'] = vol_id
 
-        # Run the reconstruction
+        # Set up the FBP algorithm
         alg_id = astra.algorithm.create(cfg)
+
+        # Run the reconstruction
         astra.algorithm.run(alg_id, 1)
 
-        # Get the result and extract the 2D slice
-        result = astra.data3d.get(vol_id)
-        result = result[14, :, :]
+        # Get the result
+        result = astra.data2d.get(vol_id)
 
         # Clean up ASTRA objects
         astra.algorithm.delete(alg_id)
-        astra.data3d.delete(vol_id)
-        astra.data3d.delete(sino_id)
+        astra.data2d.delete(vol_id)
+        astra.data2d.delete(sino_id)
 
         return result
