@@ -103,12 +103,16 @@ class ReconstructionCalibrator:
         # Create parallel beam geometry
         proj_geom = astra.create_proj_geom('parallel', pixel_size, n_det, angles)
 
+        # Create projector
+        proj_id = astra.create_projector('line', proj_geom, vol_geom)
+
         # Create ASTRA objects
         sino_id = astra.data2d.create('-sino', proj_geom, sinogram)
         vol_id = astra.data2d.create('-vol', vol_geom)
 
         # Create FBP configuration
         cfg = astra.astra_dict('FBP')
+        cfg['ProjectorId'] = proj_id
         cfg['ProjectionDataId'] = sino_id
         cfg['ReconstructionDataId'] = vol_id
 
@@ -125,5 +129,6 @@ class ReconstructionCalibrator:
         astra.algorithm.delete(alg_id)
         astra.data2d.delete(vol_id)
         astra.data2d.delete(sino_id)
+        astra.projector.delete(proj_id)
 
         return result
