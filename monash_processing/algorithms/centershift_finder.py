@@ -96,7 +96,7 @@ class ReconstructionCalibrator:
         # Create cone beam geometry and convert to vector
         proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size,
                                            n_det, 1, angles,
-                                           200, 50)
+                                           20, 0.15)
 
         # Convert to vector geometry
         proj_geom = astra.functions.geom_2vec(proj_geom)
@@ -104,8 +104,6 @@ class ReconstructionCalibrator:
         # Apply center shift
         proj_geom['Vectors'][:, 3] += center_shift * proj_geom['Vectors'][:, 6]
 
-        # Create ASTRA objects
-        sino_reshaped = sinogram.T.reshape(n_det, n_proj, 1)
         sino_id = astra.data3d.create('-sino', proj_geom, sino_reshaped)
         vol_id = astra.data3d.create('-vol', vol_geom)
 
