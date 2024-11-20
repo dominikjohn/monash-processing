@@ -94,7 +94,7 @@ class ReconstructionCalibrator:
         vol_geom = astra.create_vol_geom(n_det, n_det, 30)
 
         # Create cone beam geometry with correct distances
-        proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size,
+        proj_geom = astra.create_proj_geom('cone', 1, 1,
                                            n_det, 30, angles,
                                            20, 0.15)  # 20m source-origin, 0.15m origin-detector
 
