@@ -16,7 +16,7 @@ class PhaseIntegrator:
         self.area_left = area_left
         self.area_right = area_right
 
-    def integrate_single(self, projection_i):
+    def     integrate_single(self, projection_i):
 
         # Load dx, dy, f
         dx = self.data_loader.load_processed_projection(projection_i, 'dx')

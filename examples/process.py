@@ -54,8 +54,8 @@ with processor:
 # 4. Phase integrate
 print("Phase integrating")
 #area_left, area_right = Utils.select_areas(loader.load_projections(projection_i=0)[0])
-area_left = np.s_[100:-100, 20:150]
-area_right = np.s_[100:-100, -150:-20]
+area_left = np.s_[100:-100, 20:120]
+area_right = np.s_[100:-100, -120:-20]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
 parallel_phase_integrator.integrate_parallel(num_angles)
 
