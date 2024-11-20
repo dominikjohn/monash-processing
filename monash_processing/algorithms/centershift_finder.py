@@ -93,7 +93,7 @@ class ReconstructionCalibrator:
         vol_geom = astra.create_vol_geom(n_cols, n_cols)
 
         # Create parallel beam geometry and convert to vector
-        proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size, n_cols, angles, 20, 0.15)
+        proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size, n_cols, 1, angles, 20, 0.15)
         proj_geom = astra.geom_2vec(proj_geom)
 
         # Apply center shift
