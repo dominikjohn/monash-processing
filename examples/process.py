@@ -62,7 +62,7 @@ parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 
 # 5. Reconstruct volume
 print("Reconstructing volume")
-volume_builder = VolumeBuilder()
+volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader)
 volume = volume_builder.reconstruct()
 
 pg.image(volume)
