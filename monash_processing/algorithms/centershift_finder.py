@@ -2,9 +2,7 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 import tifffile
-import astra
-
-from core.volume_builder import VolumeBuilder
+from monash_processing.core.volume_builder import VolumeBuilder
 
 
 class ReconstructionCalibrator:
