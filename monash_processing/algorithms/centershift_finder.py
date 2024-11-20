@@ -88,15 +88,15 @@ class ReconstructionCalibrator:
         Returns:
             2D numpy array of reconstructed slice
         """
-        n_proj, n_cols = sinogram.shape
+        n_proj, n_det = sinogram.shape
 
         # Create volume geometry
-        vol_geom = astra.create_vol_geom(n_cols, n_cols, 1)
+        vol_geom = astra.create_vol_geom(n_det, n_det, 1)
 
         # Create cone beam geometry and convert to vector
         # Parameters: pixel_size, pixel_size, detWidth, detHeight, angles, source_origin, origin_det
         proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size,
-                                           1, n_cols, angles,
+                                           n_det, 1, angles,
                                            20, 0.15)  # Example distances
 
         # Convert to vector geometry
@@ -106,7 +106,7 @@ class ReconstructionCalibrator:
         proj_geom['Vectors'][:, 3] += center_shift * proj_geom['Vectors'][:, 6]
 
         # Create ASTRA objects - note the reshape to match detector dimensions
-        sino_id = astra.data3d.create('-sino', proj_geom, sinogram.reshape(1, n_proj, n_cols))
+        sino_id = astra.data3d.create('-sino', proj_geom, sinogram.reshape(1, n_proj, n_det))
         vol_id = astra.data3d.create('-vol', vol_geom)
 
         # Create FDK configuration
