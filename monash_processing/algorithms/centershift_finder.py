@@ -113,14 +113,13 @@ class ReconstructionCalibrator:
         # Extract the slice
         slice_projections = projections[:, slice_idx:slice_idx + 1, :]
 
-        # Create volume geometry (single slice)
-        vol_geom = astra.create_vol_geom(detector_cols, detector_cols, 1)
+        vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
 
         # Create projection geometry with center shift
         #TODO
         center_col = detector_cols / 2 + center_shift
         proj_geom = astra.create_proj_geom('parallel',
-                                           pixel_size,
+                                           1.,
                                            detector_cols,
                                            angles)
 
