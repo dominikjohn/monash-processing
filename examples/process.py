@@ -1,12 +1,13 @@
+from algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
 from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
-from monash_processing.algorithms.phase_integration import PhaseIntegrator
 from monash_processing.core.volume_builder import VolumeBuilder
 from tqdm import tqdm
 import h5py
 from monash_processing.utils.utils import Utils
 import pyqtgraph as pg
 from pathlib import Path
+import numpy as np
 
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
@@ -52,11 +53,11 @@ with processor:
 
 # 4. Phase integrate
 print("Phase integrating")
-area_left, area_right = Utils.select_areas(loader.load_projections(projection_i=0)[0])
-phase_integrator = PhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
-
-for angle_i in tqdm(range(num_angles), desc="Integrating projections"):
-    phase_integrator.integrate_single(angle_i)
+#area_left, area_right = Utils.select_areas(loader.load_projections(projection_i=0)[0])
+area_left = np.s_[100:-100, 20:150]
+area_right = np.s_[100:-100, -150:-20]
+parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
+parallel_phase_integrator.integrate_parallel(num_angles)
 
 # 5. Reconstruct volume
 print("Reconstructing volume")
