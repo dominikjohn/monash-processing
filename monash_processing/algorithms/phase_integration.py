@@ -9,7 +9,7 @@ class PhaseIntegrator:
     def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader : DataLoader):
         self.energy = energy
         self.prop_distance = prop_distance
-        self.p_size = pixel_size
+        self.pixel_size = pixel_size
         self.wavevec = 2 * np.pi * self.energy / (
                 scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
         self.data_loader = data_loader
