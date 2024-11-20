@@ -83,6 +83,7 @@ class ReconstructionCalibrator:
             sinogram: 2D numpy array of projection data
             angles: Array of projection angles in radians
             center_shift: Shift of the center of rotation in pixels
+            pixel_size: Size of detector pixels in mm
 
         Returns:
             2D numpy array of reconstructed slice
@@ -92,15 +93,20 @@ class ReconstructionCalibrator:
         # Create volume geometry
         vol_geom = astra.create_vol_geom(n_cols, n_cols, 1)
 
-        # Create parallel beam geometry and convert to vector
-        proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size, n_cols, 1, angles, 20, 0.15)
-        proj_geom = astra.geom_2vec(proj_geom)
+        # Create cone beam geometry and convert to vector
+        # Parameters: pixel_size, pixel_size, detWidth, detHeight, angles, source_origin, origin_det
+        proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size,
+                                           n_cols, 1, angles,
+                                           20, 0.15)  # Example distances
 
-        # Apply center shift
-        proj_geom = astra.geom_postalignment(proj_geom, center_shift)
+        # Convert to vector geometry
+        proj_geom = astra.functions.geom_2vec(proj_geom)
 
-        # Create ASTRA objects
-        sino_id = astra.data3d.create('-sino', proj_geom, sinogram.reshape(n_proj, n_cols, 1))
+        # Apply center shift to vector geometry
+        proj_geom['Vectors'][:, 3] += center_shift * proj_geom['Vectors'][:, 6]
+
+        # Create ASTRA objects - note the reshape to match detector dimensions
+        sino_id = astra.data3d.create('-sino', proj_geom, sinogram.reshape(n_proj, 1, n_cols))
         vol_id = astra.data3d.create('-vol', vol_geom)
 
         # Create FDK configuration
@@ -112,7 +118,7 @@ class ReconstructionCalibrator:
         alg_id = astra.algorithm.create(cfg)
         astra.algorithm.run(alg_id, 1)
 
-        # Get the result and extract the middle slice
+        # Get the result and extract the 2D slice
         result = astra.data3d.get(vol_id)
         result = result[:, :, 0]  # Extract 2D slice
 
