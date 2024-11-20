@@ -68,9 +68,15 @@ class ReconstructionCalibrator:
         print("Computing reconstructions with different center shifts...")
 
         for shift in tqdm(shifts):
+            shifted_projections = []
+            for projection in projections:
+                shifted_projection = np.roll(projection, shift, axis=1)
+                shifted_projections.append(shifted_projection)
+            shifted_projections = np.array(shifted_projections)
+
             # Reconstruct with center shift
             recon = self._reconstruct_slice(
-                projections=projections,
+                projections=shifted_projections,
                 angles=angles,
                 pixel_size=pixel_size,
                 slice_idx=slice_idx,
@@ -119,7 +125,7 @@ class ReconstructionCalibrator:
         #TODO
         center_col = detector_cols / 2 + center_shift
         proj_geom = astra.create_proj_geom('parallel',
-                                           1.44e-6,
+                                           1.,
                                            detector_cols,
                                            angles)
 
@@ -147,7 +153,7 @@ class ReconstructionCalibrator:
 
         # Clean up
         astra.algorithm.delete(alg_id)
-        astra.data3d.delete(rec_id)
-        astra.data3d.delete(sino_id)
+        astra.data2d.delete(rec_id)
+        astra.data2d.delete(sino_id)
 
         return result  # Return the single slice
