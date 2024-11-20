@@ -34,14 +34,10 @@ class VolumeBuilder:
 
         if self.debug:
             print("DEBUG MODE: Loading only first projection")
-            # Load just the first projection to get dimensions
             first_proj = tifffile.imread(tiff_files[0])
-            # Create array of zeros with same shape as full dataset
             projections = np.zeros((len(tiff_files), *first_proj.shape), dtype=first_proj.dtype)
-            # Put the first projection in
             projections[0] = first_proj
             print(f"Debug array shape: {projections.shape}")
-            print(f"Non-zero elements: {np.count_nonzero(projections)}")
             return projections
 
         projections = []
@@ -64,8 +60,8 @@ class VolumeBuilder:
             angles = np.linspace(0, self.max_angle_rad, projections.shape[0])
 
             # Get dimensions from projections
-            n_proj, height, width = projections.shape
-            print(f"Dimensions - Width: {width}, Height: {height}, Projections: {n_proj}")
+            n_proj, detector_rows, detector_cols = projections.shape
+            print(f"Dimensions - Projections: {n_proj}, Detector rows: {detector_rows}, Detector cols: {detector_cols}")
 
             if self.debug:
                 print("DEBUG INFO:")
@@ -73,21 +69,28 @@ class VolumeBuilder:
                 print(f"Memory usage of projections: {projections.nbytes / 1e9:.2f} GB")
 
             # Create volume geometry (cubic volume)
-            vol_geom = astra.create_vol_geom(height, width, width)
+            vol_geom = astra.create_vol_geom(detector_cols, detector_cols, detector_rows)
 
-            # Create projection geometry
+            # Create projection geometry with swapped dimensions to match ASTRA's expectations
             proj_geom = astra.create_proj_geom('parallel3d',
                                                1.0, 1.0,
-                                               height, width,
+                                               detector_cols, detector_rows,  # Note the swap here
                                                angles)
 
             if self.debug:
                 print("\nGeometry Info:")
                 print(f"Volume Geometry: {vol_geom}")
                 print(f"Projection Geometry: {proj_geom}")
+                print(f"Projection data shape: {projections.shape}")
+
+            # Transpose projections to match ASTRA's expected format
+            projections_astra = np.transpose(projections, (0, 2, 1))
+
+            if self.debug:
+                print(f"Transposed projection shape: {projections_astra.shape}")
 
             # Create sinogram data
-            sino_id = astra.data3d.create('-sino', proj_geom, projections)
+            sino_id = astra.data3d.create('-sino', proj_geom, projections_astra)
 
             # Create reconstruction volume
             rec_id = astra.data3d.create('-vol', vol_geom)
@@ -138,8 +141,7 @@ class VolumeBuilder:
                     self.data_loader.save_projection(
                         channel=self.channel,
                         angle_i=i,
-                        data=result[i]
-                    )
+                        data=result[i])
             else:
                 print("Debug mode: Skipping file saving")
 
