@@ -118,7 +118,7 @@ class ReconstructionCalibrator:
 
         # Get the result and extract the 2D slice
         result = astra.data3d.get(vol_id)
-        result = result[0, :, :]
+        result = result[14, :, :]
 
         # Clean up ASTRA objects
         astra.algorithm.delete(alg_id)
