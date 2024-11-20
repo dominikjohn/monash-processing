@@ -51,7 +51,7 @@ class ReconstructionCalibrator:
         sinogram = projections[:, slice_idx, :]
 
         # Create reconstructions with different shifts
-        shifts = [43, 44, 45, 46, 47]
+        shifts = np.arange(-40, 40, 4)  # Changed to test range from -10 to +10
 
         print("Computing reconstructions with different center shifts...")
         for shift in tqdm(shifts):
@@ -93,11 +93,19 @@ class ReconstructionCalibrator:
         # Create volume geometry
         vol_geom = astra.create_vol_geom(n_cols, n_cols)
 
-        # Apply center shift to sinogram
-        shifted_sinogram = np.zeros_like(sinogram)
-        for i in range(len(angles)):
-            shift = center_shift * np.cos(angles[i])
-            shifted_sinogram[i] = np.roll(sinogram[i], int(round(shift)))
+        # Calculate the center of the projections
+        center = n_cols // 2
+
+        # Calculate new center with shift
+        new_center = center + center_shift / 2
+
+        # Create shifted sinogram by padding and cropping
+        pad_size = int(abs(center_shift)) + 1
+        padded_sinogram = np.pad(sinogram, ((0, 0), (pad_size, pad_size)), mode='edge')
+
+        # Extract the properly centered region
+        start_col = pad_size + int(center_shift / 2)
+        shifted_sinogram = padded_sinogram[:, start_col:start_col + n_cols]
 
         # Create regular parallel beam geometry
         proj_geom = astra.create_proj_geom('parallel', 1.0, n_cols, angles)
@@ -114,7 +122,7 @@ class ReconstructionCalibrator:
 
         # Run the reconstruction
         alg_id = astra.algorithm.create(cfg)
-        astra.algorithm.run(alg_id, 1)  # FBP only needs 1 iteration
+        astra.algorithm.run(alg_id, 1)
         result = astra.data2d.get(rec_id)
 
         # Clean up ASTRA objects
