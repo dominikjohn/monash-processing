@@ -90,13 +90,18 @@ class ReconstructionCalibrator:
         """
         n_proj, n_det = sinogram.shape
 
+        # Print input data statistics
+        print(f"Sinogram shape: {sinogram.shape}")
+        print(f"Sinogram range: [{sinogram.min():.3f}, {sinogram.max():.3f}]")
+        print(f"Angles range: [{angles.min():.3f}, {angles.max():.3f}] radians")
+
         # Create volume geometry
         vol_geom = astra.create_vol_geom(n_det, n_det, 1)
 
-        # Create cone beam geometry and convert to vector
+        # Create cone beam geometry with correct distances
         proj_geom = astra.create_proj_geom('cone', pixel_size, pixel_size,
                                            n_det, 1, angles,
-                                           20, 0.15)
+                                           20, 0.15)  # 20m source-origin, 0.15m origin-detector
 
         # Convert to vector geometry
         proj_geom = astra.functions.geom_2vec(proj_geom)
@@ -104,7 +109,9 @@ class ReconstructionCalibrator:
         # Apply center shift
         proj_geom['Vectors'][:, 3] += center_shift * proj_geom['Vectors'][:, 6]
 
-        sino_id = astra.data3d.create('-sino', proj_geom, sinogram)
+        # Create ASTRA objects
+        sino_reshaped = sinogram.T.reshape(n_det, n_proj, 1)
+        sino_id = astra.data3d.create('-sino', proj_geom, sino_reshaped)
         vol_id = astra.data3d.create('-vol', vol_geom)
 
         # Create FDK configuration
@@ -118,7 +125,10 @@ class ReconstructionCalibrator:
 
         # Get the result and extract the 2D slice
         result = astra.data3d.get(vol_id)
-        result = result[0, :, :]  # Extract first slice - changed from result[:, :, 0]
+        print(f"Reconstruction range before slice: [{result.min():.3e}, {result.max():.3e}]")
+
+        result = result[0, :, :]
+        print(f"Reconstruction range after slice: [{result.min():.3e}, {result.max():.3e}]")
 
         # Clean up ASTRA objects
         astra.algorithm.delete(alg_id)
