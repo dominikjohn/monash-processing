@@ -65,7 +65,7 @@ class ReconstructionCalibrator:
 
         # Create reconstructions with different shifts
 
-        shifts = np.arange(test_range[0], test_range[1], 10)
+        shifts = np.linspace(test_range[0], test_range[1], 10)
         print("Computing reconstructions with different center shifts...")
 
         for shift in tqdm(shifts):
