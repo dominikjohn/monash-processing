@@ -64,7 +64,7 @@ class ReconstructionCalibrator:
                 raise RuntimeError(f"Failed to load projection {idx}: {str(e)}")
 
         # Create reconstructions with different shifts
-        shifts = np.arange(-40, 41, 10)  # Test range from -40 to +40
+        shifts = np.arange(40, 55, 1)  # Test range from -40 to +40
         print("Computing reconstructions with different center shifts...")
 
         for shift in tqdm(shifts):
