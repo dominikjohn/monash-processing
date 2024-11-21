@@ -225,11 +225,12 @@ class VolumeBuilder:
 
         return result
 
-    def reconstruct_3d(self, enable_short_scan=True, debug=False):
+    def reconstruct_3d(self, enable_short_scan=True, debug=False, chunk_size=128):
         '''
-        Reconstruct a 3D volume using ASTRA Toolbox
-        :param enable_short_scan: bool, True means 180° + cone angle scan
+        Reconstruct a 3D volume using ASTRA Toolbox with FDK but quasi-parallel beam geometry (large source distance)
+        :param enable_short_scan: bool, True means 180° scan is sufficient
         :param debug: bool, if True only loads first projection and skips saving
+        :param chunk_size: int, number of slices to process at once
         :return: reconstruction result array
         '''
         input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'att')
@@ -237,19 +238,17 @@ class VolumeBuilder:
         angles = np.linspace(0, self.max_angle_rad, len(tiff_files))
 
         if self.limit_max_angle:
-            valid_angles_mask = angles <= np.pi  # π radians = 180°
+            valid_angles_mask = angles <= np.pi
             valid_indices = np.where(valid_angles_mask)[0]
         else:
             valid_indices = np.arange(len(tiff_files))
 
         if debug:
-            # Load only first projection in debug mode
             data = tifffile.imread(tiff_files[valid_indices[0]])
             template = np.zeros((len(valid_indices), *data.shape), dtype=data.dtype)
             template[0] = data
             projections = template
         else:
-            # Load all projections in normal mode
             projections = []
             for projection_i in tqdm(valid_indices, desc=f"Loading {self.channel} projections", unit="file"):
                 try:
@@ -264,51 +263,84 @@ class VolumeBuilder:
         detector_rows = projections.shape[1]
         detector_cols = projections.shape[2]
 
-        vol_geom = astra.create_vol_geom(detector_cols, detector_cols, detector_rows)
-        proj_geom = astra.create_proj_geom('cone', 1.0, 1.0, detector_rows, detector_cols, angles, 100000.0, 1000.0)
+        # Calculate number of chunks needed
+        n_chunks = (detector_rows + chunk_size - 1) // chunk_size
 
-        proj_id = astra.create_projector('cuda3d', proj_geom, vol_geom)
+        print(f"Processing volume in {n_chunks} chunks of {chunk_size} slices (quasi-parallel beam using FDK)")
 
-        shifted_projections = VolumeBuilder.apply_centershift(projections, self.center_shift, batch_size=100)
+        # Use very large source distance to approximate parallel beam
+        source_distance = 1e8  # 100 million units
+        detector_distance = 1e6  # 1 million units
 
-        sino_id = astra.data3d.create('-proj3d', proj_geom, shifted_projections.transpose(1, 0, 2))
+        # Initialize result array
+        full_result = np.zeros((detector_cols, detector_cols, detector_rows), dtype=np.float32)
 
-        recon_id = astra.data3d.create('-vol', vol_geom)
+        for chunk_idx in tqdm(range(n_chunks), desc="Processing volume chunks"):
+            # Calculate chunk boundaries (no overlap needed for quasi-parallel beam)
+            start_row = chunk_idx * chunk_size
+            end_row = min(detector_rows, (chunk_idx + 1) * chunk_size)
+            chunk_rows = end_row - start_row
 
-        cfg = astra.astra_dict('FDK_CUDA')
-        cfg['ProjectorId'] = proj_id
-        cfg['ProjectionDataId'] = sino_id
-        cfg['ReconstructionDataId'] = recon_id
+            # Create geometry for this chunk
+            chunk_vol_geom = astra.create_vol_geom(detector_cols, detector_cols, chunk_rows)
+            chunk_proj_geom = astra.create_proj_geom('cone', 1.0, 1.0,
+                                                     chunk_rows, detector_cols,
+                                                     angles, source_distance, detector_distance)
 
-        # Enable ShortScan option
-        cfg['option'] = {}
-        cfg['option']['ShortScan'] = enable_short_scan  # enables 180° degree scans
+            # Extract relevant portion of projections
+            chunk_projs = projections[:, start_row:end_row, :]
 
-        alg_id = astra.algorithm.create(cfg)
+            # Apply center shift to chunk
+            shifted_chunk = VolumeBuilder.apply_centershift(chunk_projs, self.center_shift)
 
-        # Run FDK algorithm
-        astra.algorithm.run(alg_id)
+            # Create ASTRA objects for this chunk
+            proj_id = astra.create_projector('cuda3d', chunk_proj_geom, chunk_vol_geom)
+            sino_id = astra.data3d.create('-proj3d', chunk_proj_geom, shifted_chunk)
+            recon_id = astra.data3d.create('-vol', chunk_vol_geom)
 
-        # Get the result
-        result = astra.data3d.get(recon_id)
+            # Configure reconstruction
+            cfg = astra.astra_dict('FDK_CUDA')
+            cfg['ProjectorId'] = proj_id
+            cfg['ProjectionDataId'] = sino_id
+            cfg['ReconstructionDataId'] = recon_id
+            cfg['option'] = {'ShortScan': enable_short_scan}
 
-        # Clean up
-        astra.algorithm.delete(alg_id)
-        astra.data3d.delete(sino_id)
-        astra.data3d.delete(recon_id)
-        astra.projector.delete(proj_id)
+            # Run reconstruction for this chunk
+            alg_id = astra.algorithm.create(cfg)
+            astra.algorithm.run(alg_id)
+
+            # Get chunk result
+            chunk_result = astra.data3d.get(recon_id)
+
+            # Clean up ASTRA objects
+            astra.algorithm.delete(alg_id)
+            astra.data3d.delete(sino_id)
+            astra.data3d.delete(recon_id)
+            astra.projector.delete(proj_id)
+
+            # Insert chunk into full result (no need to handle overlap)
+            full_result[:, :, start_row:end_row] = chunk_result
+
+            # Force GPU memory cleanup
+            import gc
+            gc.collect()
+            try:
+                import cupy as cp
+                cp.get_default_memory_pool().free_all_blocks()
+            except ImportError:
+                pass
 
         if not debug:
-            for i in tqdm(range(result.shape[0]), desc="Saving slices"):
+            for i in tqdm(range(full_result.shape[2]), desc="Saving slices"):
                 reco_channel = 'phase_reco_3d' if self.channel == 'phase' else 'att_reco_3d'
                 self.data_loader.save_tiff(
                     channel=reco_channel,
                     angle_i=i,
-                    data=result[i],
+                    data=full_result[:, :, i],
                     prefix='slice'
                 )
             print('Reconstruction finished successfully!')
         else:
             print('Debug reconstruction completed - results not saved')
 
-        return result
+        return full_result
