@@ -2,6 +2,8 @@ import numpy as np
 from tqdm import tqdm
 import tifffile
 import astra
+
+from core.vector_reconstructor import VectorReconstructor
 from monash_processing.core.chunk_manager import ChunkManager
 from monash_processing.core.base_reconstructor import BaseReconstructor
 from monash_processing.utils.utils import Utils
@@ -220,7 +222,10 @@ class VolumeBuilder:
         )
 
         print(f"Processing volume in {chunk_manager.n_chunks} chunks of {chunk_size} slices")
-        reconstructor = BaseReconstructor(enable_short_scan=enable_short_scan, center_shift=self.center_shift)
+        if vector_mode:
+            reconstructor = VectorReconstructor(enable_short_scan=enable_short_scan, center_shift=self.center_shift)
+        else:
+            reconstructor = BaseReconstructor(enable_short_scan=enable_short_scan, center_shift=self.center_shift)
 
         # Process chunks
         for chunk_idx in tqdm(range(chunk_manager.n_chunks), desc="Processing volume chunks"):
