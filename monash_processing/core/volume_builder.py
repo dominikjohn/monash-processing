@@ -56,12 +56,13 @@ class VolumeBuilder:
         return np.array(projections), angles[valid_indices]
 
     @staticmethod
-    def apply_centershift(projections, center_shift, cuda=True):
+    def apply_centershift(projections, center_shift, cuda=True, batch_size=10):
         """
-        Apply center shift to projections.
+        Apply center shift to projections in batches to avoid GPU memory exhaustion.
         :param projections: 2D or 3D numpy array
         :param center_shift: float, shift in pixels
         :param cuda: bool, whether to use GPU
+        :param batch_size: int, number of projections to process at once
         :return: shifted projections array
         """
         print(f"Applying center shift of {center_shift} pixels to projection data of shape {projections.shape}")
@@ -70,23 +71,37 @@ class VolumeBuilder:
         ndim = projections.ndim
         shift_vector = (0, center_shift) if ndim == 2 else (0, 0, center_shift)
 
-        if cuda:
-            try:
-                import cupy as cp
-                from cupyx.scipy import ndimage
-                projections_gpu = cp.asarray(projections)
-                shifted = ndimage.shift(projections_gpu,
-                                        shift=shift_vector,  # Use correct shift vector
+        # If 2D or small enough, process normally
+        if ndim == 2 or (not cuda):
+            return scipy_shift(projections, shift_vector, mode='nearest', order=0)
+
+        try:
+            import cupy as cp
+            from cupyx.scipy import ndimage
+
+            # Process in batches
+            result = np.zeros_like(projections)
+            for i in tqdm(range(0, len(projections), batch_size), desc="Applying center shift"):
+                batch = projections[i:i + batch_size]
+                batch_gpu = cp.asarray(batch)
+
+                # Process batch
+                shifted = ndimage.shift(batch_gpu,
+                                        shift=(0, 0, center_shift),
                                         mode='nearest',
                                         order=0)
-                return cp.asnumpy(shifted)
-            except Exception as e:
-                print(f"GPU shift failed: {str(e)}, falling back to CPU")
-                cuda = False
 
-        if not cuda:
-            return scipy_shift(projections, shift_vector,  # Use same shift vector
-                               mode='nearest', order=0)
+                # Store result and free GPU memory
+                result[i:i + batch_size] = cp.asnumpy(shifted)
+                del batch_gpu
+                del shifted
+                cp.get_default_memory_pool().free_all_blocks()
+
+            return result
+
+        except Exception as e:
+            print(f"GPU shift failed: {str(e)}, falling back to CPU")
+            return scipy_shift(projections, shift_vector, mode='nearest', order=0)
 
     @staticmethod
     def reconstruct_slice(projections, angles, pixel_size):
@@ -205,26 +220,53 @@ class VolumeBuilder:
 
         return result
 
-    def reconstruct_3d(self, enable_short_scan=True):
+    def reconstruct_3d(self, enable_short_scan=True, debug=False):
         '''
         Reconstruct a 3D volume using ASTRA Toolbox
-        :param enable_short_scan: bool, True. means 180° + cone angle scan
-        :return:
+        :param enable_short_scan: bool, True means 180° + cone angle scan
+        :param debug: bool, if True only loads first projection and skips saving
+        :return: reconstruction result array
         '''
-        projections, angles = self.load_projections() # shape (angles, rows, cols)
+        input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'att')
+        tiff_files = sorted(input_dir.glob('projection_*.tiff'))
+        angles = np.linspace(0, self.max_angle_rad, len(tiff_files))
+
+        if self.limit_max_angle:
+            valid_angles_mask = angles <= np.pi  # π radians = 180°
+            valid_indices = np.where(valid_angles_mask)[0]
+        else:
+            valid_indices = np.arange(len(tiff_files))
+
+        if debug:
+            # Load only first projection in debug mode
+            data = tifffile.imread(tiff_files[valid_indices[0]])
+            template = np.zeros((len(valid_indices), *data.shape), dtype=data.dtype)
+            template[0] = data
+            projections = template
+        else:
+            # Load all projections in normal mode
+            projections = []
+            for projection_i in tqdm(valid_indices, desc=f"Loading {self.channel} projections", unit="file"):
+                try:
+                    data = tifffile.imread(tiff_files[projection_i])
+                    projections.append(data)
+                except Exception as e:
+                    raise RuntimeError(f"Failed to load projection from {tiff_files[projection_i]}: {str(e)}")
+            projections = np.array(projections)
+
+        angles = angles[valid_indices]
 
         detector_rows = projections.shape[1]
         detector_cols = projections.shape[2]
 
         vol_geom = astra.create_vol_geom(detector_cols, detector_cols, detector_rows)
         proj_geom = astra.create_proj_geom('cone', 1.0, 1.0, detector_rows, detector_cols, angles, 100000.0, 1000.0)
-        #proj_geom_vec = astra.geom_2vec(proj_geom)
 
         proj_id = astra.create_projector('cuda3d', proj_geom, vol_geom)
 
         shifted_projections = VolumeBuilder.apply_centershift(projections, self.center_shift)
 
-        sino_id = astra.data3d.create('-proj3d', proj_geom, shifted_projections)
+        sino_id = astra.data3d.create('-proj3d', proj_geom, shifted_projections.transpose(1, 0, 2))
 
         recon_id = astra.data3d.create('-vol', vol_geom)
 
@@ -235,7 +277,7 @@ class VolumeBuilder:
 
         # Enable ShortScan option
         cfg['option'] = {}
-        cfg['option']['ShortScan'] = enable_short_scan # enables 180° degree scans
+        cfg['option']['ShortScan'] = enable_short_scan  # enables 180° degree scans
 
         alg_id = astra.algorithm.create(cfg)
 
@@ -251,13 +293,17 @@ class VolumeBuilder:
         astra.data3d.delete(recon_id)
         astra.projector.delete(proj_id)
 
-        for i in tqdm(range(result.shape[0]), desc="Saving slices"):
-            reco_channel = 'phase_reco_3d' if self.channel == 'phase' else 'att_reco_3d'
-            self.data_loader.save_tiff(
-                channel=reco_channel,
-                angle_i=i,
-                data=result[i],
-                prefix='slice'
-            )
+        if not debug:
+            for i in tqdm(range(result.shape[0]), desc="Saving slices"):
+                reco_channel = 'phase_reco_3d' if self.channel == 'phase' else 'att_reco_3d'
+                self.data_loader.save_tiff(
+                    channel=reco_channel,
+                    angle_i=i,
+                    data=result[i],
+                    prefix='slice'
+                )
+            print('Reconstruction finished successfully!')
+        else:
+            print('Debug reconstruction completed - results not saved')
 
-        print('Reconstruction finished successfully!')
+        return result
