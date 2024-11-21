@@ -107,6 +107,6 @@ class UMPAProcessor:
         # Compute tasks in parallel
         self.logger.info(f"Starting parallel processing of {num_angles} projections")
         with ProgressBar():
-            results = client.compute(*tasks)
+            results = compute(*tasks)
 
         return results
