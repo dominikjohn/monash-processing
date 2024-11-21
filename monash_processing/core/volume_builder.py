@@ -100,9 +100,7 @@ class VolumeBuilder:
                 result[i:i + batch_size] = cp.asnumpy(shifted)
                 del batch_gpu
                 del shifted
-                print('Freeing GPU memory')
                 cp.get_default_memory_pool().free_all_blocks()
-                print('Memory freed')
             return result
 
         except Exception as e:
@@ -335,7 +333,7 @@ class VolumeBuilder:
                     self.data_loader.save_tiff(
                         channel=reco_channel,
                         angle_i=abs_slice_idx,
-                        data=chunk_result[:, :, slice_idx],  # Use chunk_result directly
+                        data=chunk_result[slice_idx, :, :],  # Use chunk_result directly
                         prefix='slice'
                     )
 
