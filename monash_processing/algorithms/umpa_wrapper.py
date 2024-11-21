@@ -5,9 +5,8 @@ from typing import Dict, Optional, Union, List
 import UMPA
 from monash_processing.core.data_loader import DataLoader
 from dask import delayed, compute
+from dask.distributed import LocalCluster, Client
 from dask.diagnostics import ProgressBar
-from dask.distributed import Client, default_client
-
 
 class UMPAProcessor:
     """Wrapper for UMPA phase retrieval with parallel processing using Dask."""
@@ -44,7 +43,7 @@ class UMPAProcessor:
             (self.results_dir / channel).mkdir(parents=True, exist_ok=True)
         self.logger.info(f'Created results directory at {self.results_dir}')
 
-    def _process_single_projection(self, flats: np.ndarray, angle_i: int) -> Dict[str, Union[str, int, np.ndarray]]:
+    def _process_single_projection(self, angle_i: int) -> Dict[str, Union[str, int, np.ndarray]]:
         """
         Process a single projection for a specific angle.
 
@@ -58,6 +57,8 @@ class UMPAProcessor:
         try:
             # Load projection data
             projection = self.data_loader.load_projections(projection_i=angle_i)
+
+            flats = self.data_loader.load_flat_fields()
 
             # Perform UMPA processing
             results = UMPA.match_unbiased(
@@ -91,25 +92,21 @@ class UMPAProcessor:
         """
         n_workers = self.n_workers
 
-        try:
-            # Reuse an existing Dask client if one is active
-            client = default_client()
-            self.logger.info("Reusing existing Dask client")
-        except ValueError:
-            # No active client; create a new one
-            client = Client(n_workers=n_workers, threads_per_worker=1, dashboard_address=None)
-            self.logger.info(f"Created a new Dask client with {self.n_workers} workers")
+        cluster = LocalCluster(n_workers=n_workers)
+        # No active client; create a new one
+        client = Client(cluster)
+
+        self.logger.info(f"Created a new Dask client with {self.n_workers} workers")
 
         # Create delayed tasks
         tasks = [
-            delayed(self._process_single_projection)(flats, angle_i)
+            delayed(self._process_single_projection)(angle_i)
             for angle_i in range(num_angles)
         ]
 
         # Compute tasks in parallel
         self.logger.info(f"Starting parallel processing of {num_angles} projections")
         with ProgressBar():
-            futures = client.map(lambda task: task.compute(), tasks)
-            results = client.gather(futures)
+            results = compute(*tasks)
 
         return results
