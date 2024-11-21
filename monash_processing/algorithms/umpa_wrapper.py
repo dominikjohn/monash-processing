@@ -6,7 +6,7 @@ import UMPA
 from monash_processing.core.data_loader import DataLoader
 from dask import delayed, compute
 from dask.diagnostics import ProgressBar
-from dask.distributed import Client
+from dask.distributed import Client, default_client
 
 
 class UMPAProcessor:
