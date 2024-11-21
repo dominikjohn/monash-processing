@@ -79,3 +79,12 @@ volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_sh
 volume = volume_builder.reconstruct()
 
 pg.image(volume)
+
+
+
+#### OR
+
+volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, method='FBP')
+volume = volume_builder.reconstruct_3d(enable_short_scan=True)
+
+pg.image(volume)

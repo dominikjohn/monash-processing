@@ -5,7 +5,7 @@ import astra
 from scipy.ndimage import shift as scipy_shift
 
 class VolumeBuilder:
-    def __init__(self, pixel_size, max_angle, channel, data_loader, center_shift=0, method='FBP', num_iterations=150):
+    def __init__(self, pixel_size, max_angle, channel, data_loader, center_shift=0, method='FBP', num_iterations=150, limit_max_angle=True):
         """
         Args:
             pixel_size: Size of each pixel in physical units
@@ -14,6 +14,8 @@ class VolumeBuilder:
             data_loader: DataLoader instance
             method: 'FBP' or 'SIRT'
             num_iterations: Number of iterations for SIRT (ignored for FBP)
+            center_shift: Center shift in pixels
+            limit_max_angle: Whether to limit the max angle to 180°
         """
         self.data_loader = data_loader
         self.channel = channel
@@ -22,6 +24,7 @@ class VolumeBuilder:
         self.method = method.upper()
         self.num_iterations = num_iterations
         self.center_shift = center_shift
+        self.limit_max_angle = limit_max_angle
 
         if self.method not in ['FBP', 'SIRT']:
             raise ValueError("Method must be either 'FBP' or 'SIRT'")
@@ -35,8 +38,12 @@ class VolumeBuilder:
 
         # Generate angles and create mask for <= 180°
         angles = np.linspace(0, self.max_angle_rad, len(tiff_files))
-        valid_angles_mask = angles <= np.pi  # π radians = 180°
-        valid_indices = np.where(valid_angles_mask)[0]
+
+        if self.limit_max_angle:
+            valid_angles_mask = angles <= np.pi  # π radians = 180°
+            valid_indices = np.where(valid_angles_mask)[0]
+        else:
+            valid_indices = np.arange(len(tiff_files))
 
         projections = []
         for projection_i in tqdm(valid_indices, desc=f"Loading {self.channel} projections", unit="file"):
@@ -198,8 +205,12 @@ class VolumeBuilder:
 
         return result
 
-    def reconstruct_3d(self):
-
+    def reconstruct_3d(self, enable_short_scan=True):
+        '''
+        Reconstruct a 3D volume using ASTRA Toolbox
+        :param enable_short_scan: bool, True. means 180° + cone angle scan
+        :return:
+        '''
         projections, angles = self.load_projections() # shape (angles, rows, cols)
 
         detector_rows = projections.shape[1]
@@ -221,6 +232,10 @@ class VolumeBuilder:
         cfg['ProjectorId'] = proj_id
         cfg['ProjectionDataId'] = sino_id
         cfg['ReconstructionDataId'] = recon_id
+
+        # Enable ShortScan option
+        cfg['option'] = {}
+        cfg['option']['ShortScan'] = enable_short_scan # enables 180° degree scans
 
         alg_id = astra.algorithm.create(cfg)
 
