@@ -325,6 +325,8 @@ class VolumeBuilder:
             # Insert chunk into full result (no need to handle overlap)
             #full_result[:, :, start_row:end_row] = chunk_result
 
+            print('Chunk result shape:', chunk_result.shape)
+
             if not debug:
                 for slice_idx in tqdm(range(chunk_rows), desc="Saving slices"):
                     # Calculate the absolute slice index in the full volume
