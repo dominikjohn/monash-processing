@@ -1,30 +1,24 @@
 import astra
 
-class BaseReconstructor:
-    def __init__(self, center_shift=0.0, enable_short_scan=True):
-        self.enable_short_scan = enable_short_scan
-        self.center_shift = center_shift
+from monash_processing.core.base_reconstructor import BaseReconstructor
+
+class VectorReconstructor(BaseReconstructor):
 
     def setup_geometry(self, chunk_info, angles):
-        """Set up the reconstruction geometry"""
+        # Completely override the geometry setup with vector-specific code
+        # No need for super() here unless you want to use the parent's geometry somehow
         chunk_vol_geom = astra.create_vol_geom(
             chunk_info['detector_cols'],
             chunk_info['detector_cols'],
             chunk_info['chunk_rows']
         )
-
-        # Use very large source distance to approximate parallel beam
-        source_distance = 1e8  # 100 million units
-        detector_distance = 1e6  # 1 million units
-
         chunk_proj_geom = astra.create_proj_geom(
-            'cone', 1.0, 1.0,
-            chunk_info['chunk_rows'],
+            'cone',
             chunk_info['detector_cols'],
-            angles,
-            source_distance,
-            detector_distance
+            chunk_info['chunk_rows'],
         )
+
+        chunk_proj_geom = astra.geom_2vec(chunk_proj_geom, angles)
 
         return chunk_vol_geom, chunk_proj_geom
 
@@ -33,9 +27,12 @@ class BaseReconstructor:
         # Set up geometry
         chunk_vol_geom, chunk_proj_geom = self.setup_geometry(chunk_info, angles)
 
+        print('Applying center shift using ASTRA...')
+        chunk_proj_geom_offset = astra.geom_postalignment(chunk_proj_geom, self.center_shift)
+
         # Create ASTRA objects
         proj_id = astra.create_projector('cuda3d', chunk_proj_geom, chunk_vol_geom)
-        sino_id = astra.data3d.create('-proj3d', chunk_proj_geom, chunk_data)
+        sino_id = astra.data3d.create('-proj3d', chunk_proj_geom_offset, chunk_data)
         recon_id = astra.data3d.create('-vol', chunk_vol_geom)
 
         # Configure reconstruction

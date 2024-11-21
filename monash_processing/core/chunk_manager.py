@@ -2,7 +2,7 @@ from tqdm import tqdm
 from monash_processing.utils.utils import Utils
 
 class ChunkManager:
-    def __init__(self, projections, chunk_size, angles, center_shift, channel='phase', debug=False):
+    def __init__(self, projections, chunk_size, angles, center_shift, channel='phase', debug=False, vector_mode=True):
         """
         Initialize the chunk manager
         Helper class to manage the processing of a large volume in chunks
@@ -28,6 +28,7 @@ class ChunkManager:
         self.center_shift = center_shift
         self.channel = channel
         self.debug = debug
+        self.vector_mode = vector_mode
 
         self.detector_rows = projections.shape[1]
         self.detector_cols = projections.shape[2]
@@ -47,8 +48,15 @@ class ChunkManager:
         # Extract chunk projections
         chunk_projs = self.projections[:, start_row:end_row, :]
 
-        # Apply center shift
-        shifted_chunk = Utils.apply_centershift(chunk_projs, self.center_shift).transpose(1, 0, 2)
+        # In vector mode, the center shift is applied using an astra function
+        # In a normal geometry, the projections need to be shifted "by hand" before reconstruction
+        if not self.vector_mode:
+            print('Applying center shift manually...')
+            # Apply center shift
+            shifted_chunk = Utils.apply_centershift(chunk_projs, self.center_shift).transpose(1, 0, 2)
+        else:
+            print('Not applying center shift in due to vector mode')
+            shifted_chunk = chunk_projs.transpose(1, 0, 2)
 
         return {
             'chunk_data': shifted_chunk,

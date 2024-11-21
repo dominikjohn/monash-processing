@@ -174,7 +174,7 @@ class VolumeBuilder:
 
         return result
 
-    def reconstruct_3d(self, enable_short_scan=True, debug=False, chunk_size=128):
+    def reconstruct_3d(self, enable_short_scan=True, debug=False, chunk_size=128, vector_mode=True):
         '''
         Reconstruct a 3D volume using ASTRA Toolbox with FDK but quasi-parallel beam geometry (large source distance)
         :param enable_short_scan: bool, True means 180° scan is sufficient
@@ -215,15 +215,12 @@ class VolumeBuilder:
             angles=angles,
             center_shift=self.center_shift,
             channel=self.channel,
-            debug=debug
+            debug=debug,
+            vector_mode=vector_mode
         )
 
-        detector_cols = projections.shape[2]
-        detector_rows = projections.shape[1]
-        full_result = np.zeros((detector_cols, detector_cols, detector_rows), dtype=np.float32)
-
         print(f"Processing volume in {chunk_manager.n_chunks} chunks of {chunk_size} slices")
-        reconstructor = BaseReconstructor(enable_short_scan=enable_short_scan)
+        reconstructor = BaseReconstructor(enable_short_scan=enable_short_scan, center_shift=self.center_shift)
 
         # Process chunks
         for chunk_idx in tqdm(range(chunk_manager.n_chunks), desc="Processing volume chunks"):
@@ -238,11 +235,6 @@ class VolumeBuilder:
                 angles
             )
             print(f'Chunk {chunk_idx} reconstruction finished')
-
-            # Store in full result
-            #start_row = chunk_info['start_row']
-            #end_row = chunk_info['end_row']
-            #full_result[:, :, start_row:end_row] = chunk_result
 
             # Save results
             chunk_manager.save_chunk_result(chunk_result, chunk_info, self.data_loader)
