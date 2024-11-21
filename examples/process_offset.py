@@ -47,11 +47,10 @@ processor = UMPAProcessor(
 )
 
 # Process projections
-with processor:
-    results = processor.process_projections(
-        flats=flat_fields,
-        num_angles=num_angles
-    )
+results = processor.process_projections(
+    flats=flat_fields,
+    num_angles=num_angles
+)
 
 # 4. Phase integrate
 print("Phase integrating")

@@ -109,7 +109,7 @@ class UMPAProcessor:
         # Compute tasks in parallel
         self.logger.info(f"Starting parallel processing of {num_angles} projections")
         with ProgressBar():
-            results = client.compute(*tasks, scheduler="distributed")
-            results = results.result()
+            futures = client.map(lambda task: task.compute(), tasks)
+            results = client.gather(futures)
 
         return results
