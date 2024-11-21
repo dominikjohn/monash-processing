@@ -292,7 +292,7 @@ class VolumeBuilder:
             chunk_projs = projections[:, start_row:end_row, :]
 
             # Apply center shift to chunk
-            shifted_chunk = VolumeBuilder.apply_centershift(chunk_projs, self.center_shift)
+            shifted_chunk = VolumeBuilder.apply_centershift(chunk_projs, self.center_shift).transpose(1,0,2)
 
             print('Centershift applied, starting reconstruction...')
 
