@@ -3,6 +3,8 @@ from tqdm import tqdm
 import tifffile
 import astra
 from scipy.ndimage import shift as scipy_shift
+from monash_processing.core.chunk_manager import ChunkManager
+from monash_processing.core.base_reconstructor import BaseReconstructor
 
 class VolumeBuilder:
     def __init__(self, pixel_size, max_angle, channel, data_loader, center_shift=0, method='FBP', num_iterations=150, limit_max_angle=True):
@@ -259,83 +261,43 @@ class VolumeBuilder:
 
         angles = angles[valid_indices]
 
-        detector_rows = projections.shape[1]
+        chunk_manager = ChunkManager(
+            projections=projections,
+            chunk_size=chunk_size,
+            angles=angles,
+            center_shift=self.center_shift,
+            channel=self.channel,
+            debug=debug
+        )
+
         detector_cols = projections.shape[2]
-
-        # Calculate number of chunks needed
-        n_chunks = (detector_rows + chunk_size - 1) // chunk_size
-
-        print(f"Processing volume in {n_chunks} chunks of {chunk_size} slices (quasi-parallel beam using FDK)")
-
-        # Use very large source distance to approximate parallel beam
-        source_distance = 1e8  # 100 million units
-        detector_distance = 1e6  # 1 million units
-
-        # Initialize result array
+        detector_rows = projections.shape[1]
         full_result = np.zeros((detector_cols, detector_cols, detector_rows), dtype=np.float32)
 
-        for chunk_idx in tqdm(range(n_chunks), desc="Processing volume chunks"):
-            # Calculate chunk boundaries (no overlap needed for quasi-parallel beam)
-            start_row = chunk_idx * chunk_size
-            end_row = min(detector_rows, (chunk_idx + 1) * chunk_size)
-            chunk_rows = end_row - start_row
+        print(f"Processing volume in {chunk_manager.n_chunks} chunks of {chunk_size} slices")
+        reconstructor = BaseReconstructor(enable_short_scan=enable_short_scan)
 
-            # Create geometry for this chunk
-            chunk_vol_geom = astra.create_vol_geom(detector_cols, detector_cols, chunk_rows)
-            chunk_proj_geom = astra.create_proj_geom('cone', 1.0, 1.0,
-                                                     chunk_rows, detector_cols,
-                                                     angles, source_distance, detector_distance)
+        # Process chunks
+        for chunk_idx in tqdm(range(chunk_manager.n_chunks), desc="Processing volume chunks"):
+            # Get chunk data
+            chunk_info = chunk_manager.get_chunk_data(chunk_idx)
 
-            # Extract relevant portion of projections
-            chunk_projs = projections[:, start_row:end_row, :]
-
-            # Apply center shift to chunk
-            shifted_chunk = VolumeBuilder.apply_centershift(chunk_projs, self.center_shift).transpose(1,0,2)
-
-            print('Centershift applied, starting reconstruction...')
-
-            # Create ASTRA objects for this chunk
-            proj_id = astra.create_projector('cuda3d', chunk_proj_geom, chunk_vol_geom)
-            sino_id = astra.data3d.create('-proj3d', chunk_proj_geom, shifted_chunk)
-            recon_id = astra.data3d.create('-vol', chunk_vol_geom)
-
-            # Configure reconstruction
-            cfg = astra.astra_dict('FDK_CUDA')
-            cfg['ProjectorId'] = proj_id
-            cfg['ProjectionDataId'] = sino_id
-            cfg['ReconstructionDataId'] = recon_id
-            cfg['option'] = {'ShortScan': enable_short_scan}
-
-            # Run reconstruction for this chunk
-            alg_id = astra.algorithm.create(cfg)
-            astra.algorithm.run(alg_id)
-
-            # Get chunk result
-            chunk_result = astra.data3d.get(recon_id)
-
-            # Clean up ASTRA objects
-            astra.algorithm.delete(alg_id)
-            astra.data3d.delete(sino_id)
-            astra.data3d.delete(recon_id)
-            astra.projector.delete(proj_id)
-
+            print('Starting reconstruction...')
+            # Reconstruct chunk
+            chunk_result = reconstructor.reconstruct_chunk(
+                chunk_info['chunk_data'],
+                chunk_info,
+                angles
+            )
             print(f'Chunk {chunk_idx} reconstruction finished')
-            # Insert chunk into full result (no need to handle overlap)
+
+            # Store in full result
+            #start_row = chunk_info['start_row']
+            #end_row = chunk_info['end_row']
             #full_result[:, :, start_row:end_row] = chunk_result
 
-            print('Chunk result shape:', chunk_result.shape)
-
-            if not debug:
-                for slice_idx in tqdm(range(chunk_rows), desc="Saving slices"):
-                    # Calculate the absolute slice index in the full volume
-                    abs_slice_idx = start_row + slice_idx
-                    reco_channel = 'phase_reco_3d' if self.channel == 'phase' else 'att_reco_3d'
-                    self.data_loader.save_tiff(
-                        channel=reco_channel,
-                        angle_i=abs_slice_idx,
-                        data=chunk_result[slice_idx, :, :],  # Use chunk_result directly
-                        prefix='slice'
-                    )
+            # Save results
+            chunk_manager.save_chunk_result(chunk_result, chunk_info, self.data_loader)
 
             # Force GPU memory cleanup
             import gc
@@ -346,8 +308,9 @@ class VolumeBuilder:
             except ImportError:
                 pass
 
-            print('Reconstruction finished successfully!')
-        else:
-            print('Debug reconstruction completed - results not saved')
+            print('Chunk processing finished successfully!')
 
-        return full_result
+        if debug:
+            print('Debug reconstruction completed - results not saved')
+        else:
+            print('Full reconstruction completed successfully!')
