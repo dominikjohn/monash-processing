@@ -26,7 +26,7 @@ class VectorReconstructor(BaseReconstructor):
             detector_distance
         )
 
-        chunk_proj_geom = astra.geom_2vec(chunk_proj_geom, angles)
+        chunk_proj_geom = astra.geom_2vec(chunk_proj_geom)
 
         return chunk_vol_geom, chunk_proj_geom
 
