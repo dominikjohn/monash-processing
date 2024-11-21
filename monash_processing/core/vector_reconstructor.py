@@ -12,10 +12,18 @@ class VectorReconstructor(BaseReconstructor):
             chunk_info['detector_cols'],
             chunk_info['chunk_rows']
         )
+
+        # Use very large source distance to approximate parallel beam
+        source_distance = 1e8  # 100 million units
+        detector_distance = 1e6  # 1 million units
+
         chunk_proj_geom = astra.create_proj_geom(
-            'cone',
-            chunk_info['detector_cols'],
+            'cone', 1.0, 1.0,
             chunk_info['chunk_rows'],
+            chunk_info['detector_cols'],
+            angles,
+            source_distance,
+            detector_distance
         )
 
         chunk_proj_geom = astra.geom_2vec(chunk_proj_geom, angles)
