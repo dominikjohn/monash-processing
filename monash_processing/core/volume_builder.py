@@ -65,6 +65,11 @@ class VolumeBuilder:
         :param batch_size: int, number of projections to process at once
         :return: shifted projections array
         """
+
+        if(center_shift == 0):
+            print("Center shift is 0, skipping shift")
+            return projections
+
         print(f"Applying center shift of {center_shift} pixels to projection data of shape {projections.shape}")
 
         # Get number of dimensions and create appropriate shift vector
