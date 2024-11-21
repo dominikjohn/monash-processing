@@ -50,7 +50,7 @@ processor = UMPAProcessor(
 with processor:
     results = processor.process_projections(
         flats=flat_fields,
-        num_angles=max_angle
+        num_angles=num_angles
     )
 
 # 4. Phase integrate

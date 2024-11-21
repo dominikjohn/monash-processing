@@ -81,7 +81,7 @@ class UMPAProcessor:
             for channel, data in results.items():
                 self.data_loader.save_tiff(channel, angle_i, data)
 
-            return {'angle': angle_i, 'status': 'success', **results}
+            return {'angle': angle_i, 'status': 'success'}
 
         except Exception as e:
             self.logger.error(f"Failed to process angle {angle_i}: {e}")
