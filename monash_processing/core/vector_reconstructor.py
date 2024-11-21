@@ -27,8 +27,11 @@ class VectorReconstructor(BaseReconstructor):
         # Set up geometry
         chunk_vol_geom, chunk_proj_geom = self.setup_geometry(chunk_info, angles)
 
-        print('Applying center shift using ASTRA...')
-        chunk_proj_geom_offset = astra.geom_postalignment(chunk_proj_geom, self.center_shift)
+        print("Original detector center:", chunk_proj_geom['DetectorRowVectors'][0])
+
+        chunk_proj_geom_offset = astra.geom_postalignment(chunk_proj_geom, -self.center_shift)
+
+        print("Shifted detector center:", chunk_proj_geom_offset['DetectorRowVectors'][0])
 
         # Create ASTRA objects
         proj_id = astra.create_projector('cuda3d', chunk_proj_geom_offset, chunk_vol_geom)
