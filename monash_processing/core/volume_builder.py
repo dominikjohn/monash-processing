@@ -71,13 +71,14 @@ class VolumeBuilder:
             print('Using CUDA')
             try:
                 import cupy as cp
+                from cupyx.scipy import ndimage
                 # Transfer to GPU
                 projections_gpu = cp.asarray(projections)
                 # Perform shift
-                shifted = cp.ndimage.shift(projections_gpu,
-                                           shift=shift_vector,
-                                           mode='nearest',
-                                           order=0)
+                shifted = ndimage.shift(projections_gpu,
+                                        shift=(0, 0, center_shift),
+                                        mode='nearest',
+                                        order=0)
                 # Transfer back to CPU
                 return cp.asnumpy(shifted)
             except (ImportError, Exception) as e:
