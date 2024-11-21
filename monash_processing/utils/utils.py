@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-import tqdm
+from tqdm import tqdm
 
 class Utils:
 
