@@ -264,7 +264,7 @@ class VolumeBuilder:
 
         proj_id = astra.create_projector('cuda3d', proj_geom, vol_geom)
 
-        shifted_projections = VolumeBuilder.apply_centershift(projections, self.center_shift)
+        shifted_projections = VolumeBuilder.apply_centershift(projections, self.center_shift, batch_size=100)
 
         sino_id = astra.data3d.create('-proj3d', proj_geom, shifted_projections.transpose(1, 0, 2))
 
