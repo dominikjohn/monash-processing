@@ -3,7 +3,7 @@ from tqdm import tqdm
 import tifffile
 import astra
 
-from core.vector_reconstructor import VectorReconstructor
+from monash_processing.core.vector_reconstructor import VectorReconstructor
 from monash_processing.core.chunk_manager import ChunkManager
 from monash_processing.core.base_reconstructor import BaseReconstructor
 from monash_processing.utils.utils import Utils
