@@ -16,7 +16,7 @@ scan_name = "K3_3H_ReverseOrder"
 pixel_size = 1.444e-6 # m
 energy = 25 # keV
 prop_distance = 0.158 #
-max_angle = 182
+max_angle = 364
 umpa_w = 1
 n_workers = 50
 
@@ -50,14 +50,14 @@ processor = UMPAProcessor(
 with processor:
     results = processor.process_projections(
         flats=flat_fields,
-        num_angles=180  # Or however many angles you have
+        num_angles=max_angle
     )
 
 # 4. Phase integrate
 print("Phase integrating")
 #area_left, area_right = Utils.select_areas(loader.load_projections(projection_i=0)[0])
 area_left = np.s_[100:-100, 20:120]
-area_right = np.s_[100:-100, -120:-20]
+#area_right = np.s_[100:-100, -120:-20]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
 parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 
@@ -77,5 +77,3 @@ print(f"Found optimal center shift: {center_shift}")
 
 volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, method='FBP')
 volume = volume_builder.reconstruct()
-
-pg.image(volume)

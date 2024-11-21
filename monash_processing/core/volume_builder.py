@@ -59,34 +59,26 @@ class VolumeBuilder:
         """
         print(f"Applying center shift of {center_shift} pixels to projection data of shape {projections.shape}")
 
-        # Determine dimensionality of input
+        # Get number of dimensions and create appropriate shift vector
         ndim = projections.ndim
-        if ndim not in [2, 3]:
-            raise ValueError(f"Expected 2D or 3D array, got {ndim}D")
-
-        # Set shift vector based on dimensions
         shift_vector = (0, center_shift) if ndim == 2 else (0, 0, center_shift)
 
         if cuda:
-            print('Using CUDA')
             try:
                 import cupy as cp
                 from cupyx.scipy import ndimage
-                # Transfer to GPU
                 projections_gpu = cp.asarray(projections)
-                # Perform shift
                 shifted = ndimage.shift(projections_gpu,
-                                        shift=(0, 0, center_shift),
+                                        shift=shift_vector,  # Use correct shift vector
                                         mode='nearest',
                                         order=0)
-                # Transfer back to CPU
                 return cp.asnumpy(shifted)
-            except (ImportError, Exception) as e:
+            except Exception as e:
                 print(f"GPU shift failed: {str(e)}, falling back to CPU")
                 cuda = False
 
         if not cuda:
-            return scipy_shift(projections, shift_vector,
+            return scipy_shift(projections, shift_vector,  # Use same shift vector
                                mode='nearest', order=0)
 
     @staticmethod

@@ -8,7 +8,6 @@ import dask
 from dask.distributed import Client, progress
 from dask.diagnostics import ProgressBar
 
-
 class UMPAProcessor:
     """Wrapper for UMPA phase retrieval with parallel processing using Dask."""
 
@@ -45,7 +44,7 @@ class UMPAProcessor:
         self.logger.info('Created channel subdirectories')
 
         # Initialize Dask client
-        self.client = Client(n_workers=n_workers, threads_per_worker=1)
+        self.client = Client(n_workers=n_workers, threads_per_worker=1, scheduler_port=0)
         self.logger.info(f'Initialized Dask client with {len(self.client.scheduler_info()["workers"])} workers')
 
     def _process_single_projection(self,
