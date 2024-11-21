@@ -68,6 +68,7 @@ class VolumeBuilder:
         shift_vector = (0, center_shift) if ndim == 2 else (0, 0, center_shift)
 
         if cuda:
+            print('Using CUDA')
             try:
                 import cupy as cp
                 # Transfer to GPU
