@@ -100,8 +100,9 @@ class VolumeBuilder:
                 result[i:i + batch_size] = cp.asnumpy(shifted)
                 del batch_gpu
                 del shifted
+                print('Freeing GPU memory')
                 cp.get_default_memory_pool().free_all_blocks()
-
+                print('Memory freed')
             return result
 
         except Exception as e:
@@ -293,6 +294,8 @@ class VolumeBuilder:
             # Apply center shift to chunk
             shifted_chunk = VolumeBuilder.apply_centershift(chunk_projs, self.center_shift)
 
+            print('Centershift applied, starting reconstruction...')
+
             # Create ASTRA objects for this chunk
             proj_id = astra.create_projector('cuda3d', chunk_proj_geom, chunk_vol_geom)
             sino_id = astra.data3d.create('-proj3d', chunk_proj_geom, shifted_chunk)
@@ -318,6 +321,7 @@ class VolumeBuilder:
             astra.data3d.delete(recon_id)
             astra.projector.delete(proj_id)
 
+            print(f'Chunk {chunk_idx} reconstruction finished')
             # Insert chunk into full result (no need to handle overlap)
             full_result[:, :, start_row:end_row] = chunk_result
 
