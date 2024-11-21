@@ -43,7 +43,7 @@ processor = UMPAProcessor(
     scan_path,
     scan_name,
     loader,
-    n_workers=5
+    n_workers=50
 )
 
 # Process projections

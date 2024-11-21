@@ -57,7 +57,7 @@ class ParallelPhaseIntegrator:
                 pass
 
             # Verify all files were processed correctly
-            remaining = self.check_existing_files(num_angles, min_size_kb)
+            remaining = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, 'phi')
             if remaining:
                 print(f"\nWarning: {len(remaining)} files still need processing after completion.")
                 print("These might have failed during processing:")

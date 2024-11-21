@@ -21,7 +21,7 @@ class Utils:
         return area_left, area_right
 
     @staticmethod
-    def check_existing_files(dir, num_angles, min_size_kb=5, directory='phi'):
+    def check_existing_files(dir, num_angles, min_size_kb=5, channel='phi'):
         """
         Check which projection files need to be processed.
 
@@ -33,7 +33,7 @@ class Utils:
             list: Indices of projections that need processing
         """
         to_process = []
-        results_dir = dir / directory
+        results_dir = dir / channel
 
         print("Checking existing files...")
         for angle_i in tqdm(range(num_angles), desc="Checking files"):
