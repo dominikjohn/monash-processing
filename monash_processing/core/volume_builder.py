@@ -197,3 +197,52 @@ class VolumeBuilder:
             astra.projector.delete(proj_id)
 
         return result
+
+    def reconstruct_3d(self):
+
+        projections, angles = self.load_projections() # shape (angles, rows, cols)
+
+        detector_rows = projections.shape[1]
+        detector_cols = projections.shape[2]
+
+        vol_geom = astra.create_vol_geom(detector_cols, detector_cols, detector_rows)
+        proj_geom = astra.create_proj_geom('cone', 1.0, 1.0, detector_rows, detector_cols, angles, 100000.0, 1000.0)
+        #proj_geom_vec = astra.geom_2vec(proj_geom)
+
+        proj_id = astra.create_projector('cuda3d', proj_geom, vol_geom)
+
+        shifted_projections = VolumeBuilder.apply_centershift(projections, self.center_shift)
+
+        sino_id = astra.data3d.create('-proj3d', proj_geom, shifted_projections)
+
+        recon_id = astra.data3d.create('-vol', vol_geom)
+
+        cfg = astra.astra_dict('FDK_CUDA')
+        cfg['ProjectorId'] = proj_id
+        cfg['ProjectionDataId'] = sino_id
+        cfg['ReconstructionDataId'] = recon_id
+
+        alg_id = astra.algorithm.create(cfg)
+
+        # Run FDK algorithm
+        astra.algorithm.run(alg_id)
+
+        # Get the result
+        result = astra.data3d.get(recon_id)
+
+        # Clean up
+        astra.algorithm.delete(alg_id)
+        astra.data3d.delete(sino_id)
+        astra.data3d.delete(recon_id)
+        astra.projector.delete(proj_id)
+
+        for i in tqdm(range(result.shape[0]), desc="Saving slices"):
+            reco_channel = 'phase_reco_3d' if self.channel == 'phase' else 'att_reco_3d'
+            self.data_loader.save_tiff(
+                channel=reco_channel,
+                angle_i=i,
+                data=result[i],
+                prefix='slice'
+            )
+
+        print('Reconstruction finished successfully!')
