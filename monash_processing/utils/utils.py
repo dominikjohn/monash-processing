@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from tqdm import tqdm
+from scipy.ndimage import shift as scipy_shift
 
 class Utils:
 
@@ -55,3 +56,55 @@ class Utils:
                 print(f"Last few indices: {to_process[-5:]}")
 
         return to_process
+
+    @staticmethod
+    def apply_centershift(projections, center_shift, cuda=True, batch_size=10):
+        """
+        Apply center shift to projections in batches to avoid GPU memory exhaustion.
+        :param projections: 2D or 3D numpy array
+        :param center_shift: float, shift in pixels
+        :param cuda: bool, whether to use GPU
+        :param batch_size: int, number of projections to process at once
+        :return: shifted projections array
+        """
+
+        if center_shift == 0:
+            print("Center shift is 0, skipping shift")
+            return projections
+
+        print(f"Applying center shift of {center_shift} pixels to projection data of shape {projections.shape}")
+
+        # Get number of dimensions and create appropriate shift vector
+        ndim = projections.ndim
+        shift_vector = (0, center_shift) if ndim == 2 else (0, 0, center_shift)
+
+        # If 2D or small enough, process normally
+        if ndim == 2 or (not cuda):
+            return scipy_shift(projections, shift_vector, mode='nearest', order=0)
+
+        try:
+            import cupy as cp
+            from cupyx.scipy import ndimage
+
+            # Process in batches
+            result = np.zeros_like(projections)
+            for i in tqdm(range(0, len(projections), batch_size), desc="Applying center shift"):
+                batch = projections[i:i + batch_size]
+                batch_gpu = cp.asarray(batch)
+
+                # Process batch
+                shifted = ndimage.shift(batch_gpu,
+                                        shift=(0, 0, center_shift),
+                                        mode='nearest',
+                                        order=0)
+
+                # Store result and free GPU memory
+                result[i:i + batch_size] = cp.asnumpy(shifted)
+                del batch_gpu
+                del shifted
+                cp.get_default_memory_pool().free_all_blocks()
+            return result
+
+        except Exception as e:
+            print(f"GPU shift failed: {str(e)}, falling back to CPU")
+            return scipy_shift(projections, shift_vector, mode='nearest', order=0)

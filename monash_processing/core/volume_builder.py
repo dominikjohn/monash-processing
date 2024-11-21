@@ -2,9 +2,9 @@ import numpy as np
 from tqdm import tqdm
 import tifffile
 import astra
-from scipy.ndimage import shift as scipy_shift
 from monash_processing.core.chunk_manager import ChunkManager
 from monash_processing.core.base_reconstructor import BaseReconstructor
+from monash_processing.utils.utils import Utils
 
 class VolumeBuilder:
     def __init__(self, pixel_size, max_angle, channel, data_loader, center_shift=0, method='FBP', num_iterations=150, limit_max_angle=True):
@@ -56,58 +56,6 @@ class VolumeBuilder:
                 raise RuntimeError(f"Failed to load projection from {tiff_files[projection_i]}: {str(e)}")
 
         return np.array(projections), angles[valid_indices]
-
-    @staticmethod
-    def apply_centershift(projections, center_shift, cuda=True, batch_size=10):
-        """
-        Apply center shift to projections in batches to avoid GPU memory exhaustion.
-        :param projections: 2D or 3D numpy array
-        :param center_shift: float, shift in pixels
-        :param cuda: bool, whether to use GPU
-        :param batch_size: int, number of projections to process at once
-        :return: shifted projections array
-        """
-
-        if center_shift == 0:
-            print("Center shift is 0, skipping shift")
-            return projections
-
-        print(f"Applying center shift of {center_shift} pixels to projection data of shape {projections.shape}")
-
-        # Get number of dimensions and create appropriate shift vector
-        ndim = projections.ndim
-        shift_vector = (0, center_shift) if ndim == 2 else (0, 0, center_shift)
-
-        # If 2D or small enough, process normally
-        if ndim == 2 or (not cuda):
-            return scipy_shift(projections, shift_vector, mode='nearest', order=0)
-
-        try:
-            import cupy as cp
-            from cupyx.scipy import ndimage
-
-            # Process in batches
-            result = np.zeros_like(projections)
-            for i in tqdm(range(0, len(projections), batch_size), desc="Applying center shift"):
-                batch = projections[i:i + batch_size]
-                batch_gpu = cp.asarray(batch)
-
-                # Process batch
-                shifted = ndimage.shift(batch_gpu,
-                                        shift=(0, 0, center_shift),
-                                        mode='nearest',
-                                        order=0)
-
-                # Store result and free GPU memory
-                result[i:i + batch_size] = cp.asnumpy(shifted)
-                del batch_gpu
-                del shifted
-                cp.get_default_memory_pool().free_all_blocks()
-            return result
-
-        except Exception as e:
-            print(f"GPU shift failed: {str(e)}, falling back to CPU")
-            return scipy_shift(projections, shift_vector, mode='nearest', order=0)
 
     @staticmethod
     def reconstruct_slice(projections, angles, pixel_size):
@@ -189,7 +137,7 @@ class VolumeBuilder:
         try:
             # Process all slices
             for i in tqdm(range(n_slices), desc="Reconstructing slices"):
-                shifted_projection = VolumeBuilder.apply_centershift(projections[:, i, :], self.center_shift)
+                shifted_projection = Utils.apply_centershift(projections[:, i, :], self.center_shift)
 
                 # Create sinogram for this slice
                 sino_id = astra.data2d.create('-sino', proj_geom, shifted_projection)

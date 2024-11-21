@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from monash_processing.core.volume_builder import VolumeBuilder
+from monash_processing.utils.utils import Utils
 
 class ChunkManager:
     def __init__(self, projections, chunk_size, angles, center_shift, channel='phase', debug=False):
@@ -48,7 +48,7 @@ class ChunkManager:
         chunk_projs = self.projections[:, start_row:end_row, :]
 
         # Apply center shift
-        shifted_chunk = VolumeBuilder.apply_centershift(chunk_projs, self.center_shift).transpose(1, 0, 2)
+        shifted_chunk = Utils.apply_centershift(chunk_projs, self.center_shift).transpose(1, 0, 2)
 
         return {
             'chunk_data': shifted_chunk,

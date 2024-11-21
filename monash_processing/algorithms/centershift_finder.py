@@ -3,7 +3,7 @@ from pathlib import Path
 from tqdm import tqdm
 import tifffile
 from monash_processing.core.volume_builder import VolumeBuilder
-
+from monash_processing.utils.utils import Utils
 
 class ReconstructionCalibrator:
     def __init__(self, data_loader):
@@ -71,7 +71,7 @@ class ReconstructionCalibrator:
 
         for shift in tqdm(shifts):
             print('Current shift:', shift)
-            shifted_projections = VolumeBuilder.apply_centershift(sliced_projections, shift)
+            shifted_projections = Utils.apply_centershift(sliced_projections, shift)
 
             # Reconstruct with center shift
             recon = VolumeBuilder.reconstruct_slice(
