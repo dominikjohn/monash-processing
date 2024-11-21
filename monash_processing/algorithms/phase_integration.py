@@ -3,7 +3,7 @@ import cv2
 import rasterio.fill as rs
 import scipy.constants
 from monash_processing.core.data_loader import DataLoader
-
+from scipy import fft
 
 class PhaseIntegrator:
 
@@ -40,14 +40,14 @@ class PhaseIntegrator:
         mdx = self._antisym_mirror_im(dx, 'dx')
         mdy = self._antisym_mirror_im(dy, 'dy')
 
-        k = scipy.fft.fftfreq(mdx.shape[1])
-        l = scipy.fft.fftfreq(mdy.shape[0])
+        k = fft.fftfreq(mdx.shape[1])
+        l = fft.fftfreq(mdy.shape[0])
         k[k == 0] = 1e-10
         l[l == 0] = 1e-10
         k, l = np.meshgrid(k, l)
 
-        ft = scipy.fft.fft2(mdx + 1j * mdy, workers=2)
-        phi_raw = scipy.fft.ifft2(ft / ((2 * np.pi * 1j) * (k + 1j * l)), workers=2)
+        ft = fft.fft2(mdx + 1j * mdy, workers=2)
+        phi_raw = fft.ifft2(ft / ((2 * np.pi * 1j) * (k + 1j * l)), workers=2)
         phi_raw = np.real(phi_raw)[dx.shape[0]:, dy.shape[1]:]
 
         phi_corr = phi_raw * (self.wavevec / self.prop_distance) * (self.pixel_size ** 2)
