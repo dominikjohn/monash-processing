@@ -49,15 +49,34 @@ class VolumeBuilder:
         return np.array(projections), angles[valid_indices]
 
     @staticmethod
-    def apply_centershift(projections, center_shift):
+    def apply_centershift(projections, center_shift, cuda=True):
         """
         Apply center shift to projections.
-        :param projections:
-        :param center_shift:
-        :return:
+        :param projections: 3D numpy array
+        :param center_shift: float, shift in pixels
+        :param cuda: bool, whether to use GPU
+        :return: shifted projections array
         """
         print(f"Applying center shift of {center_shift} pixels to projection data of shape {projections.shape}")
-        return scipy_shift(projections, (0, 0, center_shift), mode='nearest', order=1)
+        if cuda:
+            try:
+                import cupy as cp
+                # Transfer to GPU
+                projections_gpu = cp.asarray(projections)
+                # Perform shift
+                shifted = cp.ndimage.shift(projections_gpu,
+                                           shift=(0, 0, center_shift),
+                                           mode='nearest',
+                                           order=0)
+                # Transfer back to CPU
+                return cp.asnumpy(shifted)
+            except (ImportError, Exception) as e:
+                print(f"GPU shift failed: {str(e)}, falling back to CPU")
+                cuda = False
+
+        if not cuda:
+            return scipy_shift(projections, (0, 0, center_shift),
+                               mode='nearest', order=0)
 
     @staticmethod
     def reconstruct_slice(projections, angles, pixel_size):
