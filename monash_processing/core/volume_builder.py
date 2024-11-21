@@ -323,7 +323,19 @@ class VolumeBuilder:
 
             print(f'Chunk {chunk_idx} reconstruction finished')
             # Insert chunk into full result (no need to handle overlap)
-            full_result[:, :, start_row:end_row] = chunk_result
+            #full_result[:, :, start_row:end_row] = chunk_result
+
+            if not debug:
+                for slice_idx in tqdm(range(chunk_rows), desc="Saving slices"):
+                    # Calculate the absolute slice index in the full volume
+                    abs_slice_idx = start_row + slice_idx
+                    reco_channel = 'phase_reco_3d' if self.channel == 'phase' else 'att_reco_3d'
+                    self.data_loader.save_tiff(
+                        channel=reco_channel,
+                        angle_i=abs_slice_idx,
+                        data=chunk_result[:, :, slice_idx],  # Use chunk_result directly
+                        prefix='slice'
+                    )
 
             # Force GPU memory cleanup
             import gc
@@ -334,15 +346,6 @@ class VolumeBuilder:
             except ImportError:
                 pass
 
-        if not debug:
-            for i in tqdm(range(full_result.shape[2]), desc="Saving slices"):
-                reco_channel = 'phase_reco_3d' if self.channel == 'phase' else 'att_reco_3d'
-                self.data_loader.save_tiff(
-                    channel=reco_channel,
-                    angle_i=i,
-                    data=full_result[:, :, i],
-                    prefix='slice'
-                )
             print('Reconstruction finished successfully!')
         else:
             print('Debug reconstruction completed - results not saved')
