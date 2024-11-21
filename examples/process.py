@@ -75,7 +75,7 @@ center_shift = calibrator.find_center_shift(
 )
 print(f"Found optimal center shift: {center_shift}")
 
-volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, method='FBP', debug=True)
+volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, method='FBP')
 volume = volume_builder.reconstruct()
 
 pg.image(volume)

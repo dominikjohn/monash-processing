@@ -5,7 +5,7 @@ import astra
 from scipy.ndimage import shift as scipy_shift
 
 class VolumeBuilder:
-    def __init__(self, pixel_size, max_angle, channel, data_loader, center_shift=0, method='FBP', num_iterations=150, debug=False):
+    def __init__(self, pixel_size, max_angle, channel, data_loader, center_shift=0, method='FBP', num_iterations=150):
         """
         Args:
             pixel_size: Size of each pixel in physical units
@@ -14,7 +14,6 @@ class VolumeBuilder:
             data_loader: DataLoader instance
             method: 'FBP' or 'SIRT'
             num_iterations: Number of iterations for SIRT (ignored for FBP)
-            debug: If True, only loads first projection and fills rest with zeros
         """
         self.data_loader = data_loader
         self.channel = channel
@@ -22,14 +21,15 @@ class VolumeBuilder:
         self.max_angle_rad = np.deg2rad(max_angle)
         self.method = method.upper()
         self.num_iterations = num_iterations
-        self.debug = debug
         self.center_shift = center_shift
 
         if self.method not in ['FBP', 'SIRT']:
             raise ValueError("Method must be either 'FBP' or 'SIRT'")
 
     def load_projections(self):
-        """Load all projections for the specified channel."""
+        """
+        :return: np.ndarray, np.ndarray
+        """
         input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'att')
         tiff_files = sorted(input_dir.glob('projection_*.tiff'))
 
@@ -38,28 +38,15 @@ class VolumeBuilder:
         valid_angles_mask = angles <= np.pi  # π radians = 180°
         valid_indices = np.where(valid_angles_mask)[0]
 
-        if self.debug:
-            print(f"Total projections: {len(tiff_files)}")
-            print(f"Projections up to 180°: {len(valid_indices)}")
-            print(f"Angle range used: 0 to {np.rad2deg(angles[valid_indices[-1]]):.1f}°")
-
-        if self.debug and len(tiff_files) > 0:
-            print("DEBUG MODE: Loading only first valid projection")
-            first_proj = tifffile.imread(tiff_files[0])
-            projections = np.zeros((len(valid_indices), *first_proj.shape), dtype=first_proj.dtype)
-            projections[0] = first_proj
-            print(f"Debug array shape: {projections.shape}")
-            return projections, angles[valid_angles_mask]
-
         projections = []
-        for idx in tqdm(valid_indices, desc=f"Loading {self.channel} projections", unit="file"):
+        for projection_i in tqdm(valid_indices, desc=f"Loading {self.channel} projections", unit="file"):
             try:
-                data = tifffile.imread(tiff_files[idx])
+                data = tifffile.imread(tiff_files[projection_i])
                 projections.append(data)
             except Exception as e:
-                raise RuntimeError(f"Failed to load projection from {tiff_files[idx]}: {str(e)}")
+                raise RuntimeError(f"Failed to load projection from {tiff_files[projection_i]}: {str(e)}")
 
-        return np.array(projections), angles[valid_angles_mask]
+        return np.array(projections), angles[valid_indices]
 
     @staticmethod
     def apply_centershift(projections, center_shift):
@@ -69,7 +56,7 @@ class VolumeBuilder:
         :param center_shift:
         :return:
         """
-
+        print(f"Applying center shift of {center_shift} pixels to projection data of shape {projections.shape}")
         return scipy_shift(projections, (0, 0, center_shift), mode='nearest', order=1)
 
     @staticmethod
@@ -93,10 +80,7 @@ class VolumeBuilder:
         vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
 
         # Create projection geometry with center shift
-        proj_geom = astra.create_proj_geom('parallel',
-                                           1.,
-                                           detector_cols,
-                                           angles)
+        proj_geom = astra.create_proj_geom('parallel', 1., detector_cols, angles)
 
         # Create sinogram
         sino_id = astra.data2d.create('-sino', proj_geom, projection_slices)
@@ -128,101 +112,66 @@ class VolumeBuilder:
         return result  # Return the single slice
 
     def reconstruct(self):
+        """
+        Efficient slice-by-slice FBP reconstruction using CUDA
+        Args:
+            projections: shape (angles, rows, cols)
+            angles: projection angles in radians
+        """
+
+        projections, angles = self.load_projections()
+
+        n_slices = projections.shape[1]
+        detector_cols = projections.shape[2]
+
+        shifted_projections = VolumeBuilder.apply_centershift(projections, self.center_shift)
+
+        vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
+        proj_geom = astra.create_proj_geom('parallel', 1.0, detector_cols, angles)
+        proj_id = astra.create_projector('cuda', proj_geom, vol_geom)
+
+        # Pre-create configuration (reuse for all slices)
+        cfg = astra.astra_dict('FBP_CUDA')
+        cfg['ProjectorId'] = proj_id
+        cfg['option'] = {'FilterType': 'Ram-Lak'}
+
+        # Preallocate output array
+        result = np.zeros((n_slices, detector_cols, detector_cols))
+
         try:
-            # Load projections and get valid angles
-            projections, angles = self.load_projections()
-            print(f"Loaded projections shape: {projections.shape}")
+            # Process all slices
+            for i in tqdm(range(n_slices), desc="Reconstructing slices"):
+                # Create sinogram for this slice
+                sino_id = astra.data2d.create('-sino', proj_geom, shifted_projections[:, i, :])
+                rec_id = astra.data2d.create('-vol', vol_geom)
 
-            # Get dimensions from projections
-            n_proj, detector_rows, detector_cols = projections.shape
-            print(f"Dimensions - Projections: {n_proj}, Detector rows: {detector_rows}, Detector cols: {detector_cols}")
-
-            # Create volume geometry
-            vol_geom = astra.create_vol_geom(detector_cols, detector_cols, detector_rows)
-
-            center_col = detector_cols / 2 + self.center_shift
-            proj_geom = astra.create_proj_geom('parallel',
-                                               1.,
-                                               self.pixel_size,
-                                               detector_cols, detector_rows,
-                                               angles,
-                                               center_col)  # Add center column
-
-            if self.debug:
-                print("\nGeometry Info:")
-                print(f"Volume Geometry: {vol_geom}")
-                print(f"Projection Geometry: {proj_geom}")
-
-            projections_astra = projections.transpose(2, 0, 1)
-
-            # Create sinogram data
-            sino_id = astra.data3d.create('-sino', proj_geom, projections_astra)
-
-            # Create reconstruction volume
-            rec_id = astra.data3d.create('-vol', vol_geom)
-
-            if self.method == 'FBP':
-                cfg = astra.astra_dict('BP3D_CUDA')
+                # Update config with new data IDs
                 cfg['ProjectionDataId'] = sino_id
                 cfg['ReconstructionDataId'] = rec_id
-                cfg['option'] = {'FilterType': 'Ram-Lak'}
-                print("Using FBP reconstruction...")
 
-            else:  # SIRT
-                cfg = astra.astra_dict('SIRT3D_CUDA')
-                cfg['ProjectionDataId'] = sino_id
-                cfg['ReconstructionDataId'] = rec_id
-                print(f"Using SIRT reconstruction with {self.num_iterations} iterations...")
-
-            if self.debug:
-                print("\nAlgorithm Configuration:")
-                print(cfg)
-
-            # Create and run the algorithm
-            alg_id = astra.algorithm.create(cfg)
-
-            if self.method == 'SIRT':
-                astra.algorithm.run(alg_id, self.num_iterations)
-            else:
+                # Create and run algorithm
+                alg_id = astra.algorithm.create(cfg)
                 astra.algorithm.run(alg_id)
 
-            # Get the result
-            print("Retrieving result...")
-            result = astra.data3d.get(rec_id)
+                # Get result for this slice
+                slice_result = astra.data2d.get(rec_id)
+                result[i] = slice_result
 
-            if self.debug:
-                print("\nResult Info:")
-                print(f"Result shape: {result.shape}")
-                print(f"Result range: [{result.min():.2e}, {result.max():.2e}]")
-                print(f"Number of non-zero elements: {np.count_nonzero(result)}")
+                reco_channel = 'phase_reco' if self.channel == 'phase' else 'att_reco'
+                self.data_loader.save_tiff(
+                    channel=reco_channel,
+                    angle_i=i,
+                    data=slice_result,
+                    prefix='slice'
+                )
 
-            # Clean up ASTRA objects
-            astra.algorithm.delete(alg_id)
-            astra.data3d.delete(rec_id)
-            astra.data3d.delete(sino_id)
+                # Clean up slice-specific objects
+                astra.algorithm.delete(alg_id)
+                astra.data2d.delete(rec_id)
+                astra.data2d.delete(sino_id)
 
-            if not self.debug:
-                print('Saving tomographic slices...')
-                for i in tqdm(range(result.shape[0])):
-                    self.data_loader.save_tiff(
-                        channel=self.channel,
-                        angle_i=i,
-                        data=result[i])
-            else:
-                print("Debug mode: Skipping file saving")
+        finally:
+            # Clean up shared objects
+            astra.projector.delete(proj_id)
 
-            return result
-
-        except Exception as e:
-            if self.debug:
-                print("\nError occurred during reconstruction:")
-                print(f"Error type: {type(e).__name__}")
-                print(f"Error message: {str(e)}")
-                raise
-            else:
-                raise
-
-    @staticmethod
-    def get_available_fbp_filters():
-        """Returns list of available FBP filters"""
-        return ['Ram-Lak', 'Shepp-Logan', 'Cosine', 'Hamming', 'Hann', 'None']
+        return result

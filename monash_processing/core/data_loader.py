@@ -153,20 +153,21 @@ class DataLoader:
     def save_tiff(self,
                   channel: str,
                   angle_i: int,
-                  data: np.ndarray):
+                  data: np.ndarray,
+                  prefix='projection'):
         """Save results as separate TIFF files."""
         channel_dir = self.results_dir / channel
         channel_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            tiff_path = channel_dir / f'projection_{angle_i:04d}.tiff'
+            tiff_path = channel_dir / f'{prefix}_{angle_i:04d}.tiff'
 
             tifffile.imwrite(
                 tiff_path,
                 data
             )
         except Exception as e:
-            self.logger.error(f"Failed to save projection {angle_i} to {tiff_path}: {str(e)}")
+            self.logger.error(f"Failed to save tiff {angle_i} to {tiff_path}: {str(e)}")
 
     def perform_flatfield_correction(self, data: np.ndarray, flat_fields: np.ndarray,
                                      dark_current: np.ndarray) -> np.ndarray:
