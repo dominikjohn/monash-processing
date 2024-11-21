@@ -1,8 +1,9 @@
 from tqdm import tqdm
 from monash_processing.utils.utils import Utils
+from monash_processing.postprocessing.filters import RingFilter
 
 class ChunkManager:
-    def __init__(self, projections, chunk_size, angles, center_shift, channel='phase', debug=False, vector_mode=True):
+    def __init__(self, projections, chunk_size, angles, center_shift, channel='phase', debug=False, vector_mode=True, use_ring_filter=True):
         """
         Initialize the chunk manager
         Helper class to manage the processing of a large volume in chunks
@@ -30,6 +31,9 @@ class ChunkManager:
         self.debug = debug
         self.vector_mode = vector_mode
 
+        if use_ring_filter:
+            self.ring_filter = RingFilter()
+
         self.detector_rows = projections.shape[1]
         self.detector_cols = projections.shape[2]
         self.n_chunks = (self.detector_rows + chunk_size - 1) // chunk_size
@@ -48,6 +52,11 @@ class ChunkManager:
         # Extract chunk projections
         chunk_projs = self.projections[:, start_row:end_row, :]
 
+        # Apply ring filter if enabled
+        if self.ring_filter:
+            print('Applying ring filter...')
+            chunk_projs = self.ring_filter.filter_projections(chunk_projs)
+
         # In vector mode, the center shift is applied using an astra function
         # In a normal geometry, the projections need to be shifted "by hand" before reconstruction
         if not self.vector_mode:
@@ -55,7 +64,6 @@ class ChunkManager:
             # Apply center shift
             shifted_chunk = Utils.apply_centershift(chunk_projs, self.center_shift).transpose(1, 0, 2)
         else:
-            print('Not applying center shift in due to vector mode')
             shifted_chunk = chunk_projs.transpose(1, 0, 2)
 
         return {

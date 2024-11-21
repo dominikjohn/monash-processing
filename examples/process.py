@@ -75,6 +75,21 @@ center_shift = calibrator.find_center_shift(
 )
 print(f"Found optimal center shift: {center_shift}")
 
+##############################################################################################################
+# 3D center shift finder
+##############################################################################################################
+
+print('Find centershift')
+calibrator = ReconstructionCalibrator(loader)
+center_shift = calibrator.find_center_shift_3d(
+    max_angle=max_angle,
+    pixel_size=pixel_size,
+    num_projections=300,
+    test_range=(-50, 50)
+)
+
+##############################################################################################################
+
 volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, method='FBP')
 volume = volume_builder.reconstruct()
 
