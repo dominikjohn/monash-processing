@@ -37,7 +37,7 @@ class VectorReconstructor(BaseReconstructor):
 
         print("Original detector center:", chunk_proj_geom['Vectors'][0])
 
-        chunk_proj_geom_offset = astra.geom_postalignment(chunk_proj_geom, -self.center_shift)
+        chunk_proj_geom_offset = astra.geom_postalignment(chunk_proj_geom, self.center_shift)
 
         print("Shifted detector center:", chunk_proj_geom_offset['Vectors'][0])
 
