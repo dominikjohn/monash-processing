@@ -10,7 +10,7 @@ class OffsetReconstructor(BaseReconstructor):
         self.enable_short_scan = enable_short_scan
         self.volume_scaling = volume_scaling
 
-    def setup_geometry(self, chunk_info, angles):
+    def setup_geometry(self, chunk_info, angles, volume_scaling=1.0):
 
         chunk_vol_geom = astra.create_vol_geom(
             chunk_info['detector_cols'] * self.volume_scaling,

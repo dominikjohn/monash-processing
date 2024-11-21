@@ -5,7 +5,7 @@ class BaseReconstructor:
         self.enable_short_scan = enable_short_scan
         self.center_shift = center_shift
 
-    def setup_geometry(self, chunk_info, angles):
+    def setup_geometry(self, chunk_info, angles, volume_scaling=1.0):
         """Set up the reconstruction geometry"""
         chunk_vol_geom = astra.create_vol_geom(
             chunk_info['detector_cols'],

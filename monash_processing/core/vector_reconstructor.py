@@ -4,21 +4,25 @@ from monash_processing.core.base_reconstructor import BaseReconstructor
 
 class VectorReconstructor(BaseReconstructor):
 
-    def setup_geometry(self, chunk_info, angles):
-        # Completely override the geometry setup with vector-specific code
-        # No need for super() here unless you want to use the parent's geometry somehow
+    def setup_geometry(self, chunk_info, angles, volume_scaling=1.0):
+
         chunk_vol_geom = astra.create_vol_geom(
-            chunk_info['detector_cols'],
-            chunk_info['detector_cols'],
+            chunk_info['detector_cols'] * volume_scaling,
+            chunk_info['detector_cols'] * volume_scaling,
             chunk_info['chunk_rows']
         )
 
-        # Use very large source distance to approximate parallel beam
-        source_distance = 1e8  # 100 million units
-        detector_distance = 1e6  # 1 million units
+        scaling_factor = 1e6
+        source_distance = 21.5 * scaling_factor
+        detector_distance = 0.158 * scaling_factor
+        pixel_size = 1.444e-6 * scaling_factor
+
+        print("Source distance [m]:", source_distance / scaling_factor)
+        print("Detector distance [m]:", detector_distance / scaling_factor)
+        print("Detector pixel size [m]:", pixel_size / scaling_factor)
 
         chunk_proj_geom = astra.create_proj_geom(
-            'cone', 1.0, 1.0,
+            'cone', pixel_size, pixel_size,
             chunk_info['chunk_rows'],
             chunk_info['detector_cols'],
             angles,
