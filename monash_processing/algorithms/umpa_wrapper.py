@@ -44,8 +44,13 @@ class UMPAProcessor:
             (self.results_dir / channel).mkdir(parents=True, exist_ok=True)
         self.logger.info(f'Created results directory at {self.results_dir}')
 
-        # Initialize Dask client
-        self.client = Client(n_workers=n_workers, threads_per_worker=1, dashboard_address=None)
+        try:
+            self.client = default_client()
+            self.logger.info("Reusing existing Dask client")
+        except ValueError:
+            self.client = Client(n_workers=n_workers, threads_per_worker=1, dashboard_address=None)
+            self.logger.info(f"Initialized Dask client with {len(self.client.scheduler_info()['workers'])} workers")
+
         self.logger.info(f"Initialized Dask client with {len(self.client.scheduler_info()['workers'])} workers")
 
     def _process_single_projection(self, flats: np.ndarray, angle_i: int) -> Dict[str, Union[str, int, np.ndarray]]:
@@ -102,7 +107,7 @@ class UMPAProcessor:
         # Compute tasks in parallel
         self.logger.info(f"Starting parallel processing of {num_angles} projections")
         with ProgressBar():
-            results = compute(*tasks, scheduler="threads")
+            results = compute(*tasks, scheduler="distributed")
 
         return results
 
