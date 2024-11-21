@@ -52,12 +52,21 @@ class VolumeBuilder:
     def apply_centershift(projections, center_shift, cuda=True):
         """
         Apply center shift to projections.
-        :param projections: 3D numpy array
+        :param projections: 2D or 3D numpy array
         :param center_shift: float, shift in pixels
         :param cuda: bool, whether to use GPU
         :return: shifted projections array
         """
         print(f"Applying center shift of {center_shift} pixels to projection data of shape {projections.shape}")
+
+        # Determine dimensionality of input
+        ndim = projections.ndim
+        if ndim not in [2, 3]:
+            raise ValueError(f"Expected 2D or 3D array, got {ndim}D")
+
+        # Set shift vector based on dimensions
+        shift_vector = (0, center_shift) if ndim == 2 else (0, 0, center_shift)
+
         if cuda:
             try:
                 import cupy as cp
@@ -65,7 +74,7 @@ class VolumeBuilder:
                 projections_gpu = cp.asarray(projections)
                 # Perform shift
                 shifted = cp.ndimage.shift(projections_gpu,
-                                           shift=(0, 0, center_shift),
+                                           shift=shift_vector,
                                            mode='nearest',
                                            order=0)
                 # Transfer back to CPU
@@ -75,7 +84,7 @@ class VolumeBuilder:
                 cuda = False
 
         if not cuda:
-            return scipy_shift(projections, (0, 0, center_shift),
+            return scipy_shift(projections, shift_vector,
                                mode='nearest', order=0)
 
     @staticmethod
@@ -143,8 +152,6 @@ class VolumeBuilder:
         n_slices = projections.shape[1]
         detector_cols = projections.shape[2]
 
-        shifted_projections = VolumeBuilder.apply_centershift(projections, self.center_shift)
-
         vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
         proj_geom = astra.create_proj_geom('parallel', 1.0, detector_cols, angles)
         proj_id = astra.create_projector('cuda', proj_geom, vol_geom)
@@ -160,8 +167,10 @@ class VolumeBuilder:
         try:
             # Process all slices
             for i in tqdm(range(n_slices), desc="Reconstructing slices"):
+                shifted_projection = VolumeBuilder.apply_centershift(projections[:, i, :], self.center_shift)
+
                 # Create sinogram for this slice
-                sino_id = astra.data2d.create('-sino', proj_geom, shifted_projections[:, i, :])
+                sino_id = astra.data2d.create('-sino', proj_geom, shifted_projection)
                 rec_id = astra.data2d.create('-vol', vol_geom)
 
                 # Update config with new data IDs
