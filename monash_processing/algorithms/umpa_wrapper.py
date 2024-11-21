@@ -79,7 +79,7 @@ class UMPAProcessor:
             self.logger.error(f"Failed to process angle {angle_i}: {e}")
             return {'angle': angle_i, 'status': 'error', 'error': str(e)}
 
-    def process_projections(self, flats: np.ndarray, num_angles: int) -> List[Dict]:
+    def process_projections(self, num_angles: int) -> List[Dict]:
         """
         Process all projections in parallel using Dask.
 
@@ -92,7 +92,7 @@ class UMPAProcessor:
         """
         n_workers = self.n_workers
 
-        cluster = LocalCluster(n_workers=n_workers)
+        cluster = LocalCluster(n_workers=n_workers, threads_per_worker=1)
         # No active client; create a new one
         client = Client(cluster)
 
@@ -107,6 +107,6 @@ class UMPAProcessor:
         # Compute tasks in parallel
         self.logger.info(f"Starting parallel processing of {num_angles} projections")
         with ProgressBar():
-            results = compute(*tasks)
+            results = client.compute(*tasks)
 
         return results
