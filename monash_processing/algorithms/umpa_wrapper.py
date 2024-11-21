@@ -7,6 +7,8 @@ from monash_processing.core.data_loader import DataLoader
 from dask import delayed, compute
 from dask.distributed import LocalCluster, Client
 from dask.diagnostics import ProgressBar
+from monash_processing.utils.utils import Utils
+
 
 class UMPAProcessor:
     """Wrapper for UMPA phase retrieval with parallel processing using Dask."""
@@ -92,6 +94,14 @@ class UMPAProcessor:
         """
         n_workers = self.n_workers
 
+        to_process = Utils.check_existing_files(self.results_dir, num_angles, min_size_kb=5, channel='dx')
+
+        if not to_process:
+            print("All files already processed successfully!")
+            return []
+        else:
+            print(f"Starting parallel processing for {len(to_process)} projections...")
+
         cluster = LocalCluster(n_workers=n_workers, threads_per_worker=1)
         # No active client; create a new one
         client = Client(cluster)
@@ -107,6 +117,6 @@ class UMPAProcessor:
         # Compute tasks in parallel
         self.logger.info(f"Starting parallel processing of {num_angles} projections")
         with ProgressBar():
-            results = compute(*tasks)
+            results = client.compute(*tasks)
 
         return results
