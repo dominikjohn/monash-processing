@@ -31,7 +31,7 @@ class VectorReconstructor(BaseReconstructor):
         chunk_proj_geom_offset = astra.geom_postalignment(chunk_proj_geom, self.center_shift)
 
         # Create ASTRA objects
-        proj_id = astra.create_projector('cuda3d', chunk_proj_geom, chunk_vol_geom)
+        proj_id = astra.create_projector('cuda3d', chunk_proj_geom_offset, chunk_vol_geom)
         sino_id = astra.data3d.create('-proj3d', chunk_proj_geom_offset, chunk_data)
         recon_id = astra.data3d.create('-vol', chunk_vol_geom)
 
