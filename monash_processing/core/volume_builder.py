@@ -66,7 +66,7 @@ class VolumeBuilder:
         :return: shifted projections array
         """
 
-        if(center_shift == 0):
+        if center_shift == 0:
             print("Center shift is 0, skipping shift")
             return projections
 
