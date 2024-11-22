@@ -31,14 +31,14 @@ class PhaseIntegrator:
 
         # Set a threshold value for the cleanup based on the UMPA error map (99th percentile)
         thl = np.round(np.percentile(f, 99))
-        dx = np.clip(self._cleanup_rio(dx, f, thl), -8, 8)
-        dy = np.clip(self._cleanup_rio(dy, f, thl), -8, 8)
+        dx = np.clip(self.cleanup_rio(dx, f, thl), -8, 8)
+        dy = np.clip(self.cleanup_rio(dy, f, thl), -8, 8)
 
-        dx -= self._img_poly_fit(dx, order=1, mask=mask)
-        dy -= self._img_poly_fit(dy, order=1, mask=mask)
+        dx -= PhaseIntegrator.img_poly_fit(dx, order=1, mask=mask)
+        dy -= PhaseIntegrator.img_poly_fit(dy, order=1, mask=mask)
 
-        mdx = self._antisym_mirror_im(dx, 'dx')
-        mdy = self._antisym_mirror_im(dy, 'dy')
+        mdx = PhaseIntegrator.antisym_mirror_im(dx, 'dx')
+        mdy = PhaseIntegrator.antisym_mirror_im(dy, 'dy')
 
         k = fft.fftfreq(mdx.shape[1])
         l = fft.fftfreq(mdy.shape[0])
@@ -62,7 +62,7 @@ class PhaseIntegrator:
         self.data_loader.save_tiff('phi', projection_i, phi_corr)
 
     @staticmethod
-    def _antisym_mirror_im(im, diffaxis, mode='reflect'):
+    def antisym_mirror_im(im, diffaxis, mode='reflect'):
         '''
         Expands an image by mirroring it and inverting it. Can reduce artifacts in phase integration
 
@@ -97,7 +97,7 @@ class PhaseIntegrator:
         return m_im
 
     @staticmethod
-    def _cleanup_rio(image, f, thl):
+    def cleanup_rio(image, f, thl):
         '''
         Corrects differential phase image for wrapping/bad UMPA fits.
         Requires rasterio to be installed.
@@ -158,7 +158,7 @@ class PhaseIntegrator:
         return rio_im
 
     @staticmethod
-    def _img_poly_fit(a, order=1, mask=None):
+    def img_poly_fit(a, order=1, mask=None):
         """
         Returns a best fit of a to a 2D polynomial of given order, using only values in the mask.
 
