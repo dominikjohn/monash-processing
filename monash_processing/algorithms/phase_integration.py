@@ -4,6 +4,8 @@ import rasterio.fill as rs
 import scipy.constants
 from monash_processing.core.data_loader import DataLoader
 from scipy import fft
+from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
+
 
 class PhaseIntegrator:
 
@@ -22,17 +24,14 @@ class PhaseIntegrator:
         # Load dx, dy, f
         dx = self.data_loader.load_processed_projection(projection_i, 'dx')
         dy = self.data_loader.load_processed_projection(projection_i, 'dy')
-        f = self.data_loader.load_processed_projection(projection_i, 'f')
 
         # Create a mask for the ramp correction based on the previous user input
         mask = np.zeros_like(dx, dtype=bool)
         mask[self.area_left] = True
         mask[self.area_right] = True
 
-        # Set a threshold value for the cleanup based on the UMPA error map (99th percentile)
-        thl = np.round(np.percentile(f, 99))
-        dx = np.clip(self.cleanup_rio(dx, f, thl), -8, 8)
-        dy = np.clip(self.cleanup_rio(dy, f, thl), -8, 8)
+        dx = np.clip(BadPixelMask.correct_bad_pixels(dx), -8, 8)
+        dy = np.clip(BadPixelMask.correct_bad_pixels(dy), -8, 8)
 
         dx -= PhaseIntegrator.img_poly_fit(dx, order=1, mask=mask)
         dy -= PhaseIntegrator.img_poly_fit(dy, order=1, mask=mask)
@@ -94,6 +93,33 @@ class PhaseIntegrator:
         else:
             raise ValueError('unknown differential, please select dx or dy')
 
+        return m_im
+
+    @staticmethod
+    def sym_mirror_im(im, mode='reflect'):
+        '''
+        Expands an image by mirroring it and inverting it. Can reduce artifacts in phase integration
+
+        according to Bon 2012
+
+        Parameters
+        ----------
+        im : 2D-array
+            Image to be expanded
+
+        diffaxis : str
+            dx or dy
+            inicates which differential is taken
+
+        mode : str, Default='reflect'
+            Mode for using np.pad(). Can be 'reflect' or 'edge'...
+
+        Returns
+        --------
+        m_im : 2D-array
+            Mirrored image, shape=2*im.shape()
+        '''
+        m_im = np.pad(im, ((im.shape[0], 0), (im.shape[1], 0)), mode=mode)
         return m_im
 
     @staticmethod

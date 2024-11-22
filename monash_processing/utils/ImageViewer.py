@@ -52,3 +52,40 @@ class ImageViewer:
         if vmin < vmax:  # Only update if min is less than max
             self.img_display.set_clim(vmin, vmax)
             self.fig.canvas.draw_idle()
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+class ImageViewerPhi:
+    def __init__(self, image, title=None, vmin=0, vmax=np.pi):
+        """
+        Create and display an interactive image viewer.
+
+        Args:
+            image (np.ndarray): 2D array to display
+            title (str, optional): Title for the plot
+            vmin (float, optional): Minimum value for color scaling
+            vmax (float, optional): Maximum value for color scaling
+        """
+        self.image = image
+
+        # Create figure and axes
+        self.fig, self.ax_img = plt.subplots(figsize=(8, 8))
+
+        # Display image
+        self.img_display = self.ax_img.imshow(
+            image,
+            vmin=vmin,
+            vmax=vmax,
+            cmap='gray'
+        )
+
+        if title:
+            self.ax_img.set_title(title)
+
+        # Add colorbar
+        self.colorbar = plt.colorbar(self.img_display, ax=self.ax_img)
+
+        plt.tight_layout()
+        plt.show()

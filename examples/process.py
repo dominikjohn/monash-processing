@@ -14,7 +14,7 @@ import numpy as np
 scan_path = Path("/data/mct/22203/")
 scan_name = "P6_ReverseOrder"
 pixel_size = 1.444e-6 # m
-energy = 25 # keV
+energy = 25000 # eV
 prop_distance = 0.158 #
 max_angle = 182
 umpa_w = 1
