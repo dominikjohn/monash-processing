@@ -25,7 +25,7 @@ class ImageViewer:
         self.abs_max = np.max(image)
 
         # Display image
-        self.img_display = self.ax_img.imshow(image, vmin=self.vmin_init, vmax=self.vmax_init)
+        self.img_display = self.ax_img.imshow(image, vmin=self.vmin_init, vmax=self.vmax_init, cmap='gray')
         if title:
             self.ax_img.set_title(title)
 

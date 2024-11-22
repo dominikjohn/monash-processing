@@ -27,8 +27,6 @@ loader = DataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
 
-
-
 projection_i = 0
 
 raw_I = np.average(loader.load_projections(projection_i=projection_i), axis=0)
