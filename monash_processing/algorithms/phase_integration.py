@@ -30,8 +30,11 @@ class PhaseIntegrator:
         mask[self.area_left] = True
         mask[self.area_right] = True
 
-        dx = np.clip(BadPixelMask.correct_bad_pixels(dx), -8, 8)
-        dy = np.clip(BadPixelMask.correct_bad_pixels(dy), -8, 8)
+        dx = BadPixelMask.correct_bad_pixels(dx)[0]
+        dy = BadPixelMask.correct_bad_pixels(dy)[0]
+
+        dx = np.clip(dx, -8, 8)
+        dy = np.clip(dy, -8, 8)
 
         dx -= PhaseIntegrator.img_poly_fit(dx, order=1, mask=mask)
         dy -= PhaseIntegrator.img_poly_fit(dy, order=1, mask=mask)
@@ -51,7 +54,7 @@ class PhaseIntegrator:
 
         phi_corr = phi_raw * (self.wavevec / self.prop_distance) * (self.pixel_size ** 2)
 
-        p_phi_corr = self._img_poly_fit(phi_corr, order=1, mask=mask)
+        p_phi_corr = PhaseIntegrator.img_poly_fit(phi_corr, order=1, mask=mask)
         phi_corr -= p_phi_corr
 
         if np.percentile(phi_corr, 99) > 1E3:

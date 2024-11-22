@@ -78,17 +78,17 @@ import scipy.fft as fft
 # Load dx, dy, f
 dx = loader.load_processed_projection(proj, 'dx')
 dy = loader.load_processed_projection(proj, 'dy')
-f = loader.load_processed_projection(proj, 'f')
 
 # Create a mask for the ramp correction based on the previous user input
 mask = np.zeros_like(dx, dtype=bool)
 mask[area_left] = True
 mask[area_right] = True
 
-# Set a threshold value for the cleanup based on the UMPA error map (99th percentile)
-thl = np.round(np.percentile(f, 99))
-dx = np.clip(BadPixelMask.correct_bad_pixels(dx), -8, 8)
-dy = np.clip(BadPixelMask.correct_bad_pixels(dy), -8, 8)
+dx = BadPixelMask.correct_bad_pixels(dx)[0]
+dy = BadPixelMask.correct_bad_pixels(dy)[0]
+
+dx = np.clip(dx, -8, 8)
+dy = np.clip(dy, -8, 8)
 
 dx -= PhaseIntegrator.img_poly_fit(dx, order=1, mask=mask)
 dy -= PhaseIntegrator.img_poly_fit(dy, order=1, mask=mask)
