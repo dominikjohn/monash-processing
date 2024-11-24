@@ -144,6 +144,14 @@ class MultiPositionDataLoader(DataLoader):
             projection_i: If provided, loads only the specified projection index
             step_i: If provided, loads only from the specified file index
             position: If provided, loads only from the specified position
+
+        Returns:
+            For single projection (projection_i specified):
+                - Without position specified: array of shape (N, X, Y) where N is number of positions
+                - With position specified: array of shape (X, Y)
+            For multiple projections:
+                - Without position specified: array of shape (N, num_angles, X, Y)
+                - With position specified: array of shape (num_angles, X, Y)
         """
         if step_i is not None:
             if step_i >= len(self.h5_files):
@@ -166,11 +174,11 @@ class MultiPositionDataLoader(DataLoader):
                             if projection_i >= dataset.shape[0]:
                                 raise ValueError(f"Projection index {projection_i} out of range "
                                                  f"(max: {dataset.shape[0] - 1}) in file {h5_file}")
-                            data = dataset[projection_i:projection_i + 1][0]
+                            data = dataset[projection_i:projection_i + 1][0]  # Remove singleton dimension
                         else:
                             data = dataset[:]
 
-                        file_projections.append(np.squeeze(data))
+                        file_projections.append(data)
 
                 projections.append(file_projections)
             except Exception as e:
@@ -179,11 +187,11 @@ class MultiPositionDataLoader(DataLoader):
 
         projections_array = np.array(projections)
 
-        # Reshape array based on inputs
-        if step_i is not None:
-            projections_array = projections_array[0]
+        # Remove unnecessary dimensions
+        if len(h5_files_to_load) == 1:
+            projections_array = projections_array[0]  # Remove file dimension
         if position is not None:
-            projections_array = projections_array[..., 0, :, :]
+            projections_array = projections_array[0]  # Remove position dimension when specific position requested
 
         self.logger.info(f"Loaded projections with shape {projections_array.shape}")
         return projections_array
