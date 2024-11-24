@@ -4,10 +4,10 @@ from monash_processing.core.data_loader import DataLoader
 from pathlib import Path
 import numpy as np
 from tqdm import tqdm
+import logging
+import re
 
 class MultiPositionDataLoader(DataLoader):
-    """Handles loading and organizing scan data from H5 files with multiple positions."""
-
     def __init__(self, scan_path: Union[str, Path], scan_name: str, skip_positions: Optional[Set[str]] = None):
         """
         Initialize the multi-position data loader.
@@ -17,8 +17,32 @@ class MultiPositionDataLoader(DataLoader):
             scan_name: Name of the scan
             skip_positions: Set of position indices to skip (e.g. {'03_03'})
         """
-        super().__init__(scan_path, scan_name)
+        self.scan_path = Path(scan_path)
+        self.scan_name = scan_name
+        self.logger = logging.getLogger(__name__)
+        self.results_dir = self.scan_path / 'results' / self.scan_name
         self.skip_positions = skip_positions or set()
+
+        def natural_sort_key(path):
+            numbers = [int(text) if text.isdigit() else text.lower()
+                       for text in re.split('([0-9]+)', str(path))]
+            return numbers
+
+        # Updated pattern to match both cases:
+        # 1. Files that end with .h5
+        # 2. Files that end with _number.h5
+        self.h5_files = sorted(
+            [f for f in self.scan_path.glob(f"{scan_name}*.h5")
+             if re.search(r'(\.h5$)|(_\d+\.h5$)', str(f))],
+            key=natural_sort_key
+        )
+
+        if not self.h5_files:
+            raise FileNotFoundError(f"No H5 files found matching pattern {scan_name}*.h5 in {scan_path}")
+
+        self.logger.info(f"Found {len(self.h5_files)} H5 files:")
+        for h5_file in self.h5_files:
+            self.logger.info(f"  {h5_file}")
 
         # Get all available positions from first H5 file
         with h5py.File(self.h5_files[0], 'r') as f:
