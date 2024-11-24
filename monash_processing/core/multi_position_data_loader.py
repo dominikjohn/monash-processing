@@ -170,7 +170,7 @@ class MultiPositionDataLoader(DataLoader):
                         else:
                             data = dataset[:]
 
-                        file_projections.append(data)
+                        file_projections.append(np.squeeze(data))
 
                 projections.append(file_projections)
             except Exception as e:
