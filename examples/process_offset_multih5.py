@@ -1,3 +1,4 @@
+from monash_processing.core.multi_position_data_loader import MultiPositionDataLoader
 from monash_processing.algorithms.phase_integration import PhaseIntegrator
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
@@ -22,7 +23,7 @@ matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
 
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
-scan_name = "K3_3H_ReverseOrder"
+scan_name = "K21N_sample"
 pixel_size = 1.444e-6 # m
 energy = 25 # eV
 prop_distance = 0.158 #
@@ -32,7 +33,7 @@ n_workers = 50
 
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
-loader = DataLoader(scan_path, scan_name)
+loader = MultiPositionDataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
 
