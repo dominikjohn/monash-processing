@@ -87,6 +87,6 @@ class RingFilter:
                 nchunk=self.nchunk
             )
 
-            filtered_projections[:, row, :] = filtered_sinogram
+            filtered_projections[:, row, :] = filtered_sinogram[:, 0, :]
 
         return filtered_projections
