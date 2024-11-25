@@ -12,6 +12,8 @@ class VectorReconstructor(BaseReconstructor):
             chunk_info['chunk_rows']
         )
 
+        print("Chunk volume geometry:", chunk_vol_geom)
+
         scaling_factor = 1e6
         source_distance = 21.5 * scaling_factor
         detector_distance = 0.158 * scaling_factor
