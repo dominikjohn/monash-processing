@@ -99,7 +99,7 @@ class ReconstructionCalibrator:
 
         return chosen_shift
 
-    def find_center_shift_3d(self, max_angle, pixel_size, slice_idx=None, num_projections=100, test_range=(-50, 50),
+    def find_center_shift_3d(self, max_angle, enable_short_scan, slice_idx=None, num_projections=100, test_range=(-50, 50),
                              preview_chunk_size=20):
         """
         Creates reconstructions with different center shifts using cone beam geometry and saves them as files.
@@ -156,7 +156,7 @@ class ReconstructionCalibrator:
                 raise RuntimeError(f"Failed to load projection {idx}: {str(e)}")
 
         # Create reconstructor instance
-        reconstructor = VectorReconstructor(enable_short_scan=True)
+        reconstructor = VectorReconstructor(enable_short_scan=enable_short_scan)
 
         shifts = np.linspace(test_range[0], test_range[1], 10)
         print("Computing reconstructions with different center shifts...")

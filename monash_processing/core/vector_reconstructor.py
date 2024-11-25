@@ -7,8 +7,8 @@ class VectorReconstructor(BaseReconstructor):
     def setup_geometry(self, chunk_info, angles, volume_scaling=1.0):
 
         chunk_vol_geom = astra.create_vol_geom(
-            chunk_info['detector_cols'] * volume_scaling,
-            chunk_info['detector_cols'] * volume_scaling,
+            int(chunk_info['detector_cols'] * volume_scaling),
+            int(chunk_info['detector_cols'] * volume_scaling),
             chunk_info['chunk_rows']
         )
 

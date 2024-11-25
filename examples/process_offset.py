@@ -76,7 +76,7 @@ print('Find centershift')
 calibrator = ReconstructionCalibrator(loader)
 center_shift = calibrator.find_center_shift_3d(
     max_angle=max_angle,
-    pixel_size=pixel_size,
+    enable_short_scan=False,
     num_projections=20,
     test_range=(-2000, 2000)
 )
