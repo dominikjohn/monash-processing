@@ -42,6 +42,7 @@ class VectorReconstructor(BaseReconstructor):
         chunk_vol_geom, chunk_proj_geom = self.setup_geometry(chunk_info, angles)
 
         chunk_proj_geom_offset = astra.geom_postalignment(chunk_proj_geom, self.center_shift)
+        print("Chunk projection geometry after shift:", chunk_proj_geom_offset)
 
         # Create ASTRA objects
         proj_id = astra.create_projector('cuda3d', chunk_proj_geom_offset, chunk_vol_geom)
