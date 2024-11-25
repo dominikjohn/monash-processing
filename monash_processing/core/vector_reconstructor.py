@@ -4,7 +4,7 @@ from monash_processing.core.base_reconstructor import BaseReconstructor
 
 class VectorReconstructor(BaseReconstructor):
 
-    def setup_geometry(self, chunk_info, angles, volume_scaling=1.0):
+    def setup_geometry(self, chunk_info, angles, volume_scaling=2.0):
 
         chunk_vol_geom = astra.create_vol_geom(
             int(chunk_info['detector_cols'] * volume_scaling),

@@ -77,8 +77,8 @@ calibrator = ReconstructionCalibrator(loader)
 center_shift = calibrator.find_center_shift_3d(
     max_angle=max_angle,
     enable_short_scan=False,
-    num_projections=20,
-    test_range=(-2000, 2000)
+    num_projections=1000,
+    test_range=(800, 830)
 )
 print(f"Found optimal center shift: {center_shift}")
 
