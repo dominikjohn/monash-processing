@@ -70,7 +70,7 @@ class RingFilter:
 
         for row in tqdm(range(projections.shape[1]), desc="Applying ring filter"):
             # Extract sinogram for current row
-            sinogram = projections[:, row, :]
+            sinogram = projections[:, row:row+1, :]
 
             # Apply TomoPy's ring removal filter
             filtered_sinogram = tomopy.misc.corr.remove_ring(
