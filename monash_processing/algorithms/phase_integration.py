@@ -36,8 +36,8 @@ class PhaseIntegrator:
         dx = np.clip(dx, -8, 8)
         dy = np.clip(dy, -8, 8)
 
-        dx -= PhaseIntegrator.img_poly_fit(dx, order=1, mask=mask)
-        dy -= PhaseIntegrator.img_poly_fit(dy, order=1, mask=mask)
+        #dx -= PhaseIntegrator.img_poly_fit(dx, order=1, mask=mask)
+        #dy -= PhaseIntegrator.img_poly_fit(dy, order=1, mask=mask)
 
         mdx = PhaseIntegrator.antisym_mirror_im(dx, 'dx')
         mdy = PhaseIntegrator.antisym_mirror_im(dy, 'dy')
