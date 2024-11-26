@@ -71,6 +71,7 @@ parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 stitcher = ProjectionStitcher(loader, 817)
 # For a different range of shifts
 fig, slider = stitcher.visualize_alignment(proj_index=1, shift_range=(500, 2500))
+plt.show()
 phase_stitcher.process_and_save_range(0)
 
 # 5. Reconstruct volume
