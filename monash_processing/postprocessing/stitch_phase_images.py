@@ -3,7 +3,9 @@ from pathlib import Path
 from typing import Optional, Tuple
 import logging
 from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
-from tqdm import tqdm
+import dask
+from dask.distributed import Client, LocalCluster
+from tqdm.auto import tqdm
 
 class ProjectionStitcher:
     """Handles stitching of processed projections with advanced intensity normalization and blending."""
@@ -118,39 +120,61 @@ class ProjectionStitcher:
 
         return composite, stats
 
-    def process_and_save_range(self, start_idx: int, end_idx: int,
-                               channel: str) -> list:
+    def process_and_save_range(self, start_idx: int, end_idx: int, channel: str) -> list:
         """
-        Process and save a range of projection pairs.
+        Process and save a range of projection pairs using Dask for parallel processing.
 
         Args:
             start_idx: Starting projection index
             end_idx: Ending projection index (inclusive)
-            output_channel: Name of the output channel directory
-            save_stats: Whether to save stitching statistics
+            channel: Name of the input channel directory
 
         Returns:
             list: List of stitching statistics for each processed pair
         """
-        stats_list = []
+        # Set up local Dask cluster with 50 single-threaded workers
+        cluster = LocalCluster(
+            n_workers=50,
+            threads_per_worker=1,
+            processes=True,
+        )
+        client = Client(cluster)
 
-        for idx in tqdm(range(start_idx, end_idx + 1)):
-            try:
-                # Stitch the projections
-                stitched, stats = self.stitch_projection_pair(idx, channel)
-                stats_list.append(stats)
+        try:
+            # Create processing function for a single projection
+            def process_single_projection(idx):
+                try:
+                    # Stitch the projections
+                    stitched, stats = self.stitch_projection_pair(idx, channel)
 
-                # Save the result
-                self.data_loader.save_tiff(
-                    channel=channel + '_stitched',
-                    angle_i=idx,
-                    data=stitched
-                )
+                    # Save the result
+                    self.data_loader.save_tiff(
+                        channel=channel + '_stitched',
+                        angle_i=idx,
+                        data=stitched
+                    )
 
-                self.logger.info(f"Successfully processed {channel}-projection {idx}: {stats}")
+                    self.logger.info(f"Successfully processed {channel}-projection {idx}: {stats}")
+                    return stats
 
-            except Exception as e:
-                self.logger.error(f"Failed to process {channel} projection {idx}: {str(e)}")
-                raise
+                except Exception as e:
+                    self.logger.error(f"Failed to process {channel} projection {idx}: {str(e)}")
+                    raise
 
-        return stats_list
+            # Create list of tasks
+            tasks = [dask.delayed(process_single_projection)(idx)
+                     for idx in range(start_idx, end_idx + 1)]
+
+            # Compute all tasks with progress bar
+            stats_list = []
+            with tqdm(total=len(tasks), desc="Processing projections") as pbar:
+                for future in client.compute(tasks):
+                    stats_list.append(future)
+                    pbar.update(1)
+
+            return stats_list
+
+        finally:
+            # Clean up Dask cluster and client
+            client.close()
+            cluster.close()
