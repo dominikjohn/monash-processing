@@ -147,10 +147,10 @@ class ProjectionStitcher:
             # Create processing function that returns None if file exists
             def process_single_projection(idx):
                 # Check if output already exists
-                output_path = self.data_loader.get_projection_path(
-                    channel=channel + '_stitched',
-                    angle_i=idx
-                )
+                output_path = (self.data_loader.results_dir /
+                               (channel + '_stitched') /
+                               f'projection_{idx:04d}.tiff')
+
                 if output_path.exists():
                     return None
 
