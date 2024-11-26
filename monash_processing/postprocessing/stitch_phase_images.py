@@ -6,6 +6,7 @@ from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
 import dask
 from dask.distributed import Client, LocalCluster
 from tqdm.auto import tqdm
+import dask.bag as db
 
 class ProjectionStitcher:
     """Handles stitching of processed projections with advanced intensity normalization and blending."""
@@ -132,49 +133,55 @@ class ProjectionStitcher:
         Returns:
             list: List of stitching statistics for each processed pair
         """
-        # Set up local Dask cluster with 50 single-threaded workers
+        # Set up local Dask cluster with simplified config
         cluster = LocalCluster(
             n_workers=50,
             threads_per_worker=1,
-            processes=True,
+            memory_limit='4GB',  # Limit memory per worker
+            lifetime_stagger='2 seconds',  # Stagger worker startups
+            lifetime_restart=True,  # Automatically restart workers
         )
         client = Client(cluster)
 
         try:
-            # Create processing function for a single projection
+            # Create processing function that returns None if file exists
             def process_single_projection(idx):
-                try:
-                    # Stitch the projections
-                    stitched, stats = self.stitch_projection_pair(idx, channel)
+                # Check if output already exists
+                output_path = self.data_loader.get_projection_path(
+                    channel=channel + '_stitched',
+                    angle_i=idx
+                )
+                if output_path.exists():
+                    return None
 
-                    # Save the result
+                # Process if needed
+                try:
+                    stitched, stats = self.stitch_projection_pair(idx, channel)
                     self.data_loader.save_tiff(
                         channel=channel + '_stitched',
                         angle_i=idx,
                         data=stitched
                     )
-
                     self.logger.info(f"Successfully processed {channel}-projection {idx}: {stats}")
                     return stats
-
                 except Exception as e:
                     self.logger.error(f"Failed to process {channel} projection {idx}: {str(e)}")
                     raise
 
-            # Create list of tasks
-            tasks = [dask.delayed(process_single_projection)(idx)
-                     for idx in range(start_idx, end_idx + 1)]
+            # Create dask bag of indices and process
+            indices = list(range(start_idx, end_idx + 1))
+            bag = db.from_sequence(indices, npartitions=50)
 
-            # Compute all tasks with progress bar
+            # Process and collect results
             stats_list = []
-            with tqdm(total=len(tasks), desc="Processing projections") as pbar:
-                for future in client.compute(tasks):
-                    stats_list.append(future)
-                    pbar.update(1)
+            futures = bag.map(process_single_projection).compute()
+
+            # Filter out None results (already processed files)
+            stats_list = [s for s in futures if s is not None]
 
             return stats_list
 
         finally:
-            # Clean up Dask cluster and client
+            # Clean up
             client.close()
             cluster.close()
