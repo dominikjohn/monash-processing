@@ -11,7 +11,6 @@ class VectorReconstructor(BaseReconstructor):
         print('Using offset ', offset)
         n_cols = int(detector_width + (2 * offset))
 
-
         chunk_vol_geom = astra.create_vol_geom(
             n_cols,
             n_cols,
@@ -53,6 +52,9 @@ class VectorReconstructor(BaseReconstructor):
         # Set up geometry
         print('Using center_shift:', center_shift)
         chunk_vol_geom_offset, chunk_proj_geom_offset = self.setup_geometry(chunk_info, angles, center_shift)
+
+        print('Setup projection geometry: ', chunk_proj_geom_offset)
+        print('Setup volume geometry: ', chunk_vol_geom_offset)
 
         #chunk_proj_geom_offset = astra.geom_postalignment(chunk_proj_geom, self.center_shift)
         #print("Chunk projection geometry after shift:", chunk_proj_geom_offset)
