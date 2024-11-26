@@ -1,6 +1,7 @@
 import astra
 
 from monash_processing.core.base_reconstructor import BaseReconstructor
+import numpy as np
 
 class VectorReconstructor(BaseReconstructor):
 
@@ -9,7 +10,7 @@ class VectorReconstructor(BaseReconstructor):
         detector_width = chunk_info['detector_cols']
         offset = int(self.center_shift)
         print('Using offset ', offset)
-        n_cols = int(detector_width + (2 * offset))
+        n_cols = int(detector_width + (2 * np.abs(offset)))
 
         chunk_vol_geom = astra.create_vol_geom(
             n_cols,
