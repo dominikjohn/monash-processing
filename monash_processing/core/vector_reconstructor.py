@@ -18,8 +18,8 @@ class VectorReconstructor(BaseReconstructor):
             chunk_info['chunk_rows'],
             -offset, # min_x
             detector_width + offset, # max_x
-            -n_cols // 2, # min_y
-            n_cols // 2, # max_y
+            -offset, # min_y
+            detector_width + offset, # max_y
             -chunk_info['chunk_rows'] // 2, # min_z
             chunk_info['chunk_rows'] // 2 # max_z
         )
