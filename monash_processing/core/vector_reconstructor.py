@@ -15,12 +15,12 @@ class VectorReconstructor(BaseReconstructor):
             n_cols,
             n_cols,
             chunk_info['chunk_rows'],
-            min_x=-offset,
-            max_x=detector_width + offset,
-            min_y=-n_cols // 2,
-            max_y=n_cols // 2,
-            min_z=-chunk_info['chunk_rows'] // 2,
-            max_z=chunk_info['chunk_rows'] // 2
+            minx=-offset,
+            maxx=detector_width + offset,
+            miny=-n_cols // 2,
+            maxy=n_cols // 2,
+            minz=-chunk_info['chunk_rows'] // 2,
+            maxz=chunk_info['chunk_rows'] // 2
         )
 
         print("Chunk volume geometry:", chunk_vol_geom)

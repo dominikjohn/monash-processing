@@ -68,11 +68,11 @@ area_right = np.s_[50:-50, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
 parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 
-stitcher = ProjectionStitcher(loader, 817)
+#stitcher = ProjectionStitcher(loader, 817)
 # For a different range of shifts
-fig, slider = stitcher.visualize_alignment(proj_index=1, shift_range=(500, 2500))
-plt.show()
-phase_stitcher.process_and_save_range(0)
+#fig, slider = stitcher.visualize_alignment(proj_index=1, shift_range=(500, 2500))
+#plt.show()
+#phase_stitcher.process_and_save_range(0)
 
 # 5. Reconstruct volume
 print("Reconstructing volume")
@@ -83,7 +83,7 @@ center_shift = calibrator.find_center_shift_3d(
     max_angle=max_angle,
     enable_short_scan=False,
     num_projections=500,
-    test_range=(800, 830)
+    test_range=(-2000, 2000)
 )
 print(f"Found optimal center shift: {center_shift}")
 
