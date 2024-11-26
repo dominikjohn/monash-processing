@@ -183,12 +183,12 @@ class ProjectionStitcher:
             ax4.set_title('Composite (Averaged Overlap)')
 
             # Show overlap region boundaries
-            if np.any(overlap_mask):
-                overlap_cols = np.where(np.any(overlap_mask, axis=0))[0]
-                if len(overlap_cols) > 0:
-                    ax4.axvline(x=overlap_cols[0], color='r', linestyle='--', alpha=0.5, label='Overlap start')
-                    ax4.axvline(x=overlap_cols[-1], color='r', linestyle='--', alpha=0.5, label='Overlap end')
-                    ax4.legend()
+            #if np.any(overlap_mask):
+            #    overlap_cols = np.where(np.any(overlap_mask, axis=0))[0]
+            #    if len(overlap_cols) > 0:
+            #        ax4.axvline(x=overlap_cols[0], color='r', linestyle='--', alpha=0.5, label='Overlap start')
+            #        ax4.axvline(x=overlap_cols[-1], color='r', linestyle='--', alpha=0.5, label='Overlap end')
+            #        ax4.legend()
 
             # Update overlap information
             overlap_pixels = np.sum(overlap_mask)
