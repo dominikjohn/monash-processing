@@ -1,4 +1,4 @@
-from monash_processing.algorithms.phase_integration import PhaseIntegrator
+from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
 from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
@@ -17,6 +17,7 @@ import cv2
 
 import matplotlib
 
+from postprocessing.stitch_phase_images import ProjectionStitcher
 
 matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
 
@@ -69,6 +70,8 @@ area_right = np.s_[50:-50, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
 parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 
+phase_stitcher = ProjectionStitcher(loader, 817)
+
 # 5. Reconstruct volume
 print("Reconstructing volume")
 
@@ -77,7 +80,7 @@ calibrator = ReconstructionCalibrator(loader)
 center_shift = calibrator.find_center_shift_3d(
     max_angle=max_angle,
     enable_short_scan=False,
-    num_projections=1000,
+    num_projections=500,
     test_range=(800, 830)
 )
 print(f"Found optimal center shift: {center_shift}")
