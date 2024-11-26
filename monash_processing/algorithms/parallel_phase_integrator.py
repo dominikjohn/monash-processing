@@ -11,6 +11,7 @@ class ParallelPhaseIntegrator:
             area_left, area_right, data_loader, stitched
         )
         self.data_loader = data_loader
+        self.stitched = stitched
 
     def integrate_parallel(self, num_angles, n_workers=None, min_size_kb=5):
         """
