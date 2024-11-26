@@ -186,7 +186,8 @@ class ReconstructionCalibrator:
             recon = reconstructor.reconstruct_chunk(
                 chunk_info['chunk_data'],
                 chunk_info,
-                angles
+                angles,
+                center_shift=shift
             )
 
             # Save middle slice of the reconstruction
