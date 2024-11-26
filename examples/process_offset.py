@@ -57,12 +57,18 @@ results = processor.process_projections(
     num_angles=num_angles
 )
 
+# 4. Stitch projections
+print('Stitch')
+stitcher = ProjectionStitcher(loader, 804)
+stitcher.process_and_save_range(0, 1799, 'dx')
+stitcher.process_and_save_range(0, 1799, 'dy')
+
 # 4. Phase integrate
 print("Phase integrating")
 #area_left, area_right = Utils.select_areas(loader.load_projections(projection_i=0)[0])
-area_left = []
+area_left = np.s_[50:-50, 5:80]
 area_right = np.s_[50:-50, -80:-5]
-parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
+parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader, stitched=True)
 parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 
 #stitcher = ProjectionStitcher(loader, 817)
@@ -70,9 +76,7 @@ parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 #fig, slider = stitcher.visualize_alignment(proj_index=1, shift_range=(500, 2500))
 #plt.show()
 #phase_stitcher.process_and_save_range(0)
-stitcher = ProjectionStitcher(loader, 804)
-stitcher.process_and_save_range(0, 1799, 'dx')
-stitcher.process_and_save_range(0, 1799, 'dy')
+
 
 # 5. Reconstruct volume
 print("Reconstructing volume")

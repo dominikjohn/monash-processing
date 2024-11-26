@@ -9,7 +9,7 @@ from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
 
 class PhaseIntegrator:
 
-    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader: DataLoader):
+    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader: DataLoader, stitched=False):
         self.energy = energy
         self.prop_distance = prop_distance
         self.pixel_size = pixel_size
@@ -18,12 +18,17 @@ class PhaseIntegrator:
         self.data_loader = data_loader
         self.area_left = area_left
         self.area_right = area_right
+        self.stitched = stitched
 
     def integrate_single(self, projection_i):
 
         # Load dx, dy, f
-        dx = self.data_loader.load_processed_projection(projection_i, 'dx')
-        dy = self.data_loader.load_processed_projection(projection_i, 'dy')
+        if self.stitched:
+            dx = self.data_loader.load_stitched_projection(projection_i, 'dx_stitched')
+            dy = self.data_loader.load_stitched_projection(projection_i, 'dy_stitched')
+        else:
+            dx = self.data_loader.load_processed_projection(projection_i, 'dx')
+            dy = self.data_loader.load_processed_projection(projection_i, 'dy')
 
         # Create a mask for the ramp correction based on the previous user input
         mask = np.zeros_like(dx, dtype=bool)
@@ -35,9 +40,6 @@ class PhaseIntegrator:
 
         dx = np.clip(dx, -8, 8)
         dy = np.clip(dy, -8, 8)
-
-        #dx -= PhaseIntegrator.img_poly_fit(dx, order=1, mask=mask)
-        #dy -= PhaseIntegrator.img_poly_fit(dy, order=1, mask=mask)
 
         mdx = PhaseIntegrator.antisym_mirror_im(dx, 'dx')
         mdy = PhaseIntegrator.antisym_mirror_im(dy, 'dy')
