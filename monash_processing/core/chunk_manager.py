@@ -30,9 +30,7 @@ class ChunkManager:
         self.channel = channel
         self.debug = debug
         self.vector_mode = vector_mode
-
-        if use_ring_filter:
-            self.ring_filter = RingFilter()
+        self.use_ring_filter = use_ring_filter
 
         self.detector_rows = projections.shape[1]
         self.detector_cols = projections.shape[2]
@@ -53,9 +51,10 @@ class ChunkManager:
         chunk_projs = self.projections[:, start_row:end_row, :]
 
         # Apply ring filter if enabled
-        if self.ring_filter:
+        if self.use_ring_filter:
+            ring_filter = RingFilter()
             print('Applying ring filter...')
-            chunk_projs = self.ring_filter.filter_projections(chunk_projs)
+            chunk_projs = ring_filter.filter_projections(chunk_projs)
 
         # In vector mode, the center shift is applied using an astra function
         # In a normal geometry, the projections need to be shifted "by hand" before reconstruction
