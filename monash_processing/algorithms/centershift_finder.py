@@ -124,12 +124,13 @@ class ReconstructionCalibrator:
         tiff_files = sorted(input_dir.glob('projection_*.tiff'))
         total_projs = len(tiff_files)
 
-        # Calculate angles (up to 180 degrees)
         all_angles = np.linspace(0, np.deg2rad(max_angle), total_projs)
 
         # Select subset of indices for preview
         indices = np.linspace(0, len(all_angles) - 1, num_projections, dtype=int)
         angles = all_angles[indices]
+
+        print('Using angles:', angles)
 
         # Load first projection to get dimensions
         first_proj = tifffile.imread(tiff_files[0])
