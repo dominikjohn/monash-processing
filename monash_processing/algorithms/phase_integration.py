@@ -63,7 +63,10 @@ class PhaseIntegrator:
             print(f'Integration of projection {projection_i} failed!')
             phi_corr = np.zeros_like(phi_corr)
 
-        self.data_loader.save_tiff('phi', projection_i, phi_corr)
+        if self.stitched:
+            self.data_loader.save_tiff('phi_stitched', projection_i, phi_corr)
+        else:
+            self.data_loader.save_tiff('phi', projection_i, phi_corr)
 
     @staticmethod
     def antisym_mirror_im(im, diffaxis, mode='reflect'):

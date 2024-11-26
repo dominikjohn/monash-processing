@@ -23,7 +23,10 @@ class ParallelPhaseIntegrator:
             min_size_kb: Minimum file size in KB to consider valid
         """
         # Check which files need processing
-        to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, 'phi')
+        if self.stitched:
+            to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, 'phi_stitched')
+        else:
+            to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, 'phi')
 
         if not to_process:
             print("All files already processed successfully!")
