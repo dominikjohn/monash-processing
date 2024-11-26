@@ -4,12 +4,23 @@ from monash_processing.core.base_reconstructor import BaseReconstructor
 
 class VectorReconstructor(BaseReconstructor):
 
-    def setup_geometry(self, chunk_info, angles, volume_scaling=2.0):
+    def setup_geometry(self, chunk_info, angles, volume_scaling=1.8, offset=0):
+
+        detector_width = chunk_info['detector_cols']
+        n_cols = detector_width + (2 * offset)
+
+        print('Using offset:', offset)
 
         chunk_vol_geom = astra.create_vol_geom(
-            int(chunk_info['detector_cols'] * volume_scaling),
-            int(chunk_info['detector_cols'] * volume_scaling),
-            chunk_info['chunk_rows']
+            n_cols,
+            n_cols,
+            chunk_info['chunk_rows'],
+            min_x=-offset,
+            max_x=detector_width + offset,
+            min_y=-n_cols // 2,
+            max_y=n_cols // 2,
+            min_z=-chunk_info['chunk_rows'] // 2,
+            max_z=chunk_info['chunk_rows'] // 2
         )
 
         print("Chunk volume geometry:", chunk_vol_geom)
@@ -32,22 +43,22 @@ class VectorReconstructor(BaseReconstructor):
             detector_distance
         )
 
-        chunk_proj_geom = astra.geom_2vec(chunk_proj_geom)
+        #chunk_proj_geom = astra.geom_2vec(chunk_proj_geom)
 
         return chunk_vol_geom, chunk_proj_geom
 
     def reconstruct_chunk(self, chunk_data, chunk_info, angles):
         """Reconstruct a single chunk"""
         # Set up geometry
-        chunk_vol_geom, chunk_proj_geom = self.setup_geometry(chunk_info, angles)
+        chunk_vol_geom_offset, chunk_proj_geom_offset = self.setup_geometry(chunk_info, angles, self.center_shift)
 
-        chunk_proj_geom_offset = astra.geom_postalignment(chunk_proj_geom, self.center_shift)
-        print("Chunk projection geometry after shift:", chunk_proj_geom_offset)
+        #chunk_proj_geom_offset = astra.geom_postalignment(chunk_proj_geom, self.center_shift)
+        #print("Chunk projection geometry after shift:", chunk_proj_geom_offset)
 
         # Create ASTRA objects
-        proj_id = astra.create_projector('cuda3d', chunk_proj_geom_offset, chunk_vol_geom)
+        proj_id = astra.create_projector('cuda3d', chunk_proj_geom_offset, chunk_vol_geom_offset)
         sino_id = astra.data3d.create('-proj3d', chunk_proj_geom_offset, chunk_data)
-        recon_id = astra.data3d.create('-vol', chunk_vol_geom)
+        recon_id = astra.data3d.create('-vol', chunk_vol_geom_offset)
 
         # Configure reconstruction
         cfg = astra.astra_dict('FDK_CUDA')
