@@ -1,22 +1,24 @@
 import astra
 
+from examples.process_offset import center_shift
 from monash_processing.core.base_reconstructor import BaseReconstructor
 
 class VectorReconstructor(BaseReconstructor):
 
-    def setup_geometry(self, chunk_info, angles, volume_scaling=1.8, offset=0):
+    def setup_geometry(self, chunk_info, angles, volume_scaling=1.8):
 
+        print('Using offset ', self.center_shift)
         detector_width = chunk_info['detector_cols']
-        n_cols = detector_width + (2 * offset)
+        n_cols = detector_width + (2 * self.center_shift)
 
-        print('Using offset:', offset)
+        print('Using offset:', self.center_shift)
 
         chunk_vol_geom = astra.create_vol_geom(
             n_cols,
             n_cols,
             chunk_info['chunk_rows'],
-            -offset, # min_x
-            detector_width + offset, # max_x
+            -self.center_shift, # min_x
+            detector_width + self.center_shift, # max_x
             -n_cols // 2, # min_y
             n_cols // 2, # max_y
             -chunk_info['chunk_rows'] // 2, # min_z
