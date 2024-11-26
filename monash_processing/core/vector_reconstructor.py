@@ -50,7 +50,7 @@ class VectorReconstructor(BaseReconstructor):
         """Reconstruct a single chunk"""
         # Set up geometry
         print('Using center_shift:', center_shift)
-        chunk_vol_geom, chunk_proj_geom = self.setup_geometry(chunk_info, angles, center_shift)
+        chunk_vol_geom, chunk_proj_geom = self.setup_geometry(chunk_info, angles)
 
         print('Setup projection geometry: ', chunk_vol_geom)
         print('Setup volume geometry: ', chunk_proj_geom)
