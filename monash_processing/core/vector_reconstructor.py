@@ -1,6 +1,5 @@
 import astra
 
-from examples.process_offset import center_shift
 from monash_processing.core.base_reconstructor import BaseReconstructor
 
 class VectorReconstructor(BaseReconstructor):
