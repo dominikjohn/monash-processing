@@ -50,6 +50,7 @@ class VectorReconstructor(BaseReconstructor):
     def reconstruct_chunk(self, chunk_data, chunk_info, angles, center_shift=0):
         """Reconstruct a single chunk"""
         # Set up geometry
+        print('Using center_shift:', center_shift)
         chunk_vol_geom_offset, chunk_proj_geom_offset = self.setup_geometry(chunk_info, angles, center_shift)
 
         #chunk_proj_geom_offset = astra.geom_postalignment(chunk_proj_geom, self.center_shift)
