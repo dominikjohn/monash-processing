@@ -115,8 +115,7 @@ class ProjectionStitcher:
         return composite, stats
 
     def process_and_save_range(self, start_idx: int, end_idx: int,
-                               output_channel: str = 'stitched',
-                               save_stats: bool = True) -> list:
+                               output_channel: str = 'stitched') -> list:
         """
         Process and save a range of projection pairs.
 
@@ -145,13 +144,6 @@ class ProjectionStitcher:
                 )
 
                 self.logger.info(f"Successfully processed projection {idx}: {stats}")
-
-                # Save statistics
-                if save_stats:
-                    stats_file = self.data_loader.get_scan_path() / output_channel / f"stats_{idx}.txt"
-                    with open(stats_file, 'w') as f:
-                        for key, value in stats.items():
-                            f.write(f"{key}: {value}\n")
 
             except Exception as e:
                 self.logger.error(f"Failed to process projection {idx}: {str(e)}")
