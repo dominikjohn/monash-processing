@@ -16,9 +16,8 @@ from monash_processing.utils.ImageViewer import ImageViewer as imshow
 import cv2
 
 import matplotlib
-
-
 matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
+import matplotlib.pyplot as plt
 
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
@@ -69,7 +68,9 @@ area_right = np.s_[50:-50, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
 parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 
-phase_stitcher = ProjectionStitcher(loader, 817)
+stitcher = ProjectionStitcher(loader, 817)
+# For a different range of shifts
+fig, slider = stitcher.visualize_alignment(proj_index=1, shift_range=(500, 2500))
 phase_stitcher.process_and_save_range(0)
 
 # 5. Reconstruct volume

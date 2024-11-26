@@ -24,6 +24,7 @@ class ProjectionStitcher:
     def stitch_projection_pair(self, proj_index: int) -> np.ndarray:
         """
         Stitch a pair of projections together with the specified shift.
+        Uses averaging in the overlap region.
 
         Args:
             proj_index: Index of the first projection
@@ -53,30 +54,20 @@ class ProjectionStitcher:
             proj1_aligned[:, :proj1.shape[1]] = proj1
             proj2_aligned[:, -self.center_shift:-self.center_shift + proj2_flipped.shape[1]] = proj2_flipped
 
-        # Create composite with clean cut
+        # Create composite with averaging in overlap region
         composite = np.zeros_like(proj1_aligned)
-        overlap_mask = ~(np.isnan(proj1_aligned) | np.isnan(proj2_aligned))
 
-        # Calculate the midpoint of the overlap region
-        overlap_cols = np.where(np.any(overlap_mask, axis=0))[0]
-        if len(overlap_cols) > 0:
-            cut_point = overlap_cols[len(overlap_cols) // 2]
+        # Create masks for valid (non-nan) regions
+        mask1 = ~np.isnan(proj1_aligned)
+        mask2 = ~np.isnan(proj2_aligned)
+        overlap_mask = mask1 & mask2
 
-            # Use proj2 for the left side of the cut point and proj1 for the right side
-            composite[:, :cut_point] = np.where(
-                np.isnan(proj2_aligned[:, :cut_point]),
-                np.nan,
-                proj2_aligned[:, :cut_point]
-            )
-            composite[:, cut_point:] = np.where(
-                np.isnan(proj1_aligned[:, cut_point:]),
-                np.nan,
-                proj1_aligned[:, cut_point:]
-            )
-        else:
-            # If no overlap, just use both projections as is
-            composite[~np.isnan(proj1_aligned)] = proj1_aligned[~np.isnan(proj1_aligned)]
-            composite[~np.isnan(proj2_aligned)] = proj2_aligned[~np.isnan(proj2_aligned)]
+        # Fill non-overlapping regions
+        composite[mask1 & ~mask2] = proj1_aligned[mask1 & ~mask2]
+        composite[mask2 & ~mask1] = proj2_aligned[mask2 & ~mask1]
+
+        # Average the overlapping regions
+        composite[overlap_mask] = (proj1_aligned[overlap_mask] + proj2_aligned[overlap_mask]) / 2.0
 
         return composite
 
@@ -169,41 +160,35 @@ class ProjectionStitcher:
                 proj1_aligned[:, :proj1.shape[1]] = proj1
                 proj2_aligned[:, -int(shift):-int(shift) + proj2_flipped.shape[1]] = proj2_flipped
 
-            # Create composite with clean cut
+            # Create composite with averaging in overlap region
             composite = np.zeros_like(proj1_aligned)
-            overlap_mask = ~(np.isnan(proj1_aligned) | np.isnan(proj2_aligned))
 
-            # Calculate the midpoint of the overlap region
-            overlap_cols = np.where(np.any(overlap_mask, axis=0))[0]
-            if len(overlap_cols) > 0:
-                cut_point = overlap_cols[len(overlap_cols) // 2]
+            # Create masks for valid (non-nan) regions
+            mask1 = ~np.isnan(proj1_aligned)
+            mask2 = ~np.isnan(proj2_aligned)
+            overlap_mask = mask1 & mask2
 
-                # Use proj2 for the left side of the cut point and proj1 for the right side
-                composite[:, :cut_point] = np.where(
-                    np.isnan(proj2_aligned[:, :cut_point]),
-                    np.nan,
-                    proj2_aligned[:, :cut_point]
-                )
-                composite[:, cut_point:] = np.where(
-                    np.isnan(proj1_aligned[:, cut_point:]),
-                    np.nan,
-                    proj1_aligned[:, cut_point:]
-                )
-            else:
-                # If no overlap, just use both projections as is
-                composite[~np.isnan(proj1_aligned)] = proj1_aligned[~np.isnan(proj1_aligned)]
-                composite[~np.isnan(proj2_aligned)] = proj2_aligned[~np.isnan(proj2_aligned)]
+            # Fill non-overlapping regions
+            composite[mask1 & ~mask2] = proj1_aligned[mask1 & ~mask2]
+            composite[mask2 & ~mask1] = proj2_aligned[mask2 & ~mask1]
+
+            # Average the overlapping regions
+            composite[overlap_mask] = (proj1_aligned[overlap_mask] + proj2_aligned[overlap_mask]) / 2.0
 
             # Update plots
             ax3.imshow(proj1_aligned, cmap='gray')
             ax3.set_title('Projection 1 (Aligned)')
 
             ax4.imshow(composite, cmap='gray')
-            ax4.set_title('Composite (Clean Cut)')
+            ax4.set_title('Composite (Averaged Overlap)')
 
-            # Draw vertical line at cut point if there's overlap
-            if len(overlap_cols) > 0:
-                ax4.axvline(x=cut_point, color='r', linestyle='--', alpha=0.5)
+            # Show overlap region boundaries
+            if np.any(overlap_mask):
+                overlap_cols = np.where(np.any(overlap_mask, axis=0))[0]
+                if len(overlap_cols) > 0:
+                    ax4.axvline(x=overlap_cols[0], color='r', linestyle='--', alpha=0.5, label='Overlap start')
+                    ax4.axvline(x=overlap_cols[-1], color='r', linestyle='--', alpha=0.5, label='Overlap end')
+                    ax4.legend()
 
             # Update overlap information
             overlap_pixels = np.sum(overlap_mask)
@@ -215,7 +200,7 @@ class ProjectionStitcher:
             fig.text_artist = fig.text(0.02, 0.02,
                                        f'Shift: {int(shift)} pixels\n'
                                        f'Overlap: {overlap_pixels} pixels ({overlap_percentage:.1f}%)\n'
-                                       f'Cut point: {cut_point if len(overlap_cols) > 0 else "N/A"}\n'
+                                       f'Overlap width: {len(overlap_cols) if np.any(overlap_mask) else 0} pixels\n'
                                        f'Total width: {full_width} pixels',
                                        bbox=dict(facecolor='white', alpha=0.8))
 
@@ -232,5 +217,6 @@ class ProjectionStitcher:
         update_alignment(initial_shift)
 
         plt.tight_layout()
+        plt.show()
 
         return fig, slider
