@@ -3,7 +3,7 @@ from monash_processing.utils.utils import Utils
 from monash_processing.postprocessing.filters import RingFilter
 
 class ChunkManager:
-    def __init__(self, projections, chunk_size, angles, center_shift, channel='phase', debug=False, vector_mode=True, use_ring_filter=True):
+    def __init__(self, projections, chunk_size, angles, center_shift, channel='phase', debug=False, vector_mode=True, use_ring_filter=False):
         """
         Initialize the chunk manager
         Helper class to manage the processing of a large volume in chunks

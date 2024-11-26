@@ -9,14 +9,20 @@ class VectorReconstructor(BaseReconstructor):
 
         detector_width = chunk_info['detector_cols']
         n_cols = int(detector_width * volume_scaling)
-
+        print('N_cols: ', n_cols)
         chunk_vol_geom = astra.create_vol_geom(
             n_cols,
             n_cols,
             chunk_info['chunk_rows'],
+            n_cols//2,
+            n_cols//2,
+            -n_cols//2,
+            n_cols//2,
+            -chunk_info['chunk_rows']//2,
+            chunk_info['chunk_rows']//2
         )
 
-        print("Chunk volume geometry:", chunk_vol_geom)
+        print("Chunk volume geometry in vector reconstructor:", chunk_vol_geom)
 
         scaling_factor = 1e6
         source_distance = 21.5 * scaling_factor
