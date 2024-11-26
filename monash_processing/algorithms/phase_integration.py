@@ -24,8 +24,8 @@ class PhaseIntegrator:
 
         # Load dx, dy, f
         if self.stitched:
-            dx = self.data_loader.load_stitched_projection(projection_i, 'dx_stitched')
-            dy = self.data_loader.load_stitched_projection(projection_i, 'dy_stitched')
+            dx = self.data_loader.load_processed_projection(projection_i, 'dx_stitched')
+            dy = self.data_loader.load_processed_projection(projection_i, 'dy_stitched')
         else:
             dx = self.data_loader.load_processed_projection(projection_i, 'dx')
             dy = self.data_loader.load_processed_projection(projection_i, 'dy')
