@@ -17,7 +17,6 @@ import cv2
 
 import matplotlib
 
-from postprocessing.stitch_phase_images import ProjectionStitcher
 
 matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
 
@@ -71,6 +70,7 @@ parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel
 parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 
 phase_stitcher = ProjectionStitcher(loader, 817)
+phase_stitcher.process_and_save_range(0)
 
 # 5. Reconstruct volume
 print("Reconstructing volume")
