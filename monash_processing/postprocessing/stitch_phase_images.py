@@ -50,7 +50,10 @@ class ProjectionStitcher:
         # Load and prepare projections
         proj1 = self.load_and_prepare_projection(proj_index, channel)
         proj2 = self.load_and_prepare_projection(proj_index + 1800, channel)
-        proj2_flipped = -np.fliplr(proj2)  # Note the negative sign for phase contrast
+        if channel == 'dx':
+            proj2_flipped = -np.fliplr(proj2)  # Note the negative sign for phase contrast
+        else:
+            proj2_flipped = np.fliplr(proj2)
 
         # Calculate full width needed
         full_width = proj1.shape[1] + abs(self.center_shift)
@@ -133,7 +136,7 @@ class ProjectionStitcher:
         for idx in range(start_idx, end_idx + 1):
             try:
                 # Stitch the projections
-                stitched, stats = self.stitch_projection_pair(idx)
+                stitched, stats = self.stitch_projection_pair(idx, channel)
                 stats_list.append(stats)
 
                 # Save the result

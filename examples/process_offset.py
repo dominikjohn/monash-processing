@@ -71,7 +71,8 @@ parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 #plt.show()
 #phase_stitcher.process_and_save_range(0)
 stitcher = ProjectionStitcher(loader, 804)
-stitcher.process_and_save_range(0, 10)
+stitcher.process_and_save_range(0, 10, 'dx')
+stitcher.process_and_save_range(0, 10, 'dy')
 
 # 5. Reconstruct volume
 print("Reconstructing volume")
