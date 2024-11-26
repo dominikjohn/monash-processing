@@ -14,12 +14,6 @@ class VectorReconstructor(BaseReconstructor):
             n_cols,
             n_cols,
             chunk_info['chunk_rows'],
-            n_cols//2,
-            n_cols//2,
-            -n_cols//2,
-            n_cols//2,
-            -chunk_info['chunk_rows']//2,
-            chunk_info['chunk_rows']//2
         )
 
         print("Chunk volume geometry in vector reconstructor:", chunk_vol_geom)
