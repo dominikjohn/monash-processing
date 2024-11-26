@@ -21,7 +21,7 @@ class ProjectionStitcher:
         self.blend_width = blend_width
         self.logger = logging.getLogger(__name__)
 
-    def load_and_prepare_projection(self, idx: int) -> np.ndarray:
+    def load_and_prepare_projection(self, idx: int, channel) -> np.ndarray:
         """
         Load and prepare a projection for stitching.
 
@@ -32,12 +32,12 @@ class ProjectionStitcher:
             np.ndarray: Prepared projection
         """
         # Load projection using the dx channel
-        proj = self.data_loader.load_processed_projection(idx, 'dx')
+        proj = self.data_loader.load_processed_projection(idx, channel)
         # Apply bad pixel correction
         proj = BadPixelMask.correct_bad_pixels(proj)[0]
         return proj
 
-    def stitch_projection_pair(self, proj_index: int) -> Tuple[np.ndarray, dict]:
+    def stitch_projection_pair(self, proj_index: int, channel) -> Tuple[np.ndarray, dict]:
         """
         Stitch a pair of projections with intensity normalization and smooth blending.
 
@@ -48,8 +48,8 @@ class ProjectionStitcher:
             Tuple[np.ndarray, dict]: Stitched projection and stitching statistics
         """
         # Load and prepare projections
-        proj1 = self.load_and_prepare_projection(proj_index)
-        proj2 = self.load_and_prepare_projection(proj_index + 1800)
+        proj1 = self.load_and_prepare_projection(proj_index, channel)
+        proj2 = self.load_and_prepare_projection(proj_index + 1800, channel)
         proj2_flipped = -np.fliplr(proj2)  # Note the negative sign for phase contrast
 
         # Calculate full width needed
@@ -115,7 +115,7 @@ class ProjectionStitcher:
         return composite, stats
 
     def process_and_save_range(self, start_idx: int, end_idx: int,
-                               output_channel: str = 'stitched') -> list:
+                               channel: str) -> list:
         """
         Process and save a range of projection pairs.
 
@@ -138,15 +138,15 @@ class ProjectionStitcher:
 
                 # Save the result
                 self.data_loader.save_tiff(
-                    channel=output_channel,
+                    channel=channel + '_stitched',
                     angle_i=idx,
                     data=stitched
                 )
 
-                self.logger.info(f"Successfully processed projection {idx}: {stats}")
+                self.logger.info(f"Successfully processed {channel}-projection {idx}: {stats}")
 
             except Exception as e:
-                self.logger.error(f"Failed to process projection {idx}: {str(e)}")
+                self.logger.error(f"Failed to process {channel} projection {idx}: {str(e)}")
                 raise
 
         return stats_list
