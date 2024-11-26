@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 import logging
 from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
+from tqdm import tqdm
 
 class ProjectionStitcher:
     """Handles stitching of processed projections with advanced intensity normalization and blending."""
@@ -133,7 +134,7 @@ class ProjectionStitcher:
         """
         stats_list = []
 
-        for idx in range(start_idx, end_idx + 1):
+        for idx in tqdm(range(start_idx, end_idx + 1)):
             try:
                 # Stitch the projections
                 stitched, stats = self.stitch_projection_pair(idx, channel)
