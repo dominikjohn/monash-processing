@@ -25,7 +25,7 @@ class ReconstructionCalibrator:
         print("Loading subset of projections for center calibration...")
 
         # Setup paths
-        input_dir = Path(self.data_loader.results_dir) / 'phi'
+        input_dir = Path(self.data_loader.results_dir) / 'phi_stitched'
         preview_dir = Path(self.data_loader.results_dir) / 'center_preview'
         preview_dir.mkdir(exist_ok=True)
 
