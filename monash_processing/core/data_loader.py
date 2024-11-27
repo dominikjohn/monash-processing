@@ -104,8 +104,13 @@ class DataLoader:
 
             data -= dark # Subtract dark field
 
+
             print('Median filtering flats of shape ', str(data.shape))
-            med_im = cv2.medianBlur(data, 5)
+            # Apply median blur to each image separately
+            med_im = np.zeros_like(data, dtype=np.float32)
+            for i in range(data.shape[0]):
+                med_im[i] = cv2.medianBlur(data[i].astype(np.float32), 5)
+
             filter_im = (data / med_im)
             mask = (filter_im < np.percentile(filter_im, 0.001 * 100)) | (data > 4000)
             np.putmask(data, mask, med_im[mask])
