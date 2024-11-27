@@ -152,13 +152,14 @@ class MultiPositionDataLoader(DataLoader):
             mask = (filter_im < np.percentile(filter_im, 0.001 * 100)) | (data > 4000)
             np.putmask(data, mask, med_im[mask])
 
-        flat_fields_array = np.array(flat_fields)  # Shape: (N, ncomp, X, Y)
+        flat_fields_array = np.array(flat_fields)
+        print('Performing PCA on flat fields of shape ', str(flat_fields_array.shape))
         eigenflats_pca = EigenflatManager.eigenflats_PCA(flat_fields_array)
-        self._save_auxiliary_data(flat_fields_array, filename)
+        self._save_auxiliary_data(eigenflats_pca, filename)
 
-        self.logger.info(f"Loaded and averaged {type} fields with shape {flat_fields_array.shape}")
+        self.logger.info(f"Loaded and averaged {type} fields with shape {eigenflats_pca.shape}")
 
-        return flat_fields_array
+        return eigenflats_pca
 
 
     def load_projections(self, projection_i: Optional[int] = None, step_i: Optional[int] = None,
