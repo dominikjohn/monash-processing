@@ -101,4 +101,4 @@ center_shift = calibrator.find_center_shift_3d(
 print(f"Found optimal center shift: {center_shift}")
 
 volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, method='FBP')
-volume = volume_builder.reconstruct_3d(enable_short_scan=False)
+volume = volume_builder.reconstruct_3d(enable_short_scan=True)
