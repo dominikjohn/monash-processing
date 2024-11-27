@@ -33,9 +33,19 @@ class ReconstructionCalibrator:
         tiff_files = sorted(input_dir.glob('projection_*.tiff'))
         total_projs = len(tiff_files)
 
-        angles = np.linspace(0, np.deg2rad(max_angle), total_projs)
+        all_angles = np.linspace(0, np.deg2rad(max_angle), total_projs)
+        valid_angles_mask = all_angles <= 2 * np.pi
+        valid_indices = np.where(valid_angles_mask)[0]
 
-        print('Highest angle used:', np.rad2deg(angles[-1]))
+        print(valid_indices)
+
+        # Select subset of indices for preview
+        if len(valid_indices) > num_projections:
+            indices = np.linspace(0, len(valid_indices) - 1, num_projections, dtype=int)
+            valid_indices = valid_indices[indices]
+            angles = all_angles[valid_indices]
+        else:
+            angles = all_angles[valid_angles_mask]
 
         # Load first projection to get dimensions
         first_proj = tifffile.imread(tiff_files[0])
@@ -45,16 +55,16 @@ class ReconstructionCalibrator:
             slice_idx = detector_rows // 2
 
         # Initialize projections array
-        projections = np.zeros((len(angles), detector_rows, detector_cols))
-        print('Projections shape:', projections.shape)
+        projections = np.zeros((len(valid_indices), detector_rows, detector_cols))
+
         # Load projections
         print("Loading projections...")
-        for i, idx in enumerate(tqdm(angles)):
+        for i, idx in enumerate(tqdm(valid_indices)):
             try:
-                proj = tifffile.imread(tiff_files[int(idx)])
+                proj = tifffile.imread(tiff_files[idx])
                 projections[i] = proj
             except Exception as e:
-                raise RuntimeError(f"Failed to load projection {int(idx)}: {str(e)}")
+                raise RuntimeError(f"Failed to load projection {idx}: {str(e)}")
 
         # Select one slice for the preview
         sliced_projections = projections[:, slice_idx:slice_idx + 1, :]
