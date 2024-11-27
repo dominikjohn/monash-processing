@@ -34,7 +34,7 @@ class ReconstructionCalibrator:
         total_projs = len(tiff_files)
 
         # Calculate angles (up to 180 degrees)
-        angles = int(np.linspace(0, np.deg2rad(max_angle), total_projs))
+        angles = np.linspace(0, np.deg2rad(max_angle), total_projs)
 
         print('Highest angle used:', np.rad2deg(angles[-1]))
 
@@ -52,10 +52,10 @@ class ReconstructionCalibrator:
         print("Loading projections...")
         for i, idx in enumerate(tqdm(angles)):
             try:
-                proj = tifffile.imread(tiff_files[idx])
+                proj = tifffile.imread(tiff_files[int(idx)])
                 projections[i] = proj
             except Exception as e:
-                raise RuntimeError(f"Failed to load projection {idx}: {str(e)}")
+                raise RuntimeError(f"Failed to load projection {int(idx)}: {str(e)}")
 
         # Select one slice for the preview
         sliced_projections = projections[:, slice_idx:slice_idx + 1, :]
