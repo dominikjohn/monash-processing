@@ -83,11 +83,12 @@ print("Reconstructing volume")
 
 print('Find centershift')
 calibrator = ReconstructionCalibrator(loader)
-center_shift = calibrator.find_center_shift_3d(
-    max_angle=max_angle,
-    enable_short_scan=False,
-    num_projections=2000,
-    test_range=(800, 900)
+center_shift = calibrator.find_center_shift(
+    max_angle=180,
+    pixel_size=pixel_size,
+    num_projections=1800,
+    test_range=(404, 407),
+    stepping=20,
 )
 print(f"Found optimal center shift: {center_shift}")
 

@@ -80,6 +80,7 @@ class ReconstructionCalibrator:
                 projections=shifted_projections,
                 angles=angles,
                 pixel_size=pixel_size,
+                is_short_scan=True
             )
 
             # Save reconstruction

@@ -1,4 +1,5 @@
 import numpy as np
+from setuptools.command.easy_install import is_sh
 from tqdm import tqdm
 import tifffile
 import astra
@@ -60,7 +61,7 @@ class VolumeBuilder:
         return np.array(projections), angles[valid_indices]
 
     @staticmethod
-    def reconstruct_slice(projections, angles, pixel_size):
+    def reconstruct_slice(projections, angles, pixel_size, is_short_scan=False):
         """
         Reconstruct a single slice using FBP algorithm with ASTRA Toolbox.
         Args:
@@ -95,7 +96,8 @@ class VolumeBuilder:
         cfg['ProjectorId'] = proj_id
         cfg['ProjectionDataId'] = sino_id
         cfg['ReconstructionDataId'] = rec_id
-        cfg['option'] = {'FilterType': 'Ram-Lak'}
+        print('Short scan is', is_short_scan)
+        cfg['option'] = {'ShortScan': is_short_scan, 'FilterType': 'Ram-Lak'}
 
         # Create and run the algorithm
         alg_id = astra.algorithm.create(cfg)
