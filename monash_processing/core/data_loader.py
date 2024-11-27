@@ -7,9 +7,7 @@ import re
 import tifffile
 from tqdm import tqdm
 import cv2
-
-from monash_processing.algorithms.eigenflats import EigenflatManager
-
+from monash_processing.core.eigenflats import EigenflatManager
 
 class DataLoader:
     """Handles loading and organizing scan data from H5 files."""

@@ -7,7 +7,7 @@ from tqdm import tqdm
 import logging
 import re
 import cv2
-from monash_processing.algorithms.eigenflat_manager import EigenflatManager
+from monash_processing.core.eigenflats import EigenflatManager
 
 class MultiPositionDataLoader(DataLoader):
     def __init__(self, scan_path: Union[str, Path], scan_name: str, skip_positions: Optional[Set[str]] = None):
