@@ -79,7 +79,7 @@ class VolumeBuilder:
         detector_cols = projection_slices.shape[1]
 
         if is_stitched:
-            vol_geom = astra.create_vol_geom(int(detector_cols * 1.8), int(detector_cols))
+            vol_geom = astra.create_vol_geom(int(detector_cols * 1.7), int(detector_cols * 1.7))
         else:
             vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
 
