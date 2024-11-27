@@ -6,7 +6,7 @@ from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.core.volume_builder import VolumeBuilder
 from monash_processing.algorithms.centershift_finder import ReconstructionCalibrator
 from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
-
+from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from tqdm import tqdm
 import h5py
 from monash_processing.utils.utils import Utils
@@ -62,65 +62,19 @@ results = processor.process_projections(
     num_angles=num_angles
 )
 
+# 4. Stitch projections
+print('Stitch')
+stitcher = ProjectionStitcher(loader, 1350)
+stitcher.process_and_save_range(0, 1819, 'dx')
+stitcher.process_and_save_range(0, 1819, 'dy')
+
 # 4. Phase integrate
 print("Phase integrating")
 #area_left, area_right = Utils.select_areas(loader.load_projections(projection_i=0)[0])
-area_left = []
-area_right = np.s_[50:-50, -80:-5]
-parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
-parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
-
-################################################
-import scipy
-
-proj = 2
-wavevec = 2 * np.pi * energy / (
-                scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
-import scipy.fft as fft
-# Load dx, dy, f
-dx = loader.load_processed_projection(proj, 'dx')
-dy = loader.load_processed_projection(proj, 'dy')
-
-# Create a mask for the ramp correction based on the previous user input
-mask = np.zeros_like(dx, dtype=bool)
-mask[area_left] = True
-mask[area_right] = True
-
-dx = BadPixelMask.correct_bad_pixels(dx)[0]
-dy = BadPixelMask.correct_bad_pixels(dy)[0]
-
-dx = np.clip(dx, -8, 8)
-dy = np.clip(dy, -8, 8)
-
-dx -= PhaseIntegrator.img_poly_fit(dx, order=1, mask=mask)
-dy -= PhaseIntegrator.img_poly_fit(dy, order=1, mask=mask)
-
-mdx = PhaseIntegrator.antisym_mirror_im(dx, 'dx')
-mdy = PhaseIntegrator.antisym_mirror_im(dy, 'dy')
-
-k = fft.fftfreq(mdx.shape[1])
-l = fft.fftfreq(mdy.shape[0])
-k[k == 0] = 1e-10
-l[l == 0] = 1e-10
-k, l = np.meshgrid(k, l)
-
-ft = fft.fft2(mdx + 1j * mdy, workers=2)
-phi_raw = fft.ifft2(ft / ((2 * np.pi * 1j) * (k + 1j * l)), workers=2)
-phi_raw = np.real(phi_raw)[dx.shape[0]:, dy.shape[1]:]
-
-phi_corr = phi_raw * (wavevec / prop_distance) * (pixel_size ** 2)
-
-p_phi_corr = PhaseIntegrator.img_poly_fit(phi_corr, order=1, mask=mask)
-phi_corr -= p_phi_corr
-
-ImageViewerPhi(phi_corr, vmin=0, vmax=0.6)
-
-
-################################################
-
-
-
-
+area_left = np.s_[50:-50, 5:250]
+area_right = np.s_[50:-50, -250:-5]
+parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader, stitched=True)
+parallel_phase_integrator.integrate_parallel(1820, n_workers=n_workers)
 
 
 # 5. Reconstruct volume
@@ -131,8 +85,8 @@ calibrator = ReconstructionCalibrator(loader)
 center_shift = calibrator.find_center_shift_3d(
     max_angle=max_angle,
     enable_short_scan=False,
-    num_projections=300,
-    test_range=(-2000, 2000)
+    num_projections=500,
+    test_range=(-100, 100)
 )
 print(f"Found optimal center shift: {center_shift}")
 

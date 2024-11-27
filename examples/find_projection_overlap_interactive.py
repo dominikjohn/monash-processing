@@ -1,8 +1,10 @@
 import numpy as np
+from pathlib import Path
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button
-from pathlib import Path
-
+from monash_processing.core.multi_position_data_loader import MultiPositionDataLoader
 
 def interactive_projection_alignment(data_loader, angle_index1: int, angle_index2: int):
     """Create interactive visualization of projection alignment with composite zoom."""
@@ -96,10 +98,14 @@ def interactive_projection_alignment(data_loader, angle_index1: int, angle_index
             ax_comp.set_title('Composite (Blended)')
 
             # Define and show zoom region
-            zoom_height = 200
+            zoom_height = 300
             zoom_width = 400
+
             zoom_center_y = proj1.shape[0] // 2
             zoom_center_x = (overlap_start + overlap_end) // 2
+
+            zoom_center_x -= 600
+            zoom_center_y += 600
 
             # Ensure zoom region stays within bounds
             zoom_start = max(0, zoom_center_x - zoom_width // 2)
@@ -138,7 +144,7 @@ def interactive_projection_alignment(data_loader, angle_index1: int, angle_index
         fig.canvas.draw_idle()
 
     # Create slider and buttons
-    slider = Slider(slider_ax, 'Horizontal Shift', 400, 1000, valinit=initial_shift, valstep=1)
+    slider = Slider(slider_ax, 'Horizontal Shift', 1000, 2000, valinit=initial_shift, valstep=1)
     minus_button = Button(minus_button_ax, '-')
     plus_button = Button(plus_button_ax, '+')
 
@@ -174,5 +180,6 @@ def interactive_projection_alignment(data_loader, angle_index1: int, angle_index
 
 # Usage
 scan_path = Path("/data/mct/22203/")
-loader = DataLoader(scan_path, "K3_3H_ReverseOrder")
+scan_name = "K21N_sample"
+loader = MultiPositionDataLoader(scan_path, scan_name, skip_positions={'03_03'})
 fig, slider = interactive_projection_alignment(loader, 800, 2600)

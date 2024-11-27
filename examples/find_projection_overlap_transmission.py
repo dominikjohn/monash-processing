@@ -1,9 +1,4 @@
-import numpy as np
-from scipy.signal import correlate
-from typing import Tuple, NamedTuple
-from pathlib import Path
-import matplotlib.pyplot as plt
-from tqdm import tqdm
+from monash_processing.core.multi_position_data_loader import MultiPositionDataLoader
 import numpy as np
 from scipy.signal import correlate
 from typing import Tuple, NamedTuple
@@ -164,14 +159,14 @@ class ProjectionAnalyzer:
 
 # Example usage:
 scan_path = Path("/data/mct/22203/")
-scan_name = "K3_3H_ReverseOrder"
+scan_name = "K21N_sample"
 
 # Calculate indices for opposing projections
 total_angles = 3640
 angle_per_step = 364 / total_angles
 steps_per_180 = int(180 / angle_per_step)
 
-loader = DataLoader(scan_path, scan_name)
+loader = MultiPositionDataLoader(scan_path, scan_name, skip_positions={'03_03'})
 analyzer = ProjectionAnalyzer(loader)
 
 # Test pairs of projections around 180 degrees apart

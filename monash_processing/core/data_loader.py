@@ -6,6 +6,9 @@ import logging
 import re
 import tifffile
 from tqdm import tqdm
+import cv2
+
+from algorithms.eigenflats import EigenflatManager
 
 
 class DataLoader:
@@ -38,44 +41,80 @@ class DataLoader:
         for h5_file in self.h5_files:
             self.logger.info(f"  {h5_file}")
 
-    def load_flat_fields(self, dark=False) -> np.ndarray:
+    def create_pca_flatfields(self):
+        flats = self.load_flat_fields()
+        darks = self.load_flat_fields(dark=True)
+
+        # Subtract darks from flats
+        flats = flats - darks
+
+    def load_flat_fields(self, dark=False, pca=False) -> np.ndarray:
         """Load flat field data from all files and combine, averaging multiple fields per file."""
 
         type = "flat" if not dark else "dark"
-        filename = 'averaged_flatfields.npy' if not dark else 'averaged_darkfields.npy'
+
+        if pca:
+            filename = 'pca_flatfields.npy'
+        else:
+            filename = 'averaged_flatfields.npy' if not dark else 'averaged_darkfields.npy'
 
         # Check if averaged flatfield file already exists
-        averaged_flatfield_file = self.results_dir / filename
-        if averaged_flatfield_file.exists():
+        flatfield_file = self.results_dir / filename
+        if flatfield_file.exists():
             try:
-                flat_fields_array = np.load(averaged_flatfield_file)
-                self.logger.info(f"Loaded averaged {type} from {averaged_flatfield_file}")
+                flat_fields_array = np.load(flatfield_file)
+                self.logger.info(f"Loaded {type}field from {flatfield_file}")
                 return flat_fields_array
             except Exception as e:
-                self.logger.error(f"Failed to load averaged flatfield from {averaged_flatfield_file}: {str(e)}")
+                self.logger.error(f"Failed to load averaged flatfield from {flatfield_file}: {str(e)}")
                 raise
 
-        self.logger.info(f"Averaged flatfield file not found, loading and averaging flat fields from raw data")
+        self.logger.info(f"Processed flatfield file not found, loading and creating flat field from raw data")
         flat_fields = []
 
-        for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
-            try:
-                prefix = 'FLAT_FIELD/BEFORE' if not dark else 'DARK_FIELD/BEFORE'
+        if dark:
+            for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
+                prefix = 'DARK_FIELD/BEFORE'
                 data = self._load_raw_dataset(h5_file, prefix)
-                # Average multiple flat fields for this file
                 averaged_flat = self._average_fields(data)
                 flat_fields.append(averaged_flat)
-            except Exception as e:
-                self.logger.error(f"Failed to load/average {type} field from {h5_file}: {str(e)}")
-                raise
 
-        flat_fields_array = np.array(flat_fields)  # Shape: (N, X, Y)
+            flat_fields_array = np.array(flat_fields)
+            flat_fields_array = np.average(flat_fields_array, axis=0)
+            self._save_auxiliary_data(flat_fields_array, filename)
 
-        # Dark fields should not change too much between steps, so we can average them
-        if dark:
-            flat_fields_array = np.average(flat_fields_array, axis=0)  # Shape: (X, Y)
+            return flat_fields_array
 
-        # Save averaged flatfields to file
+        dark = self.load_flat_fields(dark=True)
+
+        # Simple averaging of flats
+        if not pca:
+            for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
+                prefix = 'FLAT_FIELD/BEFORE'
+                data = self._load_raw_dataset(h5_file, prefix)
+                data -= dark  # Subtract dark field
+                averaged_flat = self._average_fields(data)
+                flat_fields.append(averaged_flat)
+            flat_fields_array = np.array(flat_fields)
+            self._save_auxiliary_data(flat_fields_array, filename)
+            return flat_fields_array
+
+        # PCA version
+        for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
+            prefix = 'FLAT_FIELD/BEFORE' if not dark else 'DARK_FIELD/BEFORE'
+            data = self._load_raw_dataset(h5_file, prefix)
+
+            data -= dark # Subtract dark field
+
+            print('Median filtering flats of shape ', str(data.shape))
+            med_im = cv2.medianBlur(data, 5)
+            filter_im = (data / med_im)
+            mask = (filter_im < np.percentile(filter_im, 0.001 * 100)) | (data > 4000)
+            np.putmask(data, mask, med_im[mask])
+
+            flat_fields.append(EigenflatManager.eigenflats_PCA(data))
+
+        flat_fields_array = np.array(flat_fields)  # Shape: (N, ncomp, X, Y)
         self._save_auxiliary_data(flat_fields_array, filename)
 
         self.logger.info(f"Loaded and averaged {type} fields with shape {flat_fields_array.shape}")
