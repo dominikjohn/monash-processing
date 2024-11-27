@@ -10,8 +10,12 @@ class Utils:
         if dead_pix_thl > 0:
             med_im = cv2.medianBlur(im, 5)
             filter_im = (im / med_im)
-            mask = (filter_im < np.percentile(filter_im, dead_pix_thl * 100)) | (im > 4050)
 
+            # Check for both too-dark and too-bright pixels
+            lower_percentile = np.percentile(filter_im, dead_pix_thl * 100)
+            upper_percentile = np.percentile(filter_im, (1 - dead_pix_thl) * 100)
+
+            mask = (filter_im < lower_percentile) | (filter_im > upper_percentile)
             im[mask] = med_im[mask]
         return im
 
