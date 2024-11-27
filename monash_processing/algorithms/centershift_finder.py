@@ -11,7 +11,7 @@ class ReconstructionCalibrator:
     def __init__(self, data_loader):
         self.data_loader = data_loader
 
-    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=100, test_range=(-50, 50), stepping=10, is_short_scan=False):
+    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=100, test_range=(-50, 50), stepping=10, is_stitched=True):
         """
         Creates reconstructions with different center shifts and saves them as files.
         Uses 3D parallel beam geometry with FBP algorithm.
@@ -81,7 +81,7 @@ class ReconstructionCalibrator:
                 projections=shifted_projections,
                 angles=angles,
                 pixel_size=pixel_size,
-                is_short_scan=is_short_scan
+                is_stitched=is_stitched
             )
 
             # Save reconstruction

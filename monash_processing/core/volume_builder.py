@@ -61,7 +61,7 @@ class VolumeBuilder:
         return np.array(projections), angles[valid_indices]
 
     @staticmethod
-    def reconstruct_slice(projections, angles, pixel_size, is_short_scan=False):
+    def reconstruct_slice(projections, angles, pixel_size, is_stitched=False):
         """
         Reconstruct a single slice using FBP algorithm with ASTRA Toolbox.
         Args:
@@ -78,7 +78,10 @@ class VolumeBuilder:
         projection_slices = np.squeeze(projections)
         detector_cols = projection_slices.shape[1]
 
-        vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
+        if is_stitched:
+            vol_geom = astra.create_vol_geom(int(detector_cols * 1.8), int(detector_cols))
+        else:
+            vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
 
         scaling_factor = 1e6
         source_distance = 21.5 * scaling_factor
