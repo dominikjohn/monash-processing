@@ -90,7 +90,9 @@ class VolumeBuilder:
 
         # Create sinogram
         sino_id = astra.data2d.create('-sino', proj_geom, projection_slices)
-
+        print('Sinogram shape:', projection_slices.shape)
+        print(angles.shape)
+        print(angles)
         # Create reconstruction volume
         rec_id = astra.data2d.create('-vol', vol_geom)
 

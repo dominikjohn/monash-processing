@@ -86,8 +86,8 @@ calibrator = ReconstructionCalibrator(loader)
 center_shift = calibrator.find_center_shift(
     max_angle=180,
     pixel_size=pixel_size,
-    num_projections=1800,
-    test_range=(404, 407),
+    num_projections=100,
+    test_range=(-2000, 2000),
     stepping=20,
     is_short_scan=True
 )
