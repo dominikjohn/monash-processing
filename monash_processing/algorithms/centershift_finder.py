@@ -25,7 +25,7 @@ class ReconstructionCalibrator:
         print("Loading subset of projections for center calibration...")
 
         # Setup paths
-        input_dir = Path(self.data_loader.results_dir) / 'phi_stitched'
+        input_dir = Path(self.data_loader.results_dir) / 'phi'
         preview_dir = Path(self.data_loader.results_dir) / 'center_preview'
         preview_dir.mkdir(exist_ok=True)
 
@@ -33,7 +33,6 @@ class ReconstructionCalibrator:
         tiff_files = sorted(input_dir.glob('projection_*.tiff'))
         total_projs = len(tiff_files)
 
-        # Calculate angles (up to 180 degrees)
         angles = np.linspace(0, np.deg2rad(max_angle), total_projs)
 
         print('Highest angle used:', np.rad2deg(angles[-1]))
@@ -47,7 +46,7 @@ class ReconstructionCalibrator:
 
         # Initialize projections array
         projections = np.zeros((len(angles), detector_rows, detector_cols))
-
+        print('Projections shape:', projections.shape)
         # Load projections
         print("Loading projections...")
         for i, idx in enumerate(tqdm(angles)):
