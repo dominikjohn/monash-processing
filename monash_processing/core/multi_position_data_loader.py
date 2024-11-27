@@ -151,8 +151,8 @@ class MultiPositionDataLoader(DataLoader):
             filter_im = (data / med_im)
             mask = (filter_im < np.percentile(filter_im, 0.001 * 100)) | (data > 4000)
             np.putmask(data, mask, med_im[mask])
-
-            flat_fields.append(data)
+            eigenflats = EigenflatManager.eigenflats_PCA(data)
+            flat_fields.append(eigenflats)
 
         flat_fields_array = np.array(flat_fields)
         print('Performing PCA on flat fields of shape ', str(flat_fields_array.shape))

@@ -10,36 +10,7 @@ class EigenflatManager:
 
     @staticmethod
     def eigenflats_PCA(flats):
-        '''
-        Performs a principle component analysis, to create eigenflatfield images.
 
-        You might need some criterion to select the number of components necessary.
-        E.g. look at the Eigenvalues and do a Scree plot.
-
-        Parameters
-        ----------
-        flats : array
-            array with all flat field images of the measurement, orderd as usual
-
-        ncomp : int
-            number of components to save. The fewer the faster the optimization
-            afterwards
-
-        eigenvalue_return : bool, Default = False
-            return of the eigenvalues
-
-        Returns
-        --------
-        EFs : array
-            Eigenflatfields, with the order (phasestep, component, y, x)
-
-        MFs : array
-            Mean Flat Field image (phasestep, y, x)
-
-        ev : array
-            eigenvalues, only returned if eigenvalue_return = True
-
-        '''
         start = time.time()
 
         MFs = flats.mean(axis=0)
@@ -55,10 +26,11 @@ class EigenflatManager:
         EFs /= np.sqrt(np.abs(ev))[:, None] # Normalize flat fields using the eigenvalues
         EFs = EFs.reshape(flats.shape)
 
+        EFs = EFs[:10] # use only the first 10 eigenflats
+
         print('Gaussian-blurring components slightly')
         for i in range(EFs.shape[0]):
-            for j in range(EFs.shape[1]):
-                EFs[i, j] = cv2.GaussianBlur(EFs[i, j], (0, 0), 0.5)
+            EFs[i] = cv2.GaussianBlur(EFs[i], (0, 0), 0.5)
 
         print('\n Eigenflat generation time:', np.round(time.time() - start, 2), 's')
 
