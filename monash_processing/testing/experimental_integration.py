@@ -1,4 +1,3 @@
-from algorithms.phase_integration import PhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
 from monash_processing.algorithms.phase_integration import PhaseIntegrator
 from pathlib import Path

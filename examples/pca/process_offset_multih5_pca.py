@@ -23,7 +23,7 @@ n_workers = 50
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
 loader = MultiPositionDataLoader(scan_path, scan_name, skip_positions={'03_03'})
-flat_fields = loader.load_flat_fields()
+flat_fields = loader.load_flat_fields(pca=True)
 dark_current = loader.load_flat_fields(dark=True)
 
 # Get number of projections (we need this for the loop)

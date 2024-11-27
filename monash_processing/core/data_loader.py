@@ -8,7 +8,7 @@ import tifffile
 from tqdm import tqdm
 import cv2
 
-from algorithms.eigenflats import EigenflatManager
+from monash_processing.algorithms.eigenflats import EigenflatManager
 
 
 class DataLoader:
