@@ -97,12 +97,14 @@ class DataLoader:
             self._save_auxiliary_data(flat_fields_array, filename)
             return flat_fields_array
 
+        mean_flats = []
+
         # PCA version
         for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
             prefix = 'FLAT_FIELD/BEFORE' if not dark else 'DARK_FIELD/BEFORE'
             data = self._load_raw_dataset(h5_file, prefix)
 
-            data -= dark # Subtract dark field
+            data = data - dark # Subtract dark field
 
             print('Median filtering flats of shape ', str(data.shape))
             # Apply median blur to each image separately
@@ -114,12 +116,15 @@ class DataLoader:
             mask = (filter_im < np.percentile(filter_im, 0.001 * 100)) | (data > 4000)
             np.putmask(data, mask, med_im[mask])
 
-            flat_fields.append(EigenflatManager.eigenflats_PCA(data))
+            eigenflat, meanflat = EigenflatManager.eigenflats_PCA(data)
+            flat_fields.append(eigenflat)
+            mean_flats.append(meanflat)
 
         flat_fields_array = np.array(flat_fields)  # Shape: (N, ncomp, X, Y)
-        self._save_auxiliary_data(flat_fields_array, filename)
+        mean_flats_array = np.array(flat_fields)  # Shape: (N, X, Y)
 
-        self.logger.info(f"Loaded and averaged {type} fields with shape {flat_fields_array.shape}")
+        self._save_auxiliary_data(flat_fields_array, filename)
+        self._save_auxiliary_data(mean_flats_array, 'mean_' + filename)
 
         return flat_fields_array
 
