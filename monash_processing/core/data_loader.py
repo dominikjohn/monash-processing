@@ -101,7 +101,7 @@ class DataLoader:
 
         # PCA version
         for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
-            prefix = 'FLAT_FIELD/BEFORE' if not dark else 'DARK_FIELD/BEFORE'
+            prefix = 'FLAT_FIELD/BEFORE'
             data = self._load_raw_dataset(h5_file, prefix)
 
             data = data - dark # Subtract dark field
