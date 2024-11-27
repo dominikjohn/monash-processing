@@ -89,6 +89,7 @@ center_shift = calibrator.find_center_shift(
     num_projections=1800,
     test_range=(404, 407),
     stepping=20,
+    is_short_scan=True
 )
 print(f"Found optimal center shift: {center_shift}")
 
