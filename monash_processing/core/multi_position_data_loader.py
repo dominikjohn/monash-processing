@@ -6,6 +6,8 @@ import numpy as np
 from tqdm import tqdm
 import logging
 import re
+import cv2
+from monash_processing.algorithms.eigenflat_manager import EigenflatManager
 
 class MultiPositionDataLoader(DataLoader):
     def __init__(self, scan_path: Union[str, Path], scan_name: str, skip_positions: Optional[Set[str]] = None):
@@ -78,6 +80,83 @@ class MultiPositionDataLoader(DataLoader):
         except Exception as e:
             self.logger.error(f"Error loading dataset {dataset_path} from {h5_file} position {position}: {str(e)}")
             raise
+
+    def load_flat_fields(self, dark=False, pca=False, position: Optional[str] = None) -> np.ndarray:
+        """Load flat field data from all files and combine, averaging multiple fields per file."""
+
+        type = "flat" if not dark else "dark"
+        positions_to_load = [position] if position else self.positions
+        h5_file = self.h5_files[0]
+
+        if pca:
+            filename = 'pca_flatfields.npy'
+        else:
+            filename = 'averaged_flatfields.npy' if not dark else 'averaged_darkfields.npy'
+
+        # Check if averaged flatfield file already exists
+        flatfield_file = self.results_dir / filename
+        if flatfield_file.exists():
+            try:
+                flat_fields_array = np.load(flatfield_file)
+                self.logger.info(f"Loaded {type}field from {flatfield_file}")
+                return flat_fields_array
+            except Exception as e:
+                self.logger.error(f"Failed to load averaged flatfield from {flatfield_file}: {str(e)}")
+                raise
+
+        self.logger.info(f"Processed flatfield file not found, loading and creating flat field from raw data")
+        flat_fields = []
+
+        if dark:
+            for pos in positions_to_load:
+                prefix = 'DARK_FIELD/BEFORE'
+                data = self._load_raw_dataset(h5_file, prefix, pos)
+                averaged_flat = self._average_fields(data)
+                flat_fields.append(averaged_flat)
+
+            flat_fields_array = np.array(flat_fields)
+            flat_fields_array = np.average(flat_fields_array, axis=0)
+            self._save_auxiliary_data(flat_fields_array, filename)
+
+            return flat_fields_array
+
+        dark = self.load_flat_fields(dark=True)
+
+        # Simple averaging of flats
+        if not pca:
+            for pos in positions_to_load:
+                prefix = 'FLAT_FIELD/BEFORE'
+                data = self._load_raw_dataset(h5_file, prefix, pos)
+                data -= dark  # Subtract dark field
+                averaged_flat = self._average_fields(data)
+                flat_fields.append(averaged_flat)
+
+            flat_fields_array = np.array(flat_fields)
+            self._save_auxiliary_data(flat_fields_array, filename)
+            return flat_fields_array
+
+        # PCA version
+        for pos in positions_to_load:
+            prefix = 'FLAT_FIELD/BEFORE'
+            data = self._load_raw_dataset(h5_file, prefix, pos)
+
+            data -= dark # Subtract dark field
+
+            print('Median filtering flats of shape ', str(data.shape))
+            med_im = cv2.medianBlur(data, 5)
+            filter_im = (data / med_im)
+            mask = (filter_im < np.percentile(filter_im, 0.001 * 100)) | (data > 4000)
+            np.putmask(data, mask, med_im[mask])
+
+            flat_fields.append(EigenflatManager.eigenflats_PCA(data))
+
+        flat_fields_array = np.array(flat_fields)  # Shape: (N, ncomp, X, Y)
+        self._save_auxiliary_data(flat_fields_array, filename)
+
+        self.logger.info(f"Loaded and averaged {type} fields with shape {flat_fields_array.shape}")
+
+        return flat_fields_array
+
 
     def load_flat_fields(self, dark=False, position: Optional[str] = None) -> np.ndarray:
         """
