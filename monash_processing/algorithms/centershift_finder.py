@@ -84,7 +84,7 @@ class ReconstructionCalibrator:
             )
 
             # Save reconstruction
-            filename = preview_dir / f'center_shift_{shift:+.1f}.tiff'
+            filename = preview_dir / f'center_shift_{shift:.1f}.tiff'
             tifffile.imwrite(filename, recon.astype(np.float32))
 
         print(f"\nReconstructed slices saved in: {preview_dir}")
