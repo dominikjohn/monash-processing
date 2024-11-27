@@ -104,7 +104,6 @@ class DataLoader:
 
             data -= dark # Subtract dark field
 
-
             print('Median filtering flats of shape ', str(data.shape))
             # Apply median blur to each image separately
             med_im = np.zeros_like(data, dtype=np.float32)
