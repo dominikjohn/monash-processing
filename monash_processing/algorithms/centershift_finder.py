@@ -11,7 +11,7 @@ class ReconstructionCalibrator:
     def __init__(self, data_loader):
         self.data_loader = data_loader
 
-    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=100, test_range=(-50, 50)):
+    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=100, test_range=(-50, 50), stepping=10):
         """
         Creates reconstructions with different center shifts and saves them as files.
         Uses 3D parallel beam geometry with FBP algorithm.
@@ -68,7 +68,7 @@ class ReconstructionCalibrator:
         # Select one slice for the preview
         sliced_projections = projections[:, slice_idx:slice_idx + 1, :]
 
-        shifts = np.linspace(test_range[0], test_range[1], 10)
+        shifts = np.linspace(test_range[0], test_range[1], stepping)
         print("Computing reconstructions with different center shifts...")
 
         for shift in tqdm(shifts):
