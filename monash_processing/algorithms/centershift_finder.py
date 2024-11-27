@@ -34,7 +34,7 @@ class ReconstructionCalibrator:
         total_projs = len(tiff_files)
 
         # Calculate angles (up to 180 degrees)
-        angles = np.linspace(0, np.deg2rad(max_angle), total_projs)
+        angles = int(np.linspace(0, np.deg2rad(max_angle), total_projs))
 
         print('Highest angle used:', np.rad2deg(angles[-1]))
 

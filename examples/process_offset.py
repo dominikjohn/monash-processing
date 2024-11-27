@@ -87,7 +87,7 @@ center_shift = calibrator.find_center_shift(
     max_angle=180,
     pixel_size=pixel_size,
     num_projections=100,
-    test_range=(-2000, 2000),
+    test_range=(0, 500),
     stepping=20,
     is_short_scan=True
 )
