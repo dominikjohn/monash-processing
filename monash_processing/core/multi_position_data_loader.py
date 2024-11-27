@@ -158,62 +158,6 @@ class MultiPositionDataLoader(DataLoader):
         return flat_fields_array
 
 
-    def load_flat_fields(self, dark=False, position: Optional[str] = None) -> np.ndarray:
-        """
-        Load flat field data from all positions and combine into a single array.
-
-        Args:
-            dark: If True, load dark fields instead of flat fields
-            position: Specific position to load. If None, loads all positions
-
-        Returns:
-            If dark=True: numpy array of shape (X, Y) - averaged across all positions
-            If dark=False: numpy array of shape (N, X, Y) where N is number of positions
-        """
-        type = "flat" if not dark else "dark"
-        positions_to_load = [position] if position else self.positions
-
-        # Check if final averaged file already exists
-        filename = 'averaged_flatfields.npy' if not dark else 'averaged_darkfields.npy'
-        averaged_file = self.results_dir / filename
-
-        if averaged_file.exists():
-            try:
-                flat_fields_array = np.load(averaged_file)
-                self.logger.info(f"Loaded averaged {type} from {averaged_file}")
-                return flat_fields_array
-            except Exception as e:
-                self.logger.error(f"Failed to load averaged {type} from {averaged_file}: {str(e)}")
-                raise
-
-        flat_fields = []
-
-        # Load data for each position
-        for pos in positions_to_load:
-            for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields for position {pos}", unit="file"):
-                try:
-                    prefix = 'FLAT_FIELD/BEFORE' if not dark else 'DARK_FIELD/BEFORE'
-                    data = self._load_raw_dataset(h5_file, prefix, pos)
-                    # Average multiple exposures for this position
-                    averaged_flat = self._average_fields(data)
-                    flat_fields.append(averaged_flat)
-                except Exception as e:
-                    self.logger.error(f"Failed to load/average {type} field from {h5_file} position {pos}: {str(e)}")
-                    raise
-
-        flat_fields_array = np.array(flat_fields)  # Shape: (N, X, Y) where N is number of positions
-
-        # For dark fields, average across all positions to get a single (X, Y) array
-        if dark:
-            flat_fields_array = np.mean(flat_fields_array, axis=0)  # Shape: (X, Y)
-            self.logger.info(f"Averaged dark fields across positions to shape {flat_fields_array.shape}")
-
-        # Save the final averaged array
-        self._save_auxiliary_data(flat_fields_array, filename)
-
-        self.logger.info(f"Loaded and averaged {type} fields with shape {flat_fields_array.shape}")
-        return flat_fields_array
-
     def load_projections(self, projection_i: Optional[int] = None, step_i: Optional[int] = None,
                          position: Optional[str] = None) -> np.ndarray:
         """
