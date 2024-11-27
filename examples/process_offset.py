@@ -91,6 +91,13 @@ center_shift = calibrator.find_center_shift(
     stepping=20,
     is_short_scan=False
 )
+center_shift = calibrator.find_center_shift_3d(
+    max_angle=max_angle,
+    enable_short_scan=True,
+    num_projections=300,
+    test_range=(-50, 50)
+)
+
 print(f"Found optimal center shift: {center_shift}")
 
 volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, method='FBP')
