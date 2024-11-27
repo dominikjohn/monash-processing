@@ -81,7 +81,7 @@ class MultiPositionDataLoader(DataLoader):
             self.logger.error(f"Error loading dataset {dataset_path} from {h5_file} position {position}: {str(e)}")
             raise
 
-    def load_flat_fields(self, dark=False, pca=False, position: Optional[str] = None) -> np.ndarray:
+    def load_flat_fields(self, dark=False, pca=False, position: Optional[str] = None):
         """Load flat field data from all files and combine, averaging multiple fields per file."""
 
         type = "flat" if not dark else "dark"
@@ -135,6 +135,8 @@ class MultiPositionDataLoader(DataLoader):
             self._save_auxiliary_data(flat_fields_array, filename)
             return flat_fields_array
 
+        mean_flats = []
+
         # PCA version
         for pos in positions_to_load:
             prefix = 'FLAT_FIELD/BEFORE'
@@ -151,19 +153,17 @@ class MultiPositionDataLoader(DataLoader):
             filter_im = (data / med_im)
             mask = (filter_im < np.percentile(filter_im, 0.001 * 100)) | (data > 4000)
             np.putmask(data, mask, med_im[mask])
-            eigenflats = EigenflatManager.eigenflats_PCA(data)
+            eigenflats, mean_flats = EigenflatManager.eigenflats_PCA(data)
             flat_fields.append(eigenflats)
+            mean_flats.append(mean_flats)
 
-        return flat_fields
         flat_fields_array = np.array(flat_fields)
-        print('Performing PCA on flat fields of shape ', str(flat_fields_array.shape))
-        eigenflats_pca = EigenflatManager.eigenflats_PCA(flat_fields_array)
-        self._save_auxiliary_data(eigenflats_pca, filename)
+        mean_flats_array = np.array(mean_flats)
 
-        self.logger.info(f"Loaded and averaged {type} fields with shape {eigenflats_pca.shape}")
+        self._save_auxiliary_data(flat_fields_array, filename)
+        self._save_auxiliary_data(mean_flats_array, filename)
 
-        return eigenflats_pca
-
+        return flat_fields_array, mean_flats
 
     def load_projections(self, projection_i: Optional[int] = None, step_i: Optional[int] = None,
                          position: Optional[str] = None) -> np.ndarray:
