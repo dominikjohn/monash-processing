@@ -61,7 +61,7 @@ class VolumeBuilder:
         return np.array(projections), angles[valid_indices]
 
     @staticmethod
-    def reconstruct_slice(projections, angles, pixel_size, is_stitched=False):
+    def reconstruct_slice(projections, angles, pixel_size, is_stitched=False, is_short_scan=False):
         """
         Reconstruct a single slice using FBP algorithm with ASTRA Toolbox.
         Args:
