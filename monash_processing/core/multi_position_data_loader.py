@@ -154,6 +154,7 @@ class MultiPositionDataLoader(DataLoader):
             eigenflats = EigenflatManager.eigenflats_PCA(data)
             flat_fields.append(eigenflats)
 
+        return flat_fields
         flat_fields_array = np.array(flat_fields)
         print('Performing PCA on flat fields of shape ', str(flat_fields_array.shape))
         eigenflats_pca = EigenflatManager.eigenflats_PCA(flat_fields_array)
