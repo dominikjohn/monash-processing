@@ -6,7 +6,6 @@ from monash_processing.core.data_loader import DataLoader
 from scipy import fft
 from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
 
-
 class PhaseIntegrator:
 
     def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader: DataLoader, stitched=False):

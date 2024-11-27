@@ -136,8 +136,11 @@ class VolumeBuilder:
         n_slices = projections.shape[1]
         detector_cols = projections.shape[2]
 
+        scaling_factor = 1e6
+        pixel_size = 1.444e-6 * scaling_factor
+
         vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
-        proj_geom = astra.create_proj_geom('parallel', 1.0, detector_cols, angles)
+        proj_geom = astra.create_proj_geom('parallel', pixel_size, detector_cols, angles)
         proj_id = astra.create_projector('cuda', proj_geom, vol_geom)
 
         # Pre-create configuration (reuse for all slices)
@@ -196,7 +199,7 @@ class VolumeBuilder:
         :param chunk_size: int, number of slices to process at once
         :return: reconstruction result array
         '''
-        input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'att')
+        input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'att')
         tiff_files = sorted(input_dir.glob('projection_*.tiff'))
         angles = np.linspace(0, self.max_angle_rad, len(tiff_files))
 
