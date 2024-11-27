@@ -42,7 +42,7 @@ class EigenflatManager:
         '''
         start = time.time()
 
-        MFs = self.flats.mean(axis=0)
+        MFs = flats.mean(axis=0)
 
         A = flats - MFs
         A = A.reshape(A.shape[0], A.shape[1] * A.shape[2])
