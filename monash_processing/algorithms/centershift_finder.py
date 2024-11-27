@@ -34,17 +34,9 @@ class ReconstructionCalibrator:
         total_projs = len(tiff_files)
 
         # Calculate angles (up to 180 degrees)
-        all_angles = np.linspace(0, np.deg2rad(max_angle), total_projs)
-        valid_angles_mask = all_angles <= np.pi
-        valid_indices = np.where(valid_angles_mask)[0]
+        angles = np.linspace(0, np.deg2rad(max_angle), total_projs)
 
-        # Select subset of indices for preview
-        if len(valid_indices) > num_projections:
-            indices = np.linspace(0, len(valid_indices) - 1, num_projections, dtype=int)
-            valid_indices = valid_indices[indices]
-            angles = all_angles[valid_indices]
-        else:
-            angles = all_angles[valid_angles_mask]
+        print('Highest angle used:', np.rad2deg(angles[-1]))
 
         # Load first projection to get dimensions
         first_proj = tifffile.imread(tiff_files[0])
@@ -54,11 +46,11 @@ class ReconstructionCalibrator:
             slice_idx = detector_rows // 2
 
         # Initialize projections array
-        projections = np.zeros((len(valid_indices), detector_rows, detector_cols))
+        projections = np.zeros((len(angles), detector_rows, detector_cols))
 
         # Load projections
         print("Loading projections...")
-        for i, idx in enumerate(tqdm(valid_indices)):
+        for i, idx in enumerate(tqdm(angles)):
             try:
                 proj = tifffile.imread(tiff_files[idx])
                 projections[i] = proj
