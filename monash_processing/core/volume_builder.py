@@ -80,8 +80,13 @@ class VolumeBuilder:
 
         vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
 
+        scaling_factor = 1e6
+        source_distance = 21.5 * scaling_factor
+        detector_distance = 0.158 * scaling_factor
+        pixel_size = 1.444e-6 * scaling_factor
+
         # Create projection geometry with center shift
-        proj_geom = astra.create_proj_geom('parallel', 1., detector_cols, angles)
+        proj_geom = astra.create_proj_geom('fanflat', pixel_size, detector_cols, angles, source_distance, detector_distance)
 
         # Create sinogram
         sino_id = astra.data2d.create('-sino', proj_geom, projection_slices)
