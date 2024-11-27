@@ -151,9 +151,9 @@ class MultiPositionDataLoader(DataLoader):
             filter_im = (data / med_im)
             mask = (filter_im < np.percentile(filter_im, 0.001 * 100)) | (data > 4000)
             np.putmask(data, mask, med_im[mask])
-            flat_fields.append(EigenflatManager.eigenflats_PCA(data))
 
         flat_fields_array = np.array(flat_fields)  # Shape: (N, ncomp, X, Y)
+        eigenflats_pca = EigenflatManager.eigenflats_PCA(flat_fields_array)
         self._save_auxiliary_data(flat_fields_array, filename)
 
         self.logger.info(f"Loaded and averaged {type} fields with shape {flat_fields_array.shape}")
