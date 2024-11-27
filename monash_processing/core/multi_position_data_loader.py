@@ -127,7 +127,7 @@ class MultiPositionDataLoader(DataLoader):
             for pos in positions_to_load:
                 prefix = 'FLAT_FIELD/BEFORE'
                 data = self._load_raw_dataset(h5_file, prefix, pos)
-                data -= dark  # Subtract dark field
+                data = data - dark  # Subtract dark field
                 averaged_flat = self._average_fields(data)
                 flat_fields.append(averaged_flat)
 
@@ -140,7 +140,7 @@ class MultiPositionDataLoader(DataLoader):
             prefix = 'FLAT_FIELD/BEFORE'
             data = self._load_raw_dataset(h5_file, prefix, pos)
 
-            data -= dark # Subtract dark field
+            data = data - dark # Subtract dark field
 
             print('Median filtering flats of shape ', str(data.shape))
             med_im = cv2.medianBlur(data, 5)
