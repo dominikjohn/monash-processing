@@ -6,6 +6,16 @@ from scipy.ndimage import shift as scipy_shift
 class Utils:
 
     @staticmethod
+    def perform_bad_pixel_correction(im, dead_pix_thl):
+        if dead_pix_thl > 0:
+            med_im = cv2.medianBlur(im, 5)
+            filter_im = (im / med_im)
+            mask = (filter_im < np.percentile(filter_im, dead_pix_thl * 100)) | (im > 4050)
+
+            im[mask] = med_im[mask]
+        return im
+
+    @staticmethod
     def select_areas(image):
         im = cv2.imread(image)
 
