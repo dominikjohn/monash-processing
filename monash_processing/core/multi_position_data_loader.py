@@ -56,7 +56,7 @@ class MultiPositionDataLoader(DataLoader):
         if self.skip_positions:
             self.logger.info(f"Skipping positions: {self.skip_positions}")
 
-    def _load_raw_dataset(self, h5_file: Path, dataset_path: str, position: Optional[str] = None) -> np.ndarray:
+    def load_raw_dataset(self, h5_file: Path, dataset_path: str, position: Optional[str] = None) -> np.ndarray:
         """
         Load a specific dataset from an H5 file.
 
@@ -110,7 +110,7 @@ class MultiPositionDataLoader(DataLoader):
         if dark:
             for pos in positions_to_load:
                 prefix = 'DARK_FIELD/BEFORE'
-                data = self._load_raw_dataset(h5_file, prefix, pos)
+                data = self.load_raw_dataset(h5_file, prefix, pos)
                 averaged_flat = self._average_fields(data)
                 flat_fields.append(averaged_flat)
 
@@ -126,7 +126,7 @@ class MultiPositionDataLoader(DataLoader):
         if not pca:
             for pos in positions_to_load:
                 prefix = 'FLAT_FIELD/BEFORE'
-                data = self._load_raw_dataset(h5_file, prefix, pos)
+                data = self.load_raw_dataset(h5_file, prefix, pos)
                 data = data - dark  # Subtract dark field
                 averaged_flat = self._average_fields(data)
                 flat_fields.append(averaged_flat)
@@ -140,7 +140,7 @@ class MultiPositionDataLoader(DataLoader):
         # PCA version
         for pos in positions_to_load:
             prefix = 'FLAT_FIELD/BEFORE'
-            data = self._load_raw_dataset(h5_file, prefix, pos)
+            data = self.load_raw_dataset(h5_file, prefix, pos)
 
             data = data - dark # Subtract dark field
 

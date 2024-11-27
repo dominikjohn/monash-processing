@@ -73,7 +73,7 @@ class DataLoader:
         if dark:
             for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
                 prefix = 'DARK_FIELD/BEFORE'
-                data = self._load_raw_dataset(h5_file, prefix)
+                data = self.load_raw_dataset(h5_file, prefix)
                 averaged_flat = self._average_fields(data)
                 flat_fields.append(averaged_flat)
 
@@ -89,7 +89,7 @@ class DataLoader:
         if not pca:
             for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
                 prefix = 'FLAT_FIELD/BEFORE'
-                data = self._load_raw_dataset(h5_file, prefix)
+                data = self.load_raw_dataset(h5_file, prefix)
                 data -= dark  # Subtract dark field
                 averaged_flat = self._average_fields(data)
                 flat_fields.append(averaged_flat)
@@ -102,7 +102,7 @@ class DataLoader:
         # PCA version
         for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
             prefix = 'FLAT_FIELD/BEFORE'
-            data = self._load_raw_dataset(h5_file, prefix)
+            data = self.load_raw_dataset(h5_file, prefix)
 
             data = data - dark # Subtract dark field
 
@@ -223,7 +223,7 @@ class DataLoader:
         corrected_data = (data - dark_current) / (flat_fields - dark_current)
         return corrected_data
 
-    def _load_raw_dataset(self, h5_file: Path, dataset_path: str) -> np.ndarray:
+    def load_raw_dataset(self, h5_file: Path, dataset_path: str) -> np.ndarray:
         """Load a specific dataset from an H5 file."""
         try:
             with h5py.File(h5_file, 'r') as f:
