@@ -153,9 +153,9 @@ class MultiPositionDataLoader(DataLoader):
             filter_im = (data / med_im)
             mask = (filter_im < np.percentile(filter_im, 0.001 * 100)) | (data > 4000)
             np.putmask(data, mask, med_im[mask])
-            eigenflats, mean_flats = EigenflatManager.eigenflats_PCA(data)
-            flat_fields.append(eigenflats)
-            mean_flats.append(mean_flats)
+            eigenflat, mean_flat = EigenflatManager.eigenflats_PCA(data)
+            flat_fields.append(eigenflat)
+            mean_flats.append(mean_flat)
 
         flat_fields_array = np.array(flat_fields)
         mean_flats_array = np.array(mean_flats)
