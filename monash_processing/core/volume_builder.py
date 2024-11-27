@@ -79,7 +79,7 @@ class VolumeBuilder:
         detector_cols = projection_slices.shape[1]
 
         if is_stitched:
-            vol_geom = astra.create_vol_geom(int(detector_cols * 1.7), int(detector_cols * 1.7))
+            vol_geom = astra.create_vol_geom(int(detector_cols * 2), int(detector_cols * 2))
         else:
             vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
 
@@ -89,7 +89,7 @@ class VolumeBuilder:
         pixel_size = 1.444e-6 * scaling_factor
 
         # Create projection geometry with center shift
-        proj_geom = astra.create_proj_geom('fanflat', pixel_size, detector_cols, angles, source_distance, detector_distance)
+        proj_geom = astra.create_proj_geom('parallel', pixel_size, detector_cols, angles)
 
         # Create sinogram
         sino_id = astra.data2d.create('-sino', proj_geom, projection_slices)
