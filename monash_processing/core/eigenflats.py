@@ -4,6 +4,8 @@ import time
 import scipy
 import scipy.ndimage as nd
 from monash_processing.utils.utils import Utils
+from skimage.measure import block_reduce
+
 class EigenflatManager:
 
     @staticmethod
@@ -21,14 +23,14 @@ class EigenflatManager:
         idx = np.argsort(evi)[::-1]
         ev, vr = evi[idx], vri[:, idx]
         EFs = np.dot(vr.T, A)
-        EFs /= np.sqrt(np.abs(ev))[:, None] # Normalize flat fields using the eigenvalues
+        #EFs /= np.sqrt(np.abs(ev))[:, None] # Normalize flat fields using the eigenvalues
         EFs = EFs.reshape(flats.shape)
 
-        EFs = EFs[:15] # use only the first 15 eigenflats
+        EFs = EFs[:25] # use only the first 15 eigenflats
 
-        print('Gaussian-blurring components slightly')
-        for i in range(EFs.shape[0]):
-            EFs[i] = cv2.GaussianBlur(EFs[i], (0, 0), 0.5)
+        #print('Gaussian-blurring components slightly')
+        #for i in range(EFs.shape[0]):
+        #    EFs[i] = cv2.GaussianBlur(EFs[i], (0, 0), 0.5)
 
         print('\n Eigenflat generation time:', np.round(time.time() - start, 2), 's')
 
@@ -44,22 +46,36 @@ class EigenflatManager:
         im = projection - darkcurrent
         im[im <= 0] = 1
 
-        im = Utils.perform_bad_pixel_correction(im, dead_pix_thl)
+        #im = Utils.perform_bad_pixel_correction(im, dead_pix_thl)
 
-        imc = cv2.GaussianBlur(im / mean_flats[step], (0, 0), 3)
-        m = nd.binary_erosion(np.abs(imc - 1) < 0.03, iterations=20)
+        #imc = cv2.GaussianBlur(im / mean_flats[step], (0, 0), 3)
+        #m = nd.binary_erosion(np.abs(imc - 1) < 0.03, iterations=20)
 
         # use predefined background
-        #m = np.zeros_like(im, dtype=bool)
-        #m[area] = 1
+        m = np.zeros_like(im, dtype=bool)
+        area = np.s_[10:-10, :-200]
+        m[area] = True
 
         # calculate weights of EFs using a lstsq min in the masked area
         sh = eigenflats[step, 0][m].shape
         ef = eigenflats[step][:, m].reshape(eigenflats.shape[1], sh[0])
         sm = (im[m] - mean_flats[step][m]).ravel()
-        res = scipy.optimize.lsq_linear(np.swapaxes(ef, 0, 1), sm)
+        res1 = scipy.optimize.lsq_linear(np.swapaxes(ef, 0, 1), sm)
 
-        # generate flat as weighted sum of EFs and MF
-        mflat = np.sum(res['x'][:, None, None] * eigenflats[step], axis=0) + mean_flats[step]
+        bin_factor = 4
+        proj_binned = block_reduce(im, (bin_factor, bin_factor), np.mean)
+        eigenflats_binned = block_reduce(eigenflats[step], (1,bin_factor,bin_factor), np.mean)
+        mean_flats_binned = block_reduce(mean_flats[step], (bin_factor, bin_factor), np.mean)
+        binned_m = np.ones_like(proj_binned, dtype=bool)
+
+        sh = eigenflats_binned[0][binned_m].shape
+        ef = eigenflats_binned.reshape(eigenflats_binned.shape[0], sh[0])
+        sm = (proj_binned - mean_flats_binned).ravel()
+        res2 = scipy.optimize.lsq_linear(np.swapaxes(ef, 0, 1), sm)
+
+        res = (res2['x'] + res1['x']) / 2
+
+                # generate flat as weighted sum of EFs and MF
+        mflat = np.sum(res1['x'][:, None, None] * eigenflats[step], axis=0) + mean_flats[step]
 
         return im, mflat, res['x']
