@@ -46,7 +46,7 @@ class DataLoader:
         # Subtract darks from flats
         flats = flats - darks
 
-    def load_flat_fields(self, dark=False, pca=False) -> np.ndarray:
+    def load_flat_fields(self, dark=False, pca=False):
         """Load flat field data from all files and combine, averaging multiple fields per file."""
 
         type = "flat" if not dark else "dark"
@@ -61,8 +61,9 @@ class DataLoader:
         if flatfield_file.exists():
             try:
                 flat_fields_array = np.load(flatfield_file)
+                mean_flats_array = np.load(self.results_dir / ('mean_' + filename))
                 self.logger.info(f"Loaded {type}field from {flatfield_file}")
-                return flat_fields_array
+                return flat_fields_array, mean_flats_array
             except Exception as e:
                 self.logger.error(f"Failed to load averaged flatfield from {flatfield_file}: {str(e)}")
                 raise
