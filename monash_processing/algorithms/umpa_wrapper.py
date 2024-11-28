@@ -4,7 +4,7 @@ import logging
 from typing import Dict, Optional, Union, List
 import UMPA
 
-from core.eigenflats import EigenflatManager
+from monash_processing.core.eigenflats import EigenflatManager
 from monash_processing.core.data_loader import DataLoader
 from dask import delayed, compute
 from dask.distributed import LocalCluster, Client
