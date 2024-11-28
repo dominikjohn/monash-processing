@@ -125,7 +125,7 @@ class DataLoader:
             mean_flats.append(meanflat)
 
         flat_fields_array = np.array(flat_fields)  # Shape: (N, ncomp, X, Y)
-        mean_flats_array = np.array(flat_fields)  # Shape: (N, X, Y)
+        mean_flats_array = np.array(mean_flats)  # Shape: (N, X, Y)
 
         self._save_auxiliary_data(flat_fields_array, filename)
         self._save_auxiliary_data(mean_flats_array, 'mean_' + filename)
