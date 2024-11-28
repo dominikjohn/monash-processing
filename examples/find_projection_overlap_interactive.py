@@ -4,7 +4,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button
-from monash_processing.core.multi_position_data_loader import MultiPositionDataLoader
+from monash_processing.core.data_loader import DataLoader
 
 def interactive_projection_alignment(data_loader, angle_index1: int, angle_index2: int):
     """Create interactive visualization of projection alignment with composite zoom."""
@@ -38,7 +38,7 @@ def interactive_projection_alignment(data_loader, angle_index1: int, angle_index
     ax_comp = fig.add_subplot(gs[3, 0])
     ax_zoom = fig.add_subplot(gs[3, 1])
 
-    initial_shift = 1325
+    initial_shift = 800
 
     # Show original images
     ax_orig1.imshow(proj1, cmap='gray')
@@ -98,14 +98,14 @@ def interactive_projection_alignment(data_loader, angle_index1: int, angle_index
             ax_comp.set_title('Composite (Blended)')
 
             # Define and show zoom region
-            zoom_height = 300
-            zoom_width = 400
+            zoom_height = 800
+            zoom_width = 1200
 
             zoom_center_y = proj1.shape[0] // 2
             zoom_center_x = (overlap_start + overlap_end) // 2
 
-            zoom_center_x -= 600
-            zoom_center_y += 600
+            zoom_center_x += 400
+            zoom_center_y += 1200
 
             # Ensure zoom region stays within bounds
             zoom_start = max(0, zoom_center_x - zoom_width // 2)
@@ -144,7 +144,7 @@ def interactive_projection_alignment(data_loader, angle_index1: int, angle_index
         fig.canvas.draw_idle()
 
     # Create slider and buttons
-    slider = Slider(slider_ax, 'Horizontal Shift', 1000, 2000, valinit=initial_shift, valstep=1)
+    slider = Slider(slider_ax, 'Horizontal Shift', 800, 1200, valinit=initial_shift, valstep=1)
     minus_button = Button(minus_button_ax, '-')
     plus_button = Button(plus_button_ax, '+')
 
@@ -180,6 +180,6 @@ def interactive_projection_alignment(data_loader, angle_index1: int, angle_index
 
 # Usage
 scan_path = Path("/data/mct/22203/")
-scan_name = "K21N_sample"
-loader = MultiPositionDataLoader(scan_path, scan_name, skip_positions={'03_03'})
+scan_name = "K3_2E"
+loader = DataLoader(scan_path, scan_name)
 fig, slider = interactive_projection_alignment(loader, 800, 2600)

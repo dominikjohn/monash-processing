@@ -54,7 +54,7 @@ def interactive_projection_alignment(data_loader, angle_index1: int, angle_index
             comp = np.full_like(p1, np.nan)
 
             # Find overlap center and create blend region
-            blend_width = 10
+            blend_width = 400
             overlap_center = (cols[0] + cols[-1]) // 2
             blend_start = overlap_center - blend_width // 2
             blend_end = overlap_center + blend_width // 2
@@ -62,6 +62,8 @@ def interactive_projection_alignment(data_loader, angle_index1: int, angle_index
             print('Mean P2 in overlap', np.mean(p2[:, blend_start:blend_end]))
             print('Mean P1 in overlap', np.mean(p1[:, blend_start:blend_end]))
             diff = np.mean(p1[:, blend_start:blend_end]) - np.mean(p2[:, blend_start:blend_end])
+
+
 
             p2 += diff
 
@@ -119,7 +121,7 @@ def interactive_projection_alignment(data_loader, angle_index1: int, angle_index
         fig.canvas.draw_idle()
 
     # Setup controls
-    slider = Slider(slider_ax, 'Horizontal Shift', 400, 1000, valinit=804, valstep=1)
+    slider = Slider(slider_ax, 'Horizontal Shift', 1200, 1220, valinit=804, valstep=1)
     slider.on_changed(update_alignment)
 
     def update(val):
@@ -134,7 +136,7 @@ def interactive_projection_alignment(data_loader, angle_index1: int, angle_index
     plt.show()
     return fig, slider
 
-data_loader = DataLoader(Path("/data/mct/22203/"), "K3_3H_ReverseOrder")
+data_loader = DataLoader(Path("/data/mct/22203/"), "K3_2E")
 def load_proj(idx):
     return data_loader.load_processed_projection(idx, 'dx')
 
