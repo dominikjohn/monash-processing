@@ -20,8 +20,8 @@ class UMPAProcessor:
                  scan_name: str,
                  data_loader: DataLoader,
                  w: int = 1,
-                 n_workers: Optional[int] = None,
-                 pca=True,):
+                 n_workers: Optional[int] = None
+                 ):
         """
         Initialize the UMPA processor with Dask support.
 
@@ -38,7 +38,6 @@ class UMPAProcessor:
         self.data_loader = data_loader
         self.w = w
         self.n_workers = n_workers
-        self.pca = pca
 
         # Define output channels
         self.channels = ['dx', 'dy', 'T', 'df', 'f']
@@ -62,17 +61,14 @@ class UMPAProcessor:
         """
         try:
             # Load projection data
-            projection = self.data_loader.load_projections(projection_i=angle_i)
-
+            dark = self.data_loader.load_flat_fields(dark=True)
+            projection = self.data_loader.load_projections(projection_i=angle_i) - dark
             flats = self.data_loader.load_flat_fields()
-            darks = self.data_loader.load_flat_fields(dark=True)
-
-            matched_flats = EigenflatManager.match_pca_to_proj(projection, flats, darks)
 
             # Perform UMPA processing
             results = UMPA.match_unbiased(
                 projection.astype(np.float64),
-                matched_flats.astype(np.float64),
+                flats.astype(np.float64),
                 self.w,
                 step=1,
                 df=True
