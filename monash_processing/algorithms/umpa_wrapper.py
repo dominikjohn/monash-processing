@@ -3,6 +3,8 @@ import numpy as np
 import logging
 from typing import Dict, Optional, Union, List
 import UMPA
+
+from core.eigenflats import EigenflatManager
 from monash_processing.core.data_loader import DataLoader
 from dask import delayed, compute
 from dask.distributed import LocalCluster, Client
@@ -18,7 +20,8 @@ class UMPAProcessor:
                  scan_name: str,
                  data_loader: DataLoader,
                  w: int = 1,
-                 n_workers: Optional[int] = None):
+                 n_workers: Optional[int] = None,
+                 pca=True,):
         """
         Initialize the UMPA processor with Dask support.
 
@@ -35,6 +38,7 @@ class UMPAProcessor:
         self.data_loader = data_loader
         self.w = w
         self.n_workers = n_workers
+        self.pca = pca
 
         # Define output channels
         self.channels = ['dx', 'dy', 'T', 'df', 'f']
@@ -61,11 +65,14 @@ class UMPAProcessor:
             projection = self.data_loader.load_projections(projection_i=angle_i)
 
             flats = self.data_loader.load_flat_fields()
+            darks = self.data_loader.load_flat_fields(dark=True)
+
+            matched_flats = EigenflatManager.match_pca_to_proj(projection, flats, darks)
 
             # Perform UMPA processing
             results = UMPA.match_unbiased(
                 projection.astype(np.float64),
-                flats.astype(np.float64),
+                matched_flats.astype(np.float64),
                 self.w,
                 step=1,
                 df=True

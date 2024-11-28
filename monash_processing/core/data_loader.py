@@ -126,7 +126,7 @@ class DataLoader:
         self._save_auxiliary_data(flat_fields_array, filename)
         self._save_auxiliary_data(mean_flats_array, 'mean_' + filename)
 
-        return flat_fields_array
+        return flat_fields_array, mean_flats_array
 
     def load_projections(self, projection_i: Optional[int] = None, step_i: Optional[int] = None) -> np.ndarray:
         """

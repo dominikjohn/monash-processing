@@ -30,7 +30,7 @@ n_workers = 50
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
 loader = DataLoader(scan_path, scan_name)
-flat_fields = loader.load_flat_fields(pca=True)
+flat_fields, mean_flats = loader.load_flat_fields(pca=True)
 dark_current = loader.load_flat_fields(dark=True)
 
 # Get number of projections (we need this for the loop)
@@ -40,7 +40,7 @@ with h5py.File(loader.h5_files[0], 'r') as f:
 
 # 2. Initialize preprocessor and UMPA processor
 print("Initializing processors")
-umpa_processor = UMPAProcessor(scan_path, scan_name, loader, umpa_w)
+umpa_processor = UMPAProcessor(scan_path, scan_name, loader, umpa_w, pca=True)
 
 # 3. Process each projection
 print("Processing projections")
