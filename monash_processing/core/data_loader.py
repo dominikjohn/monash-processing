@@ -94,7 +94,7 @@ class DataLoader:
             for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
                 prefix = 'FLAT_FIELD/BEFORE'
                 data = self.load_raw_dataset(h5_file, prefix)
-                data -= dark  # Subtract dark field
+                data = data - dark  # Subtract dark field
                 averaged_flat = self._average_fields(data)
                 flat_fields.append(averaged_flat)
             flat_fields_array = np.array(flat_fields)
