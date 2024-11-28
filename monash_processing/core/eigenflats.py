@@ -9,32 +9,62 @@ from skimage.measure import block_reduce
 class EigenflatManager:
 
     @staticmethod
-    def eigenflats_PCA(flats):
+    def eigenflats_PCA(flats, variance_threshold=0.99, max_components=None):
+        """
+        Compute eigenflats using PCA with intelligent component selection.
 
+        Parameters:
+        - flats: Input flat field images
+        - variance_threshold: Keep enough components to explain this fraction of variance (default 0.99 or 99%)
+        - max_components: Optional maximum number of components to keep
+
+        Returns:
+        - EFs: Selected eigenflats
+        - MFs: Mean flats
+        - n_components: Number of components selected
+        - explained_var: Cumulative explained variance ratio
+        """
         start = time.time()
 
         MFs = flats.mean(axis=0)
-
         A = flats - MFs
         A = A.reshape(A.shape[0], A.shape[1] * A.shape[2])
 
         X = np.dot(A, A.T)
-        evi, vri = np.linalg.eig(X)
+        # Use eigh for better numerical stability with symmetric matrices
+        evi, vri = np.linalg.eigh(X)
+        # Sort eigenvalues and vectors in descending order
         idx = np.argsort(evi)[::-1]
         ev, vr = evi[idx], vri[:, idx]
+
+        # Calculate explained variance ratio
+        explained_variance_ratio = ev / np.sum(ev)
+        cumulative_variance = np.cumsum(explained_variance_ratio)
+
+        # Determine number of components to keep
+        n_components = np.sum(cumulative_variance <= variance_threshold) + 1
+        if max_components is not None:
+            n_components = min(n_components, max_components)
+
+        # Print variance explanation analysis
+        print(f"\nVariance analysis:")
+        print(f"Components needed for {variance_threshold * 100}% variance: {n_components}")
+        print("\nCumulative variance explained by components:")
+        for i in [1, 5, 10, n_components]:
+            print(f"First {i:2d} components: {cumulative_variance[i - 1] * 100:.1f}%")
+
         EFs = np.dot(vr.T, A)
-        #EFs /= np.sqrt(np.abs(ev))[:, None] # Normalize flat fields using the eigenvalues
+        # Normalize by eigenvalues
+        EFs /= np.sqrt(np.abs(ev))[:, None]
         EFs = EFs.reshape(flats.shape)
 
-        EFs = EFs[:20] # use only the first 15 eigenflats #
+        # Keep only the selected number of components
+        EFs = EFs[:n_components]
 
-        #print('Gaussian-blurring components slightly')
-        #for i in range(EFs.shape[0]):
-        #    EFs[i] = cv2.GaussianBlur(EFs[i], (0, 0), 0.5)
+        print(f'\nEigenflat generation time: {np.round(time.time() - start, 2)}s')
+        print(f'Generated {n_components} components')
 
-        print('\n Eigenflat generation time:', np.round(time.time() - start, 2), 's')
-
-        return EFs, MFs
+        return EFs, MFs, n_components, cumulative_variance[:n_components]
 
     @staticmethod
     def match_pca_to_proj(step, eigenflats, mean_flats, darkcurrent, area, projection):
@@ -53,14 +83,23 @@ class EigenflatManager:
 
         # use predefined background
         m = np.zeros_like(im, dtype=bool)
-        area = np.s_[10:-10, :-200]
+        area = np.s_[10:-10, -200:-10]
         m[area] = True
 
         # calculate weights of EFs using a lstsq min in the masked area
         sh = eigenflats[step, 0][m].shape
         ef = eigenflats[step][:, m].reshape(eigenflats.shape[1], sh[0])
         sm = (im[m] - mean_flats[step][m]).ravel()
-        res1 = scipy.optimize.lsq_linear(np.swapaxes(ef, 0, 1), sm)
+        res = scipy.optimize.lsq_linear(np.swapaxes(ef, 0, 1), sm)
+
+
+        losses = []
+
+        def track_loss(xk):
+            # Calculate residual: ||Ax - b||^2
+            resid = np.linalg.norm(np.dot(np.swapaxes(ef, 0, 1), xk) - sm)**2
+            losses.append(resid)
+
 
         bin_factor = 4
         proj_binned = block_reduce(im, (bin_factor, bin_factor), np.mean)
@@ -76,6 +115,6 @@ class EigenflatManager:
         res = (res2['x'] + res1['x']) / 2
 
                 # generate flat as weighted sum of EFs and MF
-        mflat = np.sum(res1['x'][:, None, None] * eigenflats[step], axis=0) + mean_flats[step]
+        mflat = np.sum(res['x'][:, None, None] * eigenflats[step], axis=0) + mean_flats[step]
 
         return im, mflat, res['x']
