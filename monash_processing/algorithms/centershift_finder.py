@@ -7,11 +7,39 @@ from monash_processing.utils.utils import Utils
 from monash_processing.core.vector_reconstructor import VectorReconstructor
 from monash_processing.core.chunk_manager import ChunkManager
 
+
 class ReconstructionCalibrator:
     def __init__(self, data_loader):
         self.data_loader = data_loader
 
-    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=100, test_range=(-50, 50), stepping=10, is_stitched=True):
+    def bin_projections(self, projections, binning_factor):
+        """
+        Bins the projections by the specified factor using average pooling.
+
+        Args:
+            projections: Input projections array (n_projections, rows, cols)
+            binning_factor: Integer factor by which to bin the data
+
+        Returns:
+            Binned projections array
+        """
+        if binning_factor <= 1:
+            return projections
+
+        new_rows = projections.shape[1] // binning_factor
+        new_cols = projections.shape[2] // binning_factor
+
+        # Reshape and mean for binning
+        binned = projections.reshape(
+            projections.shape[0],  # Keep number of projections
+            new_rows, binning_factor,  # Split rows
+            new_cols, binning_factor  # Split columns
+        ).mean(axis=(2, 4))  # Average over binning windows
+
+        return binned
+
+    def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=100,
+                          test_range=(-50, 50), stepping=10, is_stitched=True, binning_factor=1):
         """
         Creates reconstructions with different center shifts and saves them as files.
         Uses 3D parallel beam geometry with FBP algorithm.
@@ -21,6 +49,7 @@ class ReconstructionCalibrator:
             pixel_size: Size of detector pixels in mm
             slice_idx: Optional specific slice to use (defaults to middle)
             num_projections: Number of projections to load for preview
+            binning_factor: Factor by which to bin the projections (default=1, no binning)
         """
         print("Loading subset of projections for center calibration...")
 
@@ -42,8 +71,6 @@ class ReconstructionCalibrator:
         valid_angles_mask = all_angles <= 2 * np.pi
         valid_indices = np.where(valid_angles_mask)[0]
 
-        print(valid_indices)
-
         # Select subset of indices for preview
         if len(valid_indices) > num_projections:
             indices = np.linspace(0, len(valid_indices) - 1, num_projections, dtype=int)
@@ -56,10 +83,13 @@ class ReconstructionCalibrator:
         first_proj = tifffile.imread(tiff_files[0])
         detector_rows, detector_cols = first_proj.shape
 
+        # Adjust slice_idx for binning
         if slice_idx is None:
-            slice_idx = detector_rows // 2
+            slice_idx = (detector_rows // binning_factor) // 2
+        else:
+            slice_idx = slice_idx // binning_factor
 
-        # Initialize projections array
+        # Initialize projections array for original size
         projections = np.zeros((len(valid_indices), detector_rows, detector_cols))
 
         # Load projections
@@ -71,6 +101,13 @@ class ReconstructionCalibrator:
             except Exception as e:
                 raise RuntimeError(f"Failed to load projection {idx}: {str(e)}")
 
+        # Apply binning if requested
+        if binning_factor > 1:
+            print(f"Binning projections by factor of {binning_factor}...")
+            projections = self.bin_projections(projections, binning_factor)
+            # Adjust pixel size for binning
+            pixel_size = pixel_size * binning_factor
+
         # Select one slice for the preview
         sliced_projections = projections[:, slice_idx:slice_idx + 1, :]
 
@@ -79,7 +116,9 @@ class ReconstructionCalibrator:
 
         for shift in tqdm(shifts):
             print('Current shift:', shift)
-            shifted_projections = Utils.apply_centershift(sliced_projections, shift)
+            # Scale shift according to binning
+            scaled_shift = shift / binning_factor
+            shifted_projections = Utils.apply_centershift(sliced_projections, scaled_shift)
 
             # Reconstruct with center shift
             recon = VolumeBuilder.reconstruct_slice(
@@ -106,19 +145,20 @@ class ReconstructionCalibrator:
 
         return chosen_shift
 
-    def find_center_shift_3d(self, max_angle, enable_short_scan, slice_idx=None, num_projections=100, test_range=(-50, 50),
-                             preview_chunk_size=20):
+    def find_center_shift_3d(self, max_angle, enable_short_scan, slice_idx=None, num_projections=100,
+                             test_range=(-50, 50), preview_chunk_size=20, binning_factor=1):
         """
         Creates reconstructions with different center shifts using cone beam geometry and saves them as files.
         Uses 3D cone beam geometry with FDK algorithm via VectorReconstructor.
 
         Args:
             max_angle: Maximum angle in degrees
-            pixel_size: Size of detector pixels in mm
+            enable_short_scan: Whether to enable short scan mode
             slice_idx: Optional specific slice to use (defaults to middle)
             num_projections: Number of projections to load for preview
             test_range: Tuple of (min, max) center shift values to test
-            preview_chunk_size: Number of slices to reconstruct in each preview (middle slice will be saved)
+            preview_chunk_size: Number of slices to reconstruct in each preview
+            binning_factor: Factor by which to bin the projections (default=1, no binning)
         """
         print("Loading subset of projections for center calibration...")
 
@@ -143,13 +183,18 @@ class ReconstructionCalibrator:
         first_proj = tifffile.imread(tiff_files[0])
         detector_rows, detector_cols = first_proj.shape
 
+        # Adjust slice_idx and chunk size for binning
         if slice_idx is None:
-            slice_idx = detector_rows // 2
+            slice_idx = (detector_rows // binning_factor) // 2
+        else:
+            slice_idx = slice_idx // binning_factor
+
+        preview_chunk_size = preview_chunk_size // binning_factor
 
         # Calculate the chunk bounds to center around the desired slice
         chunk_start = max(0, slice_idx - preview_chunk_size // 2)
-        chunk_end = min(detector_rows, chunk_start + preview_chunk_size)
-        chunk_start = max(0, chunk_end - preview_chunk_size)  # Adjust start if end was capped
+        chunk_end = min(detector_rows // binning_factor, chunk_start + preview_chunk_size)
+        chunk_start = max(0, chunk_end - preview_chunk_size)
 
         # Initialize projections array
         projections = np.zeros((len(indices), detector_rows, detector_cols))
@@ -163,6 +208,11 @@ class ReconstructionCalibrator:
             except Exception as e:
                 raise RuntimeError(f"Failed to load projection {idx}: {str(e)}")
 
+        # Apply binning if requested
+        if binning_factor > 1:
+            print(f"Binning projections by factor of {binning_factor}...")
+            projections = self.bin_projections(projections, binning_factor)
+
         # Create reconstructor instance
         reconstructor = VectorReconstructor(enable_short_scan=enable_short_scan)
 
@@ -175,12 +225,15 @@ class ReconstructionCalibrator:
         for shift in tqdm(shifts):
             print(f'Current shift: {shift}')
 
+            # Scale shift according to binning
+            scaled_shift = shift / binning_factor
+
             # Create chunk manager with current shift
             chunk_manager = ChunkManager(
                 projections=chunk_data,
                 chunk_size=preview_chunk_size,
                 angles=angles,
-                center_shift=shift,
+                center_shift=scaled_shift,
                 channel='phase',
                 debug=False,
                 vector_mode=True
@@ -190,12 +243,12 @@ class ReconstructionCalibrator:
             chunk_info = chunk_manager.get_chunk_data(0)
 
             # Reconstruct with current center shift
-            reconstructor.center_shift = shift  # Update center shift
+            reconstructor.center_shift = scaled_shift  # Update center shift
             recon = reconstructor.reconstruct_chunk(
                 chunk_info['chunk_data'],
                 chunk_info,
                 angles,
-                center_shift=shift
+                center_shift=scaled_shift
             )
 
             # Save middle slice of the reconstruction

@@ -59,9 +59,9 @@ results = processor.process_projections(
 
 # 4. Stitch projections
 print('Stitch')
-stitcher = ProjectionStitcher(loader, 804)
-stitcher.process_and_save_range(0, 1799, 'dx')
-stitcher.process_and_save_range(0, 1799, 'dy')
+stitcher = ProjectionStitcher(loader, 1044)
+stitcher.process_and_save_range(0, 1819, 'dx')
+stitcher.process_and_save_range(0, 1819, 'dy')
 
 # 4. Phase integrate
 print("Phase integrating")
@@ -69,7 +69,7 @@ print("Phase integrating")
 area_left = np.s_[50:-50, 5:80]
 area_right = np.s_[50:-50, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader, stitched=True)
-parallel_phase_integrator.integrate_parallel(1800, n_workers=n_workers)
+parallel_phase_integrator.integrate_parallel(1820, n_workers=n_workers)
 
 #stitcher = ProjectionStitcher(loader, 817)
 # For a different range of shifts
@@ -83,11 +83,21 @@ print("Reconstructing volume")
 
 print('Find centershift')
 calibrator = ReconstructionCalibrator(loader)
-center_shift = calibrator.find_center_shift(
-    max_angle=364,
+
+# For parallel beam geometry
+shift = calibrator.find_center_shift(
+    max_angle=182,
     pixel_size=pixel_size,
-    num_projections=3640,
-    test_range=(380, 480),
+    binning_factor=2  # This will bin the projections by a factor of 2
+)
+
+
+
+center_shift = calibrator.find_center_shift(
+    max_angle=182,
+    pixel_size=pixel_size,
+    num_projections=1820,
+    test_range=(-10, 10),
     stepping=20,
     is_short_scan=False
 )
