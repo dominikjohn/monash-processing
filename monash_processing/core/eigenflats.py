@@ -26,7 +26,7 @@ class EigenflatManager:
         #EFs /= np.sqrt(np.abs(ev))[:, None] # Normalize flat fields using the eigenvalues
         EFs = EFs.reshape(flats.shape)
 
-        EFs = EFs[:25] # use only the first 15 eigenflats
+        EFs = EFs[:20] # use only the first 15 eigenflats
 
         #print('Gaussian-blurring components slightly')
         #for i in range(EFs.shape[0]):
