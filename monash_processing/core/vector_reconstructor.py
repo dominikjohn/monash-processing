@@ -30,8 +30,7 @@ class VectorReconstructor(BaseReconstructor):
         chunk_proj_geom = astra.create_proj_geom(
             'cone', pixel_size, pixel_size,
             chunk_info['chunk_rows'],
-            n_cols,
-            #chunk_info['detector_cols'] * volume_scaling,
+            chunk_info['detector_cols'],
             angles,
             source_distance,
             detector_distance

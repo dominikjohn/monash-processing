@@ -112,6 +112,8 @@ center_shift = calibrator.find_center_shift(
     stepping=20,
     is_short_scan=False
 )
+calibrator = ReconstructionCalibrator(loader)
+
 center_shift = calibrator.find_center_shift_3d(
     max_angle=max_angle,
     enable_short_scan=True,
