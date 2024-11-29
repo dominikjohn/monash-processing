@@ -71,6 +71,16 @@ area_right = np.s_[50:-50, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader, stitched=True)
 parallel_phase_integrator.integrate_parallel(1820, n_workers=n_workers)
 
+#single phase integration
+# 4. Phase integrate
+print("Phase integrating")
+#area_left, area_right = Utils.select_areas(loader.load_projections(projection_i=0)[0])
+area_left = []
+area_right = np.s_[50:-50, -80:-5]
+parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader, stitched=False)
+parallel_phase_integrator.integrate_parallel(3640, n_workers=n_workers)
+
+
 #stitcher = ProjectionStitcher(loader, 817)
 # For a different range of shifts
 #fig, slider = stitcher.visualize_alignment(proj_index=1, shift_range=(500, 2500))
@@ -89,8 +99,8 @@ shift = calibrator.find_center_shift(
     max_angle=182,
     pixel_size=pixel_size,
     #binning_factor=2,
-    test_range=(-50, 50),
-    stepping=25,
+    test_range=(-10, 10),
+    stepping=80,
     num_projections=1820,
 )
 

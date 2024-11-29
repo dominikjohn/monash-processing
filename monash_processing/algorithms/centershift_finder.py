@@ -170,7 +170,7 @@ class ReconstructionCalibrator:
         return chosen_shift
 
     def find_center_shift_3d(self, max_angle, enable_short_scan, slice_idx=None, num_projections=100,
-                             test_range=(-50, 50), preview_chunk_size=20, binning_factor=1):
+                             test_range=(-50, 50), preview_chunk_size=20, binning_factor=1, is_stitched=False):
         """
         Creates reconstructions with different center shifts using cone beam geometry and saves them as files.
         Uses 3D cone beam geometry with FDK algorithm via VectorReconstructor.
@@ -187,7 +187,10 @@ class ReconstructionCalibrator:
         print("Loading subset of projections for center calibration...")
 
         # Setup paths
-        input_dir = Path(self.data_loader.results_dir) / 'phi_stitched'
+        if is_stitched:
+            input_dir = Path(self.data_loader.results_dir) / 'phi_stitched'
+        else:
+            input_dir = Path(self.data_loader.results_dir) / 'phi'
         preview_dir = Path(self.data_loader.results_dir) / 'center_preview_3d'
         preview_dir.mkdir(exist_ok=True)
 
