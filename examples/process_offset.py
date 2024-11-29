@@ -88,9 +88,11 @@ calibrator = ReconstructionCalibrator(loader)
 shift = calibrator.find_center_shift(
     max_angle=182,
     pixel_size=pixel_size,
-    binning_factor=2  # This will bin the projections by a factor of 2
+    binning_factor=2,
+    test_range=(-50, 50),
+    stepping=25,
+    num_projections=1820,
 )
-
 
 
 center_shift = calibrator.find_center_shift(

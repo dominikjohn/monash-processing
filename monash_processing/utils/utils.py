@@ -58,7 +58,7 @@ class Utils:
         return to_process
 
     @staticmethod
-    def apply_centershift(projections, center_shift, cuda=True, batch_size=10):
+    def apply_centershift(projections, center_shift, cuda=True, batch_size=10, order=2):
         """
         Apply center shift to projections in batches to avoid GPU memory exhaustion.
         :param projections: 2D or 3D numpy array
@@ -95,8 +95,8 @@ class Utils:
                 # Process batch
                 shifted = ndimage.shift(batch_gpu,
                                         shift=(0, 0, center_shift),
-                                        mode='nearest',
-                                        order=0)
+                                        mode='constant',
+                                        order=order)
 
                 # Store result and free GPU memory
                 result[i:i + batch_size] = cp.asnumpy(shifted)

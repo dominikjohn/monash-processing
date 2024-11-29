@@ -118,7 +118,7 @@ class ReconstructionCalibrator:
             print('Current shift:', shift)
             # Scale shift according to binning
             scaled_shift = shift / binning_factor
-            shifted_projections = Utils.apply_centershift(sliced_projections, scaled_shift)
+            shifted_projections = Utils.apply_centershift(sliced_projections, scaled_shift, order=2)
 
             # Reconstruct with center shift
             recon = VolumeBuilder.reconstruct_slice(
