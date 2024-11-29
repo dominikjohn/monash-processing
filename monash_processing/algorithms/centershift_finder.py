@@ -12,6 +12,27 @@ class ReconstructionCalibrator:
     def __init__(self, data_loader):
         self.data_loader = data_loader
 
+    @staticmethod
+    def _get_shift_filename(shift, prefix="center_shift"):
+        """
+        Creates a filename for center shift reconstructions that sorts properly.
+        Converts the shift value to a zero-padded string with offset to ensure proper sorting.
+
+        Args:
+            shift: The shift value
+            prefix: Prefix for the filename
+
+        Returns:
+            Path object with properly formatted filename
+        """
+        # Use an offset to handle negative numbers (e.g., offset=1000 means -10 becomes 990)
+        offset = 10000
+        # Convert shift to integer (multiply by 10 to preserve one decimal place)
+        adjusted_value = int((shift * 10) + offset)
+        # Format with leading zeros for proper sorting
+        return f"{prefix}_{adjusted_value:05d}.tiff"
+
+
     def bin_projections(self, projections, binning_factor):
         """
         Bins the projections by the specified factor using average pooling.
@@ -128,8 +149,11 @@ class ReconstructionCalibrator:
                 is_stitched=is_stitched
             )
 
-            # Save reconstruction
-            filename = preview_dir / f'center_shift_{shift:.1f}.tiff'
+            # Use new filename format
+            filename = preview_dir / self._get_shift_filename(shift)
+            # Also save the actual shift value in a text file for reference
+            with open(preview_dir / "shift_values.txt", "a") as f:
+                f.write(f"File: {filename.name} -> Actual shift: {shift:.1f}\n")
             tifffile.imwrite(filename, recon.astype(np.float32))
 
         print(f"\nReconstructed slices saved in: {preview_dir}")
@@ -253,7 +277,12 @@ class ReconstructionCalibrator:
 
             # Save middle slice of the reconstruction
             middle_slice_idx = preview_chunk_size // 2
-            filename = preview_dir / f'center_shift_{shift:+.1f}.tiff'
+
+            filename = preview_dir / self._get_shift_filename(shift, prefix="center_shift_3d")
+            # Also save the actual shift value in a text file for reference
+            with open(preview_dir / "shift_values.txt", "a") as f:
+                f.write(f"File: {filename.name} -> Actual shift: {shift:.1f}\n")
+
             tifffile.imwrite(filename, recon[middle_slice_idx].astype(np.float32))
 
             # Force GPU memory cleanup
