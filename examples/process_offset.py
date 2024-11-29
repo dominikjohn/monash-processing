@@ -116,7 +116,8 @@ center_shift = calibrator.find_center_shift_3d(
     max_angle=max_angle,
     enable_short_scan=True,
     num_projections=100,
-    test_range=(-5, 5)
+    test_range=(-1000, 1000),
+    is_stitched=False,
 )
 
 print(f"Found optimal center shift: {center_shift}")
