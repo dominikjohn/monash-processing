@@ -186,7 +186,7 @@ class VolumeBuilder:
                 result[i] = slice_result
 
                 # Convert to physical units
-                if reco_channel == 'phase_reco':
+                if self.channel == 'phase':
                     wavevec = 2 * np.pi * self.energy / (
                             scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
                     r0 = scipy.constants.physical_constants['classical electron radius'][0]
