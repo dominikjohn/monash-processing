@@ -32,6 +32,7 @@ class VolumeBuilder:
         self.center_shift = center_shift
         self.limit_max_angle = limit_max_angle
         self.energy = energy
+        self.is_stitched = is_stitched
 
         if self.method not in ['FBP', 'SIRT']:
             raise ValueError("Method must be either 'FBP' or 'SIRT'")
