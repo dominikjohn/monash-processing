@@ -14,7 +14,7 @@ import numpy as np
 scan_path = Path("/data/mct/22203/")
 scan_name = "P6_ReverseOrder"
 pixel_size = 1.444e-6 # m
-energy = 25 # keV
+energy = 25000 # keV
 prop_distance = 0.158 #
 max_angle = 182
 umpa_w = 1
@@ -91,8 +91,8 @@ center_shift = calibrator.find_center_shift(
 
 ##############################################################################################################
 
-volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, method='FBP')
-volume = volume_builder.reconstruct()
+volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, energy, method='FBP')
+volume = volume_builder.reconstruct(ring_filter=True)
 pg.image(volume)
 
 

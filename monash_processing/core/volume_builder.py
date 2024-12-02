@@ -11,7 +11,7 @@ from monash_processing.utils.utils import Utils
 import scipy.constants
 
 class VolumeBuilder:
-    def __init__(self, pixel_size, max_angle, channel, data_loader, energy, center_shift=0, method='FBP', num_iterations=150, limit_max_angle=True):
+    def __init__(self, pixel_size, max_angle, channel, data_loader, energy, center_shift=0, method='FBP', num_iterations=150, limit_max_angle=True, is_stitched=False):
         """
         Args:
             pixel_size: Size of each pixel in physical units
@@ -40,7 +40,11 @@ class VolumeBuilder:
         """
         :return: np.ndarray, np.ndarray
         """
-        input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'att')
+        if self.is_stitched:
+            input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'att_stitched')
+        else:
+            input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'att')
+
         tiff_files = sorted(input_dir.glob('projection_*.tiff'))
 
         # Generate angles and create mask for <= 180°
