@@ -81,7 +81,7 @@ class ProjectionStitcher:
             p2[:, :proj2_flipped.shape[1]] = proj2_flipped
             p1[:, self.center_shift:self.center_shift + proj1.shape[1]] = proj1
         else:
-            p1[:, :proj1.shape[1]] = proj1
+            p1[:, :proj1.shape[1]] = proj1#
             p2[:, -self.center_shift:-self.center_shift + proj2_flipped.shape[1]] = proj2_flipped
 
         # Find overlap region
