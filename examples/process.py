@@ -14,7 +14,7 @@ import numpy as np
 scan_path = Path("/data/mct/22203/")
 scan_name = "P6_ReverseOrder"
 pixel_size = 1.444e-6 # m
-energy = 25000 # eV
+energy = 25 # keV
 prop_distance = 0.158 #
 max_angle = 182
 umpa_w = 1
@@ -81,18 +81,18 @@ print(f"Found optimal center shift: {center_shift}")
 
 print('Find centershift')
 calibrator = ReconstructionCalibrator(loader)
-center_shift = calibrator.find_center_shift_3d(
+center_shift = calibrator.find_center_shift(
     max_angle=max_angle,
-    enable_short_scan=True,
     num_projections=300,
-    test_range=(-50, 50)
+    test_range=(55, 60),
+    pixel_size=pixel_size,
+    is_stitched=False
 )
 
 ##############################################################################################################
 
 volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, method='FBP')
 volume = volume_builder.reconstruct()
-
 pg.image(volume)
 
 

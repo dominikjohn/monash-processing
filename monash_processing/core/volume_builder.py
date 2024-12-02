@@ -3,14 +3,15 @@ from setuptools.command.easy_install import is_sh
 from tqdm import tqdm
 import tifffile
 import astra
-
+from monash_processing.postprocessing.filters import RingFilter
 from monash_processing.core.vector_reconstructor import VectorReconstructor
 from monash_processing.core.chunk_manager import ChunkManager
 from monash_processing.core.base_reconstructor import BaseReconstructor
 from monash_processing.utils.utils import Utils
+import scipy.constants
 
 class VolumeBuilder:
-    def __init__(self, pixel_size, max_angle, channel, data_loader, center_shift=0, method='FBP', num_iterations=150, limit_max_angle=True):
+    def __init__(self, pixel_size, max_angle, channel, data_loader, energy, center_shift=0, method='FBP', num_iterations=150, limit_max_angle=True):
         """
         Args:
             pixel_size: Size of each pixel in physical units
@@ -30,6 +31,7 @@ class VolumeBuilder:
         self.num_iterations = num_iterations
         self.center_shift = center_shift
         self.limit_max_angle = limit_max_angle
+        self.energy = energy
 
         if self.method not in ['FBP', 'SIRT']:
             raise ValueError("Method must be either 'FBP' or 'SIRT'")
@@ -123,7 +125,7 @@ class VolumeBuilder:
 
         return result  # Return the single slice
 
-    def reconstruct(self):
+    def reconstruct(self, ring_filter=True):
         """
         Efficient slice-by-slice FBP reconstruction using CUDA
         Args:
@@ -132,6 +134,12 @@ class VolumeBuilder:
         """
 
         projections, angles = self.load_projections()
+
+        # Apply ring filter if enabled
+        if ring_filter:
+            ring_filter = RingFilter()
+            print('Applying ring filter...')
+            projections = ring_filter.filter_projections(projections)
 
         n_slices = projections.shape[1]
         detector_cols = projections.shape[2]
@@ -172,7 +180,19 @@ class VolumeBuilder:
                 slice_result = astra.data2d.get(rec_id)
                 result[i] = slice_result
 
-                reco_channel = 'phase_reco' if self.channel == 'phase' else 'att_reco'
+                # Convert to physical units
+                if reco_channel == 'phase_reco':
+                    wavevec = 2 * np.pi * self.energy / (
+                            scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
+                    r0 = scipy.constants.physical_constants['classical electron radius'][0]
+                    conv = wavevec / (2 * np.pi) / r0 / 1E27
+                    slice_result *= conv
+                    reco_channel = 'phase_reco'
+                else:
+                    # Attenuation just needs to be divided by 100
+                    slice_result /= 100
+                    reco_channel = 'att_reco'
+
                 self.data_loader.save_tiff(
                     channel=reco_channel,
                     angle_i=i,
