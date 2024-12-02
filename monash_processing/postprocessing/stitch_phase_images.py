@@ -43,32 +43,47 @@ class ProjectionStitcher:
         proj = BadPixelMask.correct_bad_pixels(proj)[0]
         return proj
 
-    def apply_subpixel_shift(self, image: np.ndarray, shift: float) -> np.ndarray:
+    def interpolate_projection(self, image: np.ndarray, output_coords: np.ndarray) -> np.ndarray:
         """
-        Apply a sub-pixel shift to an image using interpolation.
+        Interpolate a projection onto new coordinates.
 
         Args:
             image: Input image array
-            shift: Amount to shift (can be fractional)
+            output_coords: Target x-coordinates for each output pixel
 
         Returns:
-            np.ndarray: Shifted image
+            np.ndarray: Interpolated image and validity mask
         """
-        # Create coordinate arrays
-        x = np.arange(image.shape[1])
-        shifted_x = x - shift
+        input_coords = np.arange(image.shape[1])
 
-        # Create interpolation function for each row
-        shifted_image = np.zeros_like(image)
+        # Initialize output arrays
+        output = np.zeros((image.shape[0], len(output_coords)))
+        valid_mask = np.zeros_like(output, dtype=bool)
+
+        # Define valid range for interpolation (slightly inside the edges)
+        valid_range = (output_coords >= 0) & (output_coords <= image.shape[1] - 1)
 
         for i in range(image.shape[0]):
-            # Create interpolation function (cubic for smooth results)
-            f = interp1d(x, image[i, :], kind='cubic', bounds_error=False, fill_value=np.nan)
+            # Create interpolation function for this row
+            f = interp1d(input_coords, image[i, :], kind='cubic',
+                         bounds_error=False, fill_value=np.nan)
 
-            # Apply shift using interpolation
-            shifted_image[i, :] = f(shifted_x)
+            # Interpolate
+            row_output = f(output_coords)
 
-        return shifted_image
+            # Store results
+            output[i, valid_range] = row_output[valid_range]
+            valid_mask[i, valid_range] = True
+
+            # Handle edge cases by extending the edge values
+            if np.any(output_coords < 0):
+                output[i, output_coords < 0] = image[i, 0]
+                valid_mask[i, output_coords < 0] = True
+            if np.any(output_coords > image.shape[1] - 1):
+                output[i, output_coords > image.shape[1] - 1] = image[i, -1]
+                valid_mask[i, output_coords > image.shape[1] - 1] = True
+
+        return output, valid_mask
 
     def stitch_projection_pair(self, proj_index: int, channel: str) -> Tuple[np.ndarray, dict]:
         """
@@ -99,52 +114,50 @@ class ProjectionStitcher:
         left_mean2 = np.mean(proj2_flipped_raw[:, 5:100])
         proj2_flipped = proj2_flipped_raw - left_mean2
 
-        # Calculate full width needed
-        # For sub-pixel shifts, we round up to ensure enough space
-        full_width = proj1.shape[1] + int(np.ceil(abs(self.center_shift)))
+        # Calculate output dimensions
+        total_width = proj1.shape[1] + abs(self.center_shift)
+        output_coords = np.arange(int(np.ceil(total_width)))
 
-        # Create aligned arrays
-        p1 = np.full((proj1.shape[0], full_width), np.nan)
-        p2 = np.full((proj1.shape[0], full_width), np.nan)
-
-        # Position the projections based on the shift
+        # Calculate coordinates for sampling each projection
         if self.center_shift >= 0:
-            # Place second projection at the start
-            p2[:, :proj2_flipped.shape[1]] = proj2_flipped
-
-            # Apply sub-pixel shift to first projection
-            shifted_proj1 = self.apply_subpixel_shift(proj1, -self.center_shift)
-            # Place the shifted projection
-            integer_shift = int(np.floor(self.center_shift))
-            p1[:, integer_shift:integer_shift + proj1.shape[1]] = shifted_proj1
+            # For proj1, we need to sample starting at center_shift
+            proj1_coords = output_coords - self.center_shift
+            # For proj2_flipped, we sample from the start
+            proj2_coords = output_coords
         else:
-            # Place first projection at the start
-            p1[:, :proj1.shape[1]] = proj1
+            # For proj1, we sample from the start
+            proj1_coords = output_coords
+            # For proj2_flipped, we need to sample starting at -center_shift
+            proj2_coords = output_coords + self.center_shift
 
-            # Apply sub-pixel shift to second projection
-            shifted_proj2 = self.apply_subpixel_shift(proj2_flipped, self.center_shift)
-            # Place the shifted projection
-            integer_shift = int(np.floor(-self.center_shift))
-            p2[:, integer_shift:integer_shift + proj2_flipped.shape[1]] = shifted_proj2
+        # Interpolate both projections onto their respective coordinates
+        p1, m1 = self.interpolate_projection(proj1, proj1_coords)
+        p2, m2 = self.interpolate_projection(proj2_flipped, proj2_coords)
 
-        # Find overlap region
-        overlap = ~(np.isnan(p1) | np.isnan(p2))
+        # Find overlap region using masks
+        overlap = m1 & m2
 
-        # Initialize composite with p1 values
-        composite = p1.copy()
+        # Create the composite image
+        composite = np.zeros_like(p1)
 
-        # In overlap region, take the average
+        # In the overlap region, take the average
         composite[overlap] = (p1[overlap] + p2[overlap]) / 2
 
-        # Fill remaining areas from p2
-        composite = np.where(np.isnan(composite), p2, composite)
+        # In non-overlap regions, take whichever image is valid
+        composite[m1 & ~overlap] = p1[m1 & ~overlap]
+        composite[m2 & ~overlap] = p2[m2 & ~overlap]
+
+        # Trim any remaining empty space from the right
+        valid_cols = np.where(m1.any(axis=0) | m2.any(axis=0))[0]
+        if len(valid_cols) > 0:
+            composite = composite[:, :valid_cols[-1] + 1]
 
         # Calculate statistics
         stats = {
             'shift': self.center_shift,
             'overlap_pixels': np.sum(overlap),
             'overlap_percentage': (np.sum(overlap) / proj1.size) * 100,
-            'total_width': full_width,
+            'total_width': composite.shape[1],
             'right_mean1': float(right_mean1),
             'left_mean2': float(left_mean2)
         }
