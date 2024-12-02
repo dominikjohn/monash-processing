@@ -8,6 +8,7 @@ import tifffile
 from tqdm import tqdm
 import cv2
 from monash_processing.core.eigenflats import EigenflatManager
+from PIL import Image
 
 class DataLoader:
     """Handles loading and organizing scan data from H5 files."""
@@ -210,14 +211,11 @@ class DataLoader:
         channel_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            tiff_path = channel_dir / f'{prefix}_{angle_i:04d}.tiff'
-
-            tifffile.imwrite(
-                tiff_path,
-                data
-            )
+            tif_path = channel_dir / f'{prefix}_{angle_i:04d}.tif'
+            im = Image.fromarray(data.astype(np.float32))
+            im.save(tif_path)
         except Exception as e:
-            self.logger.error(f"Failed to save tiff {angle_i} to {tiff_path}: {str(e)}")
+            self.logger.error(f"Failed to save tiff {angle_i} to {tif_path}: {str(e)}")
 
     def perform_flatfield_correction(self, data: np.ndarray, flat_fields: np.ndarray,
                                      dark_current: np.ndarray) -> np.ndarray:
