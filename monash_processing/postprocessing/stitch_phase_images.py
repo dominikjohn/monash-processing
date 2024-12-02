@@ -1,24 +1,26 @@
 import numpy as np
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 import logging
 from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
 import dask
 from dask.distributed import Client, LocalCluster
 from tqdm.auto import tqdm
 import dask.bag as db
+from scipy.interpolate import interp1d
 
 
 class ProjectionStitcher:
-    """Handles stitching of processed projections with edge-based normalization and average blending."""
+    """Handles stitching of processed projections with edge-based normalization and average blending.
+    Supports both integer and sub-pixel shifts."""
 
-    def __init__(self, data_loader, center_shift: int):
+    def __init__(self, data_loader, center_shift: Union[int, float]):
         """
         Initialize the ProjectionStitcher.
 
         Args:
             data_loader: DataLoader instance to load and save projections
-            center_shift: Horizontal shift in pixels to apply between projections
+            center_shift: Horizontal shift in pixels to apply between projections (can be int or float)
         """
         self.data_loader = data_loader
         self.center_shift = center_shift
@@ -41,9 +43,37 @@ class ProjectionStitcher:
         proj = BadPixelMask.correct_bad_pixels(proj)[0]
         return proj
 
+    def apply_subpixel_shift(self, image: np.ndarray, shift: float) -> np.ndarray:
+        """
+        Apply a sub-pixel shift to an image using interpolation.
+
+        Args:
+            image: Input image array
+            shift: Amount to shift (can be fractional)
+
+        Returns:
+            np.ndarray: Shifted image
+        """
+        # Create coordinate arrays
+        x = np.arange(image.shape[1])
+        shifted_x = x - shift
+
+        # Create interpolation function for each row
+        shifted_image = np.zeros_like(image)
+
+        for i in range(image.shape[0]):
+            # Create interpolation function (cubic for smooth results)
+            f = interp1d(x, image[i, :], kind='cubic', bounds_error=False, fill_value=np.nan)
+
+            # Apply shift using interpolation
+            shifted_image[i, :] = f(shifted_x)
+
+        return shifted_image
+
     def stitch_projection_pair(self, proj_index: int, channel: str) -> Tuple[np.ndarray, dict]:
         """
         Stitch a pair of projections with edge-based normalization and average blending.
+        Supports sub-pixel shifts using interpolation.
 
         Args:
             proj_index: Index of the first projection
@@ -70,7 +100,8 @@ class ProjectionStitcher:
         proj2_flipped = proj2_flipped_raw - left_mean2
 
         # Calculate full width needed
-        full_width = proj1.shape[1] + abs(self.center_shift)
+        # For sub-pixel shifts, we round up to ensure enough space
+        full_width = proj1.shape[1] + int(np.ceil(abs(self.center_shift)))
 
         # Create aligned arrays
         p1 = np.full((proj1.shape[0], full_width), np.nan)
@@ -78,11 +109,23 @@ class ProjectionStitcher:
 
         # Position the projections based on the shift
         if self.center_shift >= 0:
+            # Place second projection at the start
             p2[:, :proj2_flipped.shape[1]] = proj2_flipped
-            p1[:, self.center_shift:self.center_shift + proj1.shape[1]] = proj1
+
+            # Apply sub-pixel shift to first projection
+            shifted_proj1 = self.apply_subpixel_shift(proj1, -self.center_shift)
+            # Place the shifted projection
+            integer_shift = int(np.floor(self.center_shift))
+            p1[:, integer_shift:integer_shift + proj1.shape[1]] = shifted_proj1
         else:
+            # Place first projection at the start
             p1[:, :proj1.shape[1]] = proj1
-            p2[:, -self.center_shift:-self.center_shift + proj2_flipped.shape[1]] = proj2_flipped
+
+            # Apply sub-pixel shift to second projection
+            shifted_proj2 = self.apply_subpixel_shift(proj2_flipped, self.center_shift)
+            # Place the shifted projection
+            integer_shift = int(np.floor(-self.center_shift))
+            p2[:, integer_shift:integer_shift + proj2_flipped.shape[1]] = shifted_proj2
 
         # Find overlap region
         overlap = ~(np.isnan(p1) | np.isnan(p2))
