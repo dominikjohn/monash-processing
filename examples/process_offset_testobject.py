@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
-scan_name = "K3_2E"
+scan_name = "P5"
 pixel_size = 1.444e-6 # m
 energy = 25 # eV
 prop_distance = 0.315 #
