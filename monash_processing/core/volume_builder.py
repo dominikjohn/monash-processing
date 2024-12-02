@@ -11,7 +11,7 @@ from monash_processing.utils.utils import Utils
 import scipy.constants
 
 class VolumeBuilder:
-    def __init__(self, pixel_size, max_angle, channel, data_loader, energy, center_shift=0, method='FBP', num_iterations=150, limit_max_angle=True, is_stitched=False):
+    def __init__(self, pixel_size, max_angle, channel, data_loader, energy, is_stitched=False, center_shift=0, method='FBP', num_iterations=150, limit_max_angle=True, is_stitched=False):
         """
         Args:
             pixel_size: Size of each pixel in physical units

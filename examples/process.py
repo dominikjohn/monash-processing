@@ -90,8 +90,8 @@ center_shift = calibrator.find_center_shift(
 )
 
 ##############################################################################################################
-
-volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, energy, method='FBP')
+center_shift = 55
+volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, energy, is_stitched=False, method='FBP')
 volume = volume_builder.reconstruct(ring_filter=True)
 pg.image(volume)
 
