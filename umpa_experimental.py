@@ -10,7 +10,7 @@ import numpy as np
 from scipy import signal as sig
 
 
-def match_speckles(Isample, Iref, Nw, step=1, max_shift=4, df=True, printout=True):
+def match_speckles(Isample, Iref, Nw, step=1, max_shift=4, prop_distance=1, energy=1):
     """
     Compare speckle images with sample (Isample) and w/o sample
     (Iref) using a given window.
@@ -37,17 +37,9 @@ def match_speckles(Isample, Iref, Nw, step=1, max_shift=4, df=True, printout=Tru
 
     S2 = sum(I ** 2 for I in Isample)
     R2 = sum(I ** 2 for I in Iref)
-    if df:
-        S1 = sum(I for I in Isample)
-        R1 = sum(I for I in Iref)
-        Im = R1.mean() / NR
 
     L1 = cc(S2, w)
     L3 = cc(R2, w)
-    if df:
-        L2 = Im * Im * NR
-        L4 = Im * cc(S1, w)
-        L6 = Im * cc(R1, w)
     # (We need a loop for L5)
 
     # 2*Ns + 1 is the width of the window explored to find the best fit.
@@ -61,26 +53,14 @@ def match_speckles(Isample, Iref, Nw, step=1, max_shift=4, df=True, printout=Tru
     tx = np.zeros(sh)
     ty = np.zeros(sh)
     tr = np.zeros(sh)
-    do = np.zeros(sh)
     MD = np.zeros(sh)
 
     # Loop through all positions
     for xi, i in enumerate(ROIy):
-        if printout:
-            print
-            'line %d, %d/%d' % (i, xi, sh[0])
         for xj, j in enumerate(ROIx):
             # Define local values of L1, L2, ...
             t1 = L1[i, j]
             t3 = L3[(i - Ns):(i + Ns + 1), (j - Ns):(j + Ns + 1)]
-            if df:
-                t2 = L2
-                t4 = L4[i, j]
-                t6 = L6[(i - Ns):(i + Ns + 1), (j - Ns):(j + Ns + 1)]
-            else:
-                t2 = 0.
-                t4 = 0.
-                t6 = 0.
 
             # Now we can compute t5 (local L5)
             t5 = np.zeros((2 * Ns + 1, 2 * Ns + 1))
@@ -88,20 +68,10 @@ def match_speckles(Isample, Iref, Nw, step=1, max_shift=4, df=True, printout=Tru
                 t5 += cc(Iref[k][(i - Nw - Ns):(i + Nw + Ns + 1), (j - Nw - Ns):(j + Nw + Ns + 1)],
                          w * Isample[k][(i - Nw):(i + Nw + 1), (j - Nw):(j + Nw + 1)], mode='valid')
 
-            # Compute K and beta
-            if df:
-                K = (t2 * t5 - t4 * t6) / (t2 * t3 - t6 ** 2)
-                beta = (t3 * t4 - t5 * t6) / (t2 * t3 - t6 ** 2)
-            else:
-                K = t5 / t3
-                beta = 0.
-
-            # Compute v and a
-            a = beta + K
-            v = K / a
+            K = t5 / t3
 
             # Construct D
-            D = t1 + (beta ** 2) * t2 + (K ** 2) * t3 - 2 * beta * t4 - 2 * K * t5 + 2 * beta * K * t6
+            D = t1 + (K ** 2) * t3 - 2 * K * t5
 
             # Find subpixel optimum for tx an ty
             sy, sx = sub_pix_min(D)
@@ -114,11 +84,51 @@ def match_speckles(Isample, Iref, Nw, step=1, max_shift=4, df=True, printout=Tru
             # store everything
             ty[xi, xj] = sy - Ns
             tx[xi, xj] = sx - Ns
-            tr[xi, xj] = a[isy, isx]
-            do[xi, xj] = v[isy, isx]
+            tr[xi, xj] = K[isy, isx]
             MD[xi, xj] = D[isy, isx]
 
-    return {'T': tr, 'dx': tx, 'dy': ty, 'df': do, 'f': MD}
+    print('Calculating derivatives')
+    d_dx = savgol_2d_derivative(tx, direction='x', window_length=5, polyorder=3)
+    d_dy = savgol_2d_derivative(ty, direction='y', window_length=5, polyorder=3)
+    k = 2 * np.pi / (prop_distance * energy)
+
+    clipper = [Ns + Nw, Ish[0] - Ns - Nw - 1] # Our calculated shifts are going to be smaller than the original images, so we need to clip
+    Iref_shifted = shift_pixels(Iref, tx, ty)[clipper] # We shift the reference image to isolate the transmission now
+    Isam_cor = Isample[clipper] * (1 - prop_distance / k * (d_dx + 1j * d_dy)) # Correct sample for second derivative effects
+
+    # Loop through all positions
+    for xi, i in enumerate(ROIy):
+        for xj, j in enumerate(ROIx):
+            # Define local values of L1, L2, ...
+            t1 = L1[i, j]
+            t3 = L3[(i - Ns):(i + Ns + 1), (j - Ns):(j + Ns + 1)]
+
+            # Now we can compute t5 (local L5)
+            t5 = np.zeros((2 * Ns + 1, 2 * Ns + 1))
+            for k in range(NR):
+                t5 += cc(Iref[k][(i - Nw - Ns):(i + Nw + Ns + 1), (j - Nw - Ns):(j + Nw + Ns + 1)],
+                         w * Isample[k][(i - Nw):(i + Nw + 1), (j - Nw):(j + Nw + 1)], mode='valid')
+
+            K = t5 / t3
+
+            # Construct D
+            D = t1 + (K ** 2) * t3 - 2 * K * t5
+
+            # Find subpixel optimum for tx an ty
+            sy, sx = sub_pix_min(D)
+
+            # We should re-evaluate the other values with sub-pixel precision but here we just round
+            # We also need to clip because "sub_pix_min" can return the position of the minimum outside of the bounds...
+            isy = np.clip(int(np.round(sy)), 0, 2 * Ns)
+            isx = np.clip(int(np.round(sx)), 0, 2 * Ns)
+
+            # store everything
+            ty[xi, xj] = sy - Ns
+            tx[xi, xj] = sx - Ns
+            tr[xi, xj] = K[isy, isx]
+            MD[xi, xj] = D[isy, isx]
+
+    return {'T': tr, 'dx': tx, 'dy': ty, 'f': MD}
 
 
 def cc(A, B, mode='same'):
@@ -254,46 +264,91 @@ def sub_pix_min(a, width=1):
 
     return r
 
+def shift_pixels(intensities, x_shifts, y_shifts):
+    """
+    Shift pixels in an intensity array according to x and y displacement fields.
 
-if __name__ == "__main__":
-    import numpy as np
-    from scipy import ndimage as ndi
-    import scipy
+    Parameters:
+    -----------
+    intensities : ndarray
+        2D array containing the original intensity values
+    x_shifts : ndarray
+        2D array containing the x-direction shifts for each pixel
+    y_shifts : ndarray
+        2D array containing the y-direction shifts for each pixel
+
+    Returns:
+    --------
+    ndarray
+        2D array containing the shifted intensity values
+    """
+    # Create meshgrid of original pixel coordinates
+    rows, cols = intensities.shape
+    y_coords, x_coords = np.mgrid[0:rows, 0:cols]
+
+    # Calculate new positions for each pixel
+    new_x = x_coords - x_shifts
+    new_y = y_coords - y_shifts
+
+    # Flatten arrays for interpolation
+    points = np.column_stack((x_coords.flatten(), y_coords.flatten()))
+    new_points = np.column_stack((new_x.flatten(), new_y.flatten()))
+
+    # Perform interpolation to get intensity values at new positions
+    shifted_intensities = griddata(
+        points,
+        intensities.flatten(),
+        new_points,
+        method='cubic',
+        fill_value=0
+    )
+
+    # Reshape back to original dimensions
+    return shifted_intensities.reshape(rows, cols)
 
 
-    def free_nf(w, l, z, pixsize=1.):
-        """\
-        Free-space propagation (near field) of the wavefield of a distance z.
-        l is the wavelength.
-        """
-        if w.ndim != 2:
-            raise RunTimeError("A 2-dimensional wave front 'w' was expected")
 
-        sh = w.shape
+def free_nf(w, l, z, pixsize=1.):
+    """\
+    Free-space propagation (near field) of the wavefield of a distance z.
+    l is the wavelength.
+    """
+    if w.ndim != 2:
+        raise RunTimeError("A 2-dimensional wave front 'w' was expected")
 
-        # Convert to pixel units.
-        z = z / pixsize
-        l = l / pixsize
+    sh = w.shape
 
-        # Evaluate if aliasing could be a problem
-        if min(sh) / np.sqrt(2.) < z * l:
-            print
-            "Warning: z > N/(sqrt(2)*lamda) = %.6g: this calculation could fail." % (min(sh) / (l * np.sqrt(2.)))
-            print
-            "(consider padding your array, or try a far field method)"
+    # Convert to pixel units.
+    z = z / pixsize
+    l = l / pixsize
 
-        q2 = np.sum((np.fft.ifftshift(
-            np.indices(sh).astype(float) - np.reshape(np.array(sh) // 2, (len(sh),) + len(sh) * (1,)),
-            range(1, len(sh) + 1)) * np.array([1. / sh[0], 1. / sh[1]]).reshape((2, 1, 1))) ** 2, axis=0)
+    # Evaluate if aliasing could be a problem
+    if min(sh) / np.sqrt(2.) < z * l:
+        print
+        "Warning: z > N/(sqrt(2)*lamda) = %.6g: this calculation could fail." % (min(sh) / (l * np.sqrt(2.)))
+        print
+        "(consider padding your array, or try a far field method)"
 
-        return np.fft.ifftn(np.fft.fftn(w) * np.exp(2j * np.pi * (z / l) * (np.sqrt(1 - q2 * l ** 2) - 1)))
+    q2 = np.sum((np.fft.ifftshift(
+        np.indices(sh).astype(float) - np.reshape(np.array(sh) // 2, (len(sh),) + len(sh) * (1,)),
+        range(1, len(sh) + 1)) * np.array([1. / sh[0], 1. / sh[1]]).reshape((2, 1, 1))) ** 2, axis=0)
+
+    return np.fft.ifftn(np.fft.fftn(w) * np.exp(2j * np.pi * (z / l) * (np.sqrt(1 - q2 * l ** 2) - 1)))
+
+import numpy as np
+from scipy import ndimage as ndi
+import scipy
+import matplotlib
+matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
+import matplotlib.pyplot as plt
+from monash_processing.utils.ImageViewer import ImageViewer as imshow
 
 # Simulation of a sphere
-sh = (512, 512)
+sh = (128, 128)
 ssize = 2.  # rough speckle size
-sphere_radius = 150
+sphere_radius = 200
 lam = .5e-10  # wavelength
-z = 5e-2  # propagation distance
+z = 1e-2  # propagation distance
 psize = 1e-6  # pixel size
 
 # Simulate speckle pattern
@@ -301,10 +356,10 @@ speckle = ndi.gaussian_filter(np.random.normal(size=sh), ssize) + \
           1j * ndi.gaussian_filter(np.random.normal(size=sh), ssize)
 xx, yy = np.indices(sh)
 sphere = np.real(scipy.sqrt(sphere_radius ** 2 - (xx - 256.) ** 2 - (yy - 256.) ** 2))
-sample = np.exp(-15 * np.pi * 2j * sphere / sphere_radius)
+sample = np.exp(-.05 - -10 * np.pi * 2j * sphere / sphere_radius)
+#sample = np.exp((-2*np.pi*beta/lam - 15 * np.pi * 2j) * sphere / sphere_radius)
 
-from monash_processing.utils.ImageViewer import ImageViewer as imshow
-imshow(sample)
+imshow(abs(free_nf(sample, lam, z, psize)))
 
 # Measurement positions
 # pos = np.array( [(0., 0.)] + [(np.round(15.*cos(pi*j/3)), np.round(15.*sin(pi*j/3))) for j in range(6)] )
@@ -315,4 +370,67 @@ measurements = np.array([abs(free_nf(sample * pshift(speckle, p), lam, z, psize)
 reference = abs(free_nf(speckle, lam, z, psize)) ** 2
 sref = [pshift(reference, p) for p in pos]
 
-result = match_speckles(measurements, sref, Nw=1, step=2)
+bias = match_speckles(sref, sref, Nw=1, step=1)
+result = match_speckles(measurements, sref, Nw=1, step=1)
+
+import numpy as np
+from scipy.signal import savgol_filter
+
+
+def savgol_2d_derivative(data, direction='x', window_length=5, polyorder=2):
+    """
+    Calculate the derivative of 2D data using a Savitzky-Golay filter in either x or y direction.
+
+    Parameters:
+    -----------
+    data : ndarray
+        2D input array of shape (m, n)
+    direction : str
+        Direction for derivative calculation: 'x' or 'y'
+    window_length : int, optional
+        Length of the filter window. Must be odd and greater than polyorder.
+        Default is 5.
+    polyorder : int, optional
+        Order of the polynomial used to fit the samples. Must be less than
+        window_length. Default is 2.
+
+    Returns:
+    --------
+    ndarray
+        2D array of same shape as input containing the directional derivative
+    """
+    # Input validation
+    if not isinstance(data, np.ndarray) or data.ndim != 2:
+        raise ValueError("Input must be a 2D numpy array")
+
+    if direction not in ['x', 'y']:
+        raise ValueError("direction must be either 'x' or 'y'")
+
+    if window_length % 2 == 0:
+        raise ValueError("window_length must be odd")
+
+    if window_length < polyorder + 1:
+        raise ValueError("window_length must be greater than polyorder")
+
+    # For y-direction, transpose the data, calculate derivative, then transpose back
+    if direction == 'y':
+        data = data.T
+
+    # Calculate derivative
+    derivative = np.zeros_like(data, dtype=float)
+
+    for i in range(data.shape[0]):
+        # Apply Savitzky-Golay filter with deriv=1 for first derivative
+        derivative[i, :] = savgol_filter(
+            data[i, :],
+            window_length=window_length,
+            polyorder=polyorder,
+            deriv=1,
+            delta=1.0
+        )
+
+    # Transpose back if we were calculating y-direction derivative
+    if direction == 'y':
+        derivative = derivative.T
+
+    return derivative

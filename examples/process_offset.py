@@ -59,7 +59,7 @@ results = processor.process_projections(
 
 # 4. Stitch projections
 print('Stitch')
-stitcher = ProjectionStitcher(loader, 1044)
+stitcher = ProjectionStitcher(loader, 1043.5)
 stitcher.process_and_save_range(0, 1819, 'dx')
 stitcher.process_and_save_range(0, 1819, 'dy')
 
