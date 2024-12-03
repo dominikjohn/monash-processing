@@ -203,6 +203,8 @@ class VolumeBuilder:
                 else:
                     # Attenuation just needs to be divided by 100
                     reco_channel = 'att_reco'
+                    slice_result *= scaling_factor # corrects for the scaling factor
+                    slice_result /= 100 # converts to cm^-1
 
                 self.data_loader.save_tiff(
                     channel=reco_channel,
