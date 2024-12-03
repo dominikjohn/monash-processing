@@ -6,7 +6,7 @@ from monash_processing.core.volume_builder import VolumeBuilder
 from monash_processing.utils.utils import Utils
 from monash_processing.core.vector_reconstructor import VectorReconstructor
 from monash_processing.core.chunk_manager import ChunkManager
-from postprocessing.filters import RingFilter
+from monash_processing.postprocessing.filters import RingFilter
 
 
 class ReconstructionCalibrator:
