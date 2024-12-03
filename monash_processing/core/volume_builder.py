@@ -42,9 +42,9 @@ class VolumeBuilder:
         :return: np.ndarray, np.ndarray
         """
         if self.is_stitched:
-            input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'att_stitched')
+            input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'T_stitched')
         else:
-            input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'att')
+            input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'T')
 
         tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
 

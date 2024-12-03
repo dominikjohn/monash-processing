@@ -96,7 +96,9 @@ volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_sh
 volume = volume_builder.reconstruct(ring_filter=True)
 #pg.image(volume)
 
-
+center_shift = 55
+volume_builder = VolumeBuilder(pixel_size, max_angle, 'att', loader, center_shift=center_shift, energy=energy, is_stitched=False, method='FBP')
+volume = volume_builder.reconstruct(ring_filter=True)
 
 #### OR
 
