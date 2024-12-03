@@ -30,7 +30,7 @@ class ReconstructionCalibrator:
         # Convert shift to integer (multiply by 10 to preserve one decimal place)
         adjusted_value = int((shift * 10) + offset)
         # Format with leading zeros for proper sorting
-        return f"{prefix}_{adjusted_value:05d}.tiff"
+        return f"{prefix}_{adjusted_value:05d}.tif"
 
 
     def bin_projections(self, projections, binning_factor):
@@ -60,7 +60,7 @@ class ReconstructionCalibrator:
         return binned
 
     def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=100,
-                          test_range=(-50, 50), stepping=10, is_stitched=True, binning_factor=1):
+                          test_range=(-50, 50), stepping=10, is_stitched=True, binning_factor=1, format='tif'):
         """
         Creates reconstructions with different center shifts and saves them as files.
         Uses 3D parallel beam geometry with FBP algorithm.
@@ -85,7 +85,7 @@ class ReconstructionCalibrator:
         preview_dir.mkdir(exist_ok=True)
 
         # Load projections
-        tiff_files = sorted(input_dir.glob('projection_*.tiff'))
+        tiff_files = sorted(input_dir.glob(f'projection_*.{format}'))
         total_projs = len(tiff_files)
 
         all_angles = np.linspace(0, np.deg2rad(max_angle), total_projs)
@@ -170,7 +170,7 @@ class ReconstructionCalibrator:
         return chosen_shift
 
     def find_center_shift_3d(self, max_angle, enable_short_scan, slice_idx=None, num_projections=100,
-                             test_range=(-50, 50), preview_chunk_size=20, binning_factor=1, is_stitched=False):
+                             test_range=(-50, 50), preview_chunk_size=20, binning_factor=1, is_stitched=False, format='tif'):
         """
         Creates reconstructions with different center shifts using cone beam geometry and saves them as files.
         Uses 3D cone beam geometry with FDK algorithm via VectorReconstructor.
@@ -195,7 +195,7 @@ class ReconstructionCalibrator:
         preview_dir.mkdir(exist_ok=True)
 
         # Load projections
-        tiff_files = sorted(input_dir.glob('projection_*.tiff'))
+        tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
         total_projs = len(tiff_files)
 
         all_angles = np.linspace(0, np.deg2rad(max_angle), total_projs)

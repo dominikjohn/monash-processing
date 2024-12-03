@@ -37,7 +37,7 @@ class VolumeBuilder:
         if self.method not in ['FBP', 'SIRT']:
             raise ValueError("Method must be either 'FBP' or 'SIRT'")
 
-    def load_projections(self):
+    def load_projections(self, format='tif'):
         """
         :return: np.ndarray, np.ndarray
         """
@@ -46,7 +46,7 @@ class VolumeBuilder:
         else:
             input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'att')
 
-        tiff_files = sorted(input_dir.glob('projection_*.tiff'))
+        tiff_files = sorted(input_dir.glob(f'projection_*.{format}'))
 
         # Generate angles and create mask for <= 180°
         angles = np.linspace(0, self.max_angle_rad, len(tiff_files))
@@ -216,7 +216,7 @@ class VolumeBuilder:
 
         return result
 
-    def reconstruct_3d(self, enable_short_scan=True, debug=False, chunk_size=128, vector_mode=True):
+    def reconstruct_3d(self, enable_short_scan=True, debug=False, chunk_size=128, vector_mode=True, format='tif'):
         '''
         Reconstruct a 3D volume using ASTRA Toolbox with FDK but quasi-parallel beam geometry (large source distance)
         :param enable_short_scan: bool, True means 180° scan is sufficient
@@ -225,7 +225,7 @@ class VolumeBuilder:
         :return: reconstruction result array
         '''
         input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'att')
-        tiff_files = sorted(input_dir.glob('projection_*.tiff'))
+        tiff_files = sorted(input_dir.glob(f'projection_*.{format}'))
         angles = np.linspace(0, self.max_angle_rad, len(tiff_files))
 
         if self.limit_max_angle:

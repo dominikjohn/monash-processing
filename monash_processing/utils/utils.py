@@ -22,7 +22,7 @@ class Utils:
         return area_left, area_right
 
     @staticmethod
-    def check_existing_files(dir, num_angles, min_size_kb=5, channel='phi'):
+    def check_existing_files(dir, num_angles, min_size_kb=5, channel='phi', format='tif'):
         """
         Check which projection files need to be processed.
 
@@ -38,7 +38,7 @@ class Utils:
 
         print("Checking existing files...")
         for angle_i in tqdm(range(num_angles), desc="Checking files"):
-            file_path = results_dir / f'projection_{angle_i:04d}.tiff'
+            file_path = results_dir / f'projection_{angle_i:04d}.{format}'
 
             # Check if file exists and is larger than min_size_kb
             needs_processing = (

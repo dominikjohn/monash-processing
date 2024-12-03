@@ -192,11 +192,11 @@ class DataLoader:
         self.logger.info(f"Loaded projections with shape {projections_array.shape}")
         return projections_array
 
-    def load_processed_projection(self, projection_i: int, channel: str) -> np.ndarray:
+    def load_processed_projection(self, projection_i: int, channel: str, format='tif') -> np.ndarray:
         """Load a single processed projection from a specific channel."""
 
         # Load from TIFF files
-        tiff_path = self.results_dir / channel / f'projection_{projection_i:04d}.tiff'
+        tiff_path = self.results_dir / channel / f'projection_{projection_i:04d}.{format}'
         data = np.array(tifffile.imread(tiff_path))
 
         return data

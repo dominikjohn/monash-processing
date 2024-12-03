@@ -4,6 +4,7 @@ from tqdm import tqdm
 import tifffile
 from typing import Union
 from monash_processing.core.data_loader import DataLoader
+from PIL import Image
 
 class StitchedDataLoader(DataLoader):
     """Extends DataLoader to handle stitching of opposing projections."""
@@ -17,7 +18,7 @@ class StitchedDataLoader(DataLoader):
         self.projections_dir = self.stitched_dir / 'projections'
         self.projections_dir.mkdir(parents=True, exist_ok=True)
 
-    def load_stitched_projection(self, step_idx: int, angle_idx: int) -> np.ndarray:
+    def load_stitched_projection(self, step_idx: int, angle_idx: int, format='tif') -> np.ndarray:
         """
         Load a single stitched projection.
 
@@ -27,8 +28,9 @@ class StitchedDataLoader(DataLoader):
 
         Returns:
             2D numpy array containing the projection data
+            :param format:
         """
-        tiff_path = self.projections_dir / f'step_{step_idx:04d}' / f'projection_{angle_idx:04d}.tiff'
+        tiff_path = self.projections_dir / f'step_{step_idx:04d}' / f'projection_{angle_idx:04d}.{format}'
 
         if not tiff_path.exists():
             raise FileNotFoundError(f"Stitched projection not found: {tiff_path}")
@@ -238,8 +240,9 @@ class StitchedDataLoader(DataLoader):
             step_dir.mkdir(exist_ok=True)
 
             for angle_idx in range(projections.shape[1]):
-                tiff_path = step_dir / f'projection_{angle_idx:04d}.tiff'
-                tifffile.imwrite(tiff_path, projections[step_idx, angle_idx])
+                tif_path = step_dir / f'projection_{angle_idx:04d}.tif'
+                im = Image.fromarray(projections[step_idx, angle_idx].astype(np.float32))
+                im.save(tif_path)
 
         # Save flat fields and dark current as NPY files in stitched directory
         np.save(self.stitched_dir / 'stitched_flat_fields.npy', flat_fields)

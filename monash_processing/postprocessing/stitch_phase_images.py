@@ -136,7 +136,7 @@ class ProjectionStitcher:
                 # Check if output already exists
                 output_path = (self.data_loader.results_dir /
                                (channel + '_stitched') /
-                               f'projection_{idx:04d}.tiff')
+                               f'projection_{idx:04d}.tif')
 
                 if output_path.exists():
                     return None
