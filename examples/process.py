@@ -83,6 +83,7 @@ print('Find centershift')
 calibrator = ReconstructionCalibrator(loader)
 center_shift = calibrator.find_center_shift(
     max_angle=max_angle,
+    #slice_idx=200,
     num_projections=300,
     test_range=(55, 60),
     pixel_size=pixel_size,
@@ -93,7 +94,7 @@ center_shift = calibrator.find_center_shift(
 center_shift = 55
 volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift=center_shift, energy=energy, is_stitched=False, method='FBP')
 volume = volume_builder.reconstruct(ring_filter=True)
-pg.image(volume)
+#pg.image(volume)
 
 
 

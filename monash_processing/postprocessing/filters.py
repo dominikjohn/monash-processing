@@ -8,8 +8,8 @@ class RingFilter:
     This filter should be applied to projections before reconstruction.
     """
 
-    def __init__(self, center_x=None, center_y=None, thresh=300.0, thresh_max=300.0,
-                 thresh_min=-100.0, theta_min=30, rwidth=30, int_mode='WRAP',
+    def __init__(self, center_x=None, center_y=None, thresh=.08, thresh_max=.3,
+                 thresh_min=-.3, theta_min=30, rwidth=5, int_mode='REFLECT',
                  ncore=None, nchunk=None):
         """
         Initialize the ring filter with parameters for TomoPy's remove_ring function.

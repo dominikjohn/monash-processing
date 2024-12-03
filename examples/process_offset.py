@@ -97,11 +97,12 @@ calibrator = ReconstructionCalibrator(loader)
 # For parallel beam geometry
 shift = calibrator.find_center_shift(
     max_angle=182,
+    slice_idx= 1900,
     pixel_size=pixel_size,
-    #binning_factor=2,
-    test_range=(-10, 10),
-    stepping=80,
-    num_projections=1820,
+    binning_factor=2,
+    test_range=(-15, 15),
+    stepping=15,
+    num_projections=500,
 )
 
 center_shift = calibrator.find_center_shift(
