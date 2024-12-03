@@ -206,6 +206,13 @@ class VolumeBuilder:
                     slice_result *= scaling_factor # corrects for the scaling factor
                     slice_result /= 100 # converts to cm^-1
 
+                if self.channel == 'phase':
+                    rf = RingFilter()
+                else:
+                    rf = RingFilter(rwidth=15)
+                print('appl. ring filter')
+                slice_result = rf.filter_slice(slice_result)
+
                 self.data_loader.save_tiff(
                     channel=reco_channel,
                     angle_i=i,

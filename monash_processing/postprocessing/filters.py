@@ -1,7 +1,5 @@
 import numpy as np
 import tomopy
-from numpy.f2py.f2py2e import filter_files
-from tqdm import tqdm
 
 class RingFilter:
     """

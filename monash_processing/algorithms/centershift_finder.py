@@ -6,6 +6,7 @@ from monash_processing.core.volume_builder import VolumeBuilder
 from monash_processing.utils.utils import Utils
 from monash_processing.core.vector_reconstructor import VectorReconstructor
 from monash_processing.core.chunk_manager import ChunkManager
+from postprocessing.filters import RingFilter
 
 
 class ReconstructionCalibrator:
@@ -60,7 +61,7 @@ class ReconstructionCalibrator:
         return binned
 
     def find_center_shift(self, max_angle, pixel_size, slice_idx=None, num_projections=100,
-                          test_range=(-50, 50), stepping=10, is_stitched=True, binning_factor=1, format='tif'):
+                          test_range=(-50, 50), stepping=10, is_stitched=True, binning_factor=1, format='tif', channel='phase'):
         """
         Creates reconstructions with different center shifts and saves them as files.
         Uses 3D parallel beam geometry with FBP algorithm.
@@ -148,6 +149,14 @@ class ReconstructionCalibrator:
                 pixel_size=pixel_size,
                 is_stitched=is_stitched
             )
+
+            if channel == 'phase':
+                rf = RingFilter()
+            else:
+                rf = RingFilter(rwidth=15) # attenuation has larger rings for some reason
+
+            print('Applying ring filter...')
+            rf.filter_slice(recon)
 
             # Use new filename format
             filename = preview_dir / self._get_shift_filename(shift)
