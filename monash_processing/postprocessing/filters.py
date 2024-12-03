@@ -1,5 +1,6 @@
 import numpy as np
 import tomopy
+from numpy.f2py.f2py2e import filter_files
 from tqdm import tqdm
 
 class RingFilter:
@@ -8,9 +9,9 @@ class RingFilter:
     This filter should be applied to projections before reconstruction.
     """
 
-    def __init__(self, center_x=None, center_y=None, thresh=.08, thresh_max=.3,
-                 thresh_min=-.3, theta_min=30, rwidth=5, int_mode='REFLECT',
-                 ncore=None, nchunk=None):
+    def __init__(self, center_x=None, center_y=None, thresh=300, thresh_max=1000,
+                 thresh_min=-100, theta_min=30, rwidth=5, int_mode='REFLECT',
+                 ncore=50, nchunk=None):
         """
         Initialize the ring filter with parameters for TomoPy's remove_ring function.
 
@@ -48,14 +49,17 @@ class RingFilter:
         self.ncore = ncore
         self.nchunk = nchunk
 
-    def filter_projections(self, projections):
+    def filter_slice(self, slice):
+        return self.filter_volume(slice[np.newaxis, :, :])[0]
+
+    def filter_volume(self, slices):
         """
         Apply ring artifact removal to projection data.
 
         Parameters
         ----------
-        projections : ndarray
-            3D array of projection data (angles, rows, cols)
+        slices : ndarray
+            3D array of reconstructed data
 
         Returns
         -------
@@ -63,30 +67,19 @@ class RingFilter:
             Filtered projection data with ring artifacts removed
         """
         # Convert data type to float32 as required by TomoPy
-        projections = projections.astype(np.float32)
+        slices = slices.astype(np.float32)
+        print('Applying volume ring filter...')
 
-        # Process each row of projections separately
-        filtered_projections = np.zeros_like(projections)
-
-        for row in tqdm(range(projections.shape[1]), desc="Applying ring filter"):
-            # Extract sinogram for current row
-            sinogram = projections[:, row:row+1, :]
-
-            # Apply TomoPy's ring removal filter
-            filtered_sinogram = tomopy.misc.corr.remove_ring(
-                sinogram,
-                center_x=self.center_x,
-                center_y=self.center_y,
-                thresh=self.thresh,
-                thresh_max=self.thresh_max,
-                thresh_min=self.thresh_min,
-                theta_min=self.theta_min,
-                rwidth=self.rwidth,
-                int_mode=self.int_mode,
-                ncore=self.ncore,
-                nchunk=self.nchunk
-            )
-
-            filtered_projections[:, row, :] = filtered_sinogram[:, 0, :]
-
-        return filtered_projections
+        return tomopy.misc.corr.remove_ring(
+            slices,
+            center_x=self.center_x,
+            center_y=self.center_y,
+            thresh=self.thresh,
+            thresh_max=self.thresh_max,
+            thresh_min=self.thresh_min,
+            theta_min=self.theta_min,
+            rwidth=self.rwidth,
+            int_mode=self.int_mode,
+            ncore=self.ncore,
+            nchunk=self.nchunk
+        )
