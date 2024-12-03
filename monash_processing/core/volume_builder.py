@@ -200,16 +200,14 @@ class VolumeBuilder:
                     conv = wavevec / (2 * np.pi) / r0 / 1E27
                     slice_result *= conv * 1E9 # convert to nm^3
                     reco_channel = 'phase_reco'
+                    rf = RingFilter()
                 else:
                     # Attenuation just needs to be divided by 100
                     reco_channel = 'att_reco'
                     slice_result *= scaling_factor # corrects for the scaling factor
                     slice_result /= 100 # converts to cm^-1
-
-                if self.channel == 'phase':
-                    rf = RingFilter()
-                else:
                     rf = RingFilter(rwidth=15)
+
                 print('appl. ring filter')
                 slice_result = rf.filter_slice(slice_result)
 
