@@ -191,7 +191,7 @@ class VolumeBuilder:
                             scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
                     r0 = scipy.constants.physical_constants['classical electron radius'][0]
                     conv = wavevec / (2 * np.pi) / r0 / 1E27
-                    slice_result *= conv
+                    slice_result *= conv * 1E9 # convert to nm^3
                     reco_channel = 'phase_reco'
                 else:
                     # Attenuation just needs to be divided by 100
