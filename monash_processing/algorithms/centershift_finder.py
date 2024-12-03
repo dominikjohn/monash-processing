@@ -85,7 +85,7 @@ class ReconstructionCalibrator:
         preview_dir.mkdir(exist_ok=True)
 
         # Load projections
-        tiff_files = sorted(input_dir.glob(f'projection_*.{format}'))
+        tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
         total_projs = len(tiff_files)
 
         all_angles = np.linspace(0, np.deg2rad(max_angle), total_projs)

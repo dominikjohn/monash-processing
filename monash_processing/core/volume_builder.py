@@ -46,7 +46,7 @@ class VolumeBuilder:
         else:
             input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'att')
 
-        tiff_files = sorted(input_dir.glob(f'projection_*.{format}'))
+        tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
 
         # Generate angles and create mask for <= 180°
         angles = np.linspace(0, self.max_angle_rad, len(tiff_files))
@@ -225,7 +225,7 @@ class VolumeBuilder:
         :return: reconstruction result array
         '''
         input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'att')
-        tiff_files = sorted(input_dir.glob(f'projection_*.{format}'))
+        tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
         angles = np.linspace(0, self.max_angle_rad, len(tiff_files))
 
         if self.limit_max_angle:
