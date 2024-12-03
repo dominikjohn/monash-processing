@@ -150,6 +150,8 @@ class VolumeBuilder:
             epsilon = 1e-8
             projections = np.clip(projections, epsilon, 1.0)
             projections = -np.log(projections)
+            print('MIN: ', projections.min())
+            print('MAX: ', projections.max())
 
         n_slices = projections.shape[1]
         detector_cols = projections.shape[2]
@@ -200,7 +202,6 @@ class VolumeBuilder:
                     reco_channel = 'phase_reco'
                 else:
                     # Attenuation just needs to be divided by 100
-                    slice_result /= 100
                     reco_channel = 'att_reco'
 
                 self.data_loader.save_tiff(
