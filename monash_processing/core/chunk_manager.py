@@ -50,12 +50,6 @@ class ChunkManager:
         # Extract chunk projections
         chunk_projs = self.projections[:, start_row:end_row, :]
 
-        # Apply ring filter if enabled
-        if self.use_ring_filter:
-            ring_filter = RingFilter()
-            print('Applying ring filter...')
-            chunk_projs = ring_filter.filter_projections(chunk_projs)
-
         # In vector mode, the center shift is applied using an astra function
         # In a normal geometry, the projections need to be shifted "by hand" before reconstruction
         if not self.vector_mode:

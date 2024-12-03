@@ -12,7 +12,7 @@ import numpy as np
 
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
-scan_name = "P6_ReverseOrder"
+scan_name = "P6_Manual"
 pixel_size = 1.444e-6 # m
 energy = 25000 # keV
 prop_distance = 0.158 #
@@ -47,11 +47,10 @@ processor = UMPAProcessor(
 )
 
 # Process projections
-with processor:
-    results = processor.process_projections(
-        flats=flat_fields,
-        num_angles=180  # Or however many angles you have
-    )
+results = processor.process_projections(
+    num_angles=num_angles
+)
+
 
 # 4. Phase integrate
 print("Phase integrating")

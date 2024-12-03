@@ -140,12 +140,6 @@ class VolumeBuilder:
 
         projections, angles = self.load_projections()
 
-        # Apply ring filter if enabled
-        if ring_filter:
-            ring_filter = RingFilter()
-            print('Applying ring filter...')
-            projections = ring_filter.filter_projections(projections)
-
         if self.channel == 'att':
             epsilon = 1e-8
             projections = np.clip(projections, epsilon, 1.0)
