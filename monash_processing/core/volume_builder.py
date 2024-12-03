@@ -146,6 +146,11 @@ class VolumeBuilder:
             print('Applying ring filter...')
             projections = ring_filter.filter_projections(projections)
 
+        if self.channel == 'att':
+            epsilon = 1e-8
+            projections = np.clip(projections, epsilon, 1.0)
+            projections = -np.log(projections)
+
         n_slices = projections.shape[1]
         detector_cols = projections.shape[2]
 

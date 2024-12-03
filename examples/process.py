@@ -61,7 +61,6 @@ area_right = np.s_[100:-100, -120:-20]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
 parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 
-
 # 5. Reconstruct volume
 print("Reconstructing volume")
 
