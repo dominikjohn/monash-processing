@@ -14,8 +14,8 @@ import numpy as np
 scan_path = Path("/data/mct/22203/")
 scan_name = "P6_Manual"
 pixel_size = 1.444e-6 # m
-energy = 25000 # keV
-prop_distance = 0.158 #
+energy = 25 # keV
+prop_distance = 0.32 # 17 cm sample-grid,
 max_angle = 182
 umpa_w = 1
 n_workers = 50
@@ -51,7 +51,6 @@ results = processor.process_projections(
     num_angles=num_angles
 )
 
-
 # 4. Phase integrate
 print("Phase integrating")
 #area_left, area_right = Utils.select_areas(loader.load_projections(projection_i=0)[0])
@@ -65,24 +64,24 @@ parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 # 3D center shift finder
 ##############################################################################################################
 
-print('Find centershift')
-calibrator = ReconstructionCalibrator(loader)
-center_shift = calibrator.find_center_shift(
-    max_angle=max_angle,
-    slice_idx=1,
-    num_projections=500,
-    test_range=(53, 56),
-    pixel_size=pixel_size,
-    is_stitched=False
-)
-
+#print('Find centershift')
+#calibrator = ReconstructionCalibrator(loader)
+#center_shift = calibrator.find_center_shift(
+#    max_angle=max_angle,
+#    num_projections=500,
+#    test_range=(10, 30),
+#    stepping=15,
+#    pixel_size=pixel_size,
+#    is_stitched=False
+#)
+energy = 25000
 ##############################################################################################################
-center_shift = 54
+center_shift = 24
 volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift=center_shift, energy=energy, is_stitched=False, method='FBP')
 volume = volume_builder.reconstruct()
 #pg.image(volume)
 
-center_shift = 54
+center_shift = 24
 volume_builder = VolumeBuilder(pixel_size, max_angle, 'att', loader, center_shift=center_shift, energy=energy, is_stitched=False, method='FBP')
 volume = volume_builder.reconstruct()
 
