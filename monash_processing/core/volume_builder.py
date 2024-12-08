@@ -111,10 +111,11 @@ class VolumeBuilder:
         else:
             return tomopy.misc.corr.remove_ring(data)
 
-    def save_reconstruction(self, data, counter_offset, prefix='recon'):
+    def save_reconstruction(self, data, counter_offset, center_shift, prefix='recon'):
         save_folder = self.data_loader.get_save_path() / prefix
         os.makedirs(save_folder, exist_ok=True)
-        writer = cil.io.TIFFWriter(data, save_folder + f'/recon', counter_offset=counter_offset)
+        cs_formatted = self.get_shift_filename(center_shift) # Center shift formatted to non-negative integer
+        writer = cil.io.TIFFWriter(data, save_folder + f'/recon_cs{cs_formatted}', counter_offset=counter_offset)
         writer.write()
 
     def calculate_beer_lambert(self, projections):
@@ -137,11 +138,12 @@ class VolumeBuilder:
         slice_result /= 100  # converts to cm^-1
         return slice_result
 
-    def reconstruct(self, center_shift=0, chunk_size=1, sparse_factor=1, custom_folder=None):
+    def reconstruct(self, center_shift=0, chunk_size=1, sparse_factor=1, custom_folder=None, slice_range=None):
         if self.channel == 'att':
             # For attenuation images, we calculate the log first according to Beer-Lambert
             projections = self.calculate_beer_lambert(self.projections)
 
+        projections = projections[:, slice_range, :]
         n_slices = projections.shape[1]
         for i in range(n_slices // chunk_size):
             chunk_projections = projections[::sparse_factor, i * chunk_size:(i + 1) * chunk_size, :]
@@ -156,9 +158,17 @@ class VolumeBuilder:
 
             #volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth)
             prefix = 'recon' if custom_folder is None else custom_folder
-            self.save_reconstruction(volume, counter_offset=i * chunk_size, prefix=prefix)
+            self.save_reconstruction(volume, center_shift=center_shift, counter_offset=i * chunk_size, prefix=prefix)
 
     def sweep_centershift(self, center_shift_range, chunk_size=1, sparse_factor=1):
+
+        middle_slice = self.projections.shape[1] // 2
+        slice_range = slice(middle_slice, middle_slice + 1)
         for center_shift in center_shift_range:
             print(f"Processing center shift {center_shift}")
-            self.reconstruct(center_shift, chunk_size, sparse_factor, custom_folder='centershift_sweep')
+            self.reconstruct(center_shift, chunk_size, sparse_factor, custom_folder='centershift_sweep', slice_range=slice_range)
+
+    def get_shift_filename(self, center_shift):
+        offset = 1000
+        adjusted_value = int((center_shift * 10) + offset)
+        return f"{adjusted_value:05d}"
