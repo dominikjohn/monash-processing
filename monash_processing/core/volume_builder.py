@@ -12,7 +12,7 @@ import cil.io
 import os
 
 class VolumeBuilder:
-    def __init__(self, data_loader, max_angle, energy, prop_distance, pixel_size, is_stitched=False, channel='phase', detector_tilt_deg=0, show_geometry=False):
+    def __init__(self, data_loader, max_angle, energy, prop_distance, pixel_size, is_stitched=False, channel='phase', detector_tilt_deg=0, show_geometry=False, debug=False):
         self.data_loader = data_loader
         self.channel = channel
         self.pixel_size = pixel_size
@@ -29,12 +29,16 @@ class VolumeBuilder:
         self.pix_size_scaled = self.pixel_size * self.scaling_factor
         self.show_geometry = show_geometry
 
-        self.projections, self.angles = self.load_projections()
+        self.projections, self.angles = self.load_projections(debug)
 
-    def load_projections(self, format='tif'):
+    def load_projections(self, debug=False, format='tif'):
         """
         :return: np.ndarray, np.ndarray
         """
+
+        if debug:
+            return np.zeros((1820, 1024, 1024)), np.linspace(0, self.max_angle_rad, 1820)
+
         if self.is_stitched:
             input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'T_stitched')
         else:
