@@ -13,7 +13,6 @@ from cil.processors import RingRemover
 from cil.recon import FBP
 import cil.io
 import os
-import tomopy
 
 class VolumeBuilder:
     def __init__(self, data_loader, max_angle, energy, prop_distance, pixel_size, is_stitched=False, channel='phase', detector_tilt_deg=0, show_geometry=False):
@@ -108,6 +107,8 @@ class VolumeBuilder:
         return ring_filter.get_output()
 
     def apply_reconstruction_ring_filter(self, data, rwidth=None):
+        import tomopy
+
         if rwidth is not None:
             return tomopy.misc.corr.remove_ring(data, rwidth=rwidth)
         else:
@@ -156,7 +157,7 @@ class VolumeBuilder:
                 volume = self.convert_to_mu(volume)
                 rwidth = 15 # Attenuation needs a larger ring filter width
 
-            volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth)
+            #volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth)
             prefix = 'recon' if custom_folder is None else custom_folder
             self.save_reconstruction(volume, counter_offset=i * chunk_size, prefix=prefix)
 

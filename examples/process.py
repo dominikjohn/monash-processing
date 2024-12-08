@@ -90,7 +90,6 @@ volume_builder = VolumeBuilder(
     energy=energy,
     prop_distance=prop_distance,
     pixel_size=pixel_size,
-    center_shift=center_shift,
     is_stitched=False,
     channel='phase',
     detector_tilt_deg=0,
@@ -98,4 +97,4 @@ volume_builder = VolumeBuilder(
 )
 
 sparse_factor = 1 # Only use every n-th projection
-volume_builder.reconstruct(projections, angles, center_shift=center_shift, chunk_size=50, sparse_factor=sparse_factor)
+volume_builder.reconstruct(center_shift=center_shift, chunk_size=50, sparse_factor=sparse_factor)
