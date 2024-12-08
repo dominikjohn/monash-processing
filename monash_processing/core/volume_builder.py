@@ -143,11 +143,11 @@ class VolumeBuilder:
         return slice_result
 
     def reconstruct(self, center_shift=0, chunk_size=1, sparse_factor=1, custom_folder=None, slice_range=None):
+        projections = self.projections[:, slice_range, :]
         if self.channel == 'att':
             # For attenuation images, we calculate the log first according to Beer-Lambert
             projections = self.calculate_beer_lambert(self.projections)
 
-        projections = projections[:, slice_range, :]
         n_slices = projections.shape[1]
         for i in range(n_slices // chunk_size):
             chunk_projections = projections[::sparse_factor, i * chunk_size:(i + 1) * chunk_size, :]
