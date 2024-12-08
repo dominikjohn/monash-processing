@@ -1,10 +1,7 @@
 import numpy as np
 from tqdm import tqdm
 import tifffile
-import astra
 
-from monash_processing.postprocessing.filters import RingFilter
-from monash_processing.utils.utils import Utils
 import scipy.constants
 from cil.framework import AcquisitionGeometry
 from cil.utilities.display import show_geometry
