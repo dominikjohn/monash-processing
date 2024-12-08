@@ -1,17 +1,22 @@
 import numpy as np
-from setuptools.command.easy_install import is_sh
 from tqdm import tqdm
 import tifffile
 import astra
+
 from monash_processing.postprocessing.filters import RingFilter
-from monash_processing.core.vector_reconstructor import VectorReconstructor
-from monash_processing.core.chunk_manager import ChunkManager
-from monash_processing.core.base_reconstructor import BaseReconstructor
 from monash_processing.utils.utils import Utils
 import scipy.constants
+from cil.framework import AcquisitionGeometry
+from cil.utilities.display import show_geometry
+from cil.framework import AcquisitionData
+from cil.processors import RingRemover
+from cil.recon import FBP
+import cil.io
+import os
+import tomopy
 
 class VolumeBuilder:
-    def __init__(self, pixel_size, max_angle, channel, data_loader, energy, center_shift=0, method='FBP', num_iterations=150, limit_max_angle=True, is_stitched=False):
+    def __init__(self, data_loader, max_angle, energy, prop_distance, pixel_size, center_shift=0, is_stitched=False, channel='phase', detector_tilt_deg=0, show_geometry=False):
         """
         Args:
             pixel_size: Size of each pixel in physical units
@@ -21,21 +26,23 @@ class VolumeBuilder:
             method: 'FBP' or 'SIRT'
             num_iterations: Number of iterations for SIRT (ignored for FBP)
             center_shift: Center shift in pixels
-            limit_max_angle: Whether to limit the max angle to 180°
         """
         self.data_loader = data_loader
         self.channel = channel
         self.pixel_size = pixel_size
         self.max_angle_rad = np.deg2rad(max_angle)
-        self.method = method.upper()
-        self.num_iterations = num_iterations
         self.center_shift = center_shift
-        self.limit_max_angle = limit_max_angle
         self.energy = energy
+        self.prop_distance = prop_distance
         self.is_stitched = is_stitched
-
-        if self.method not in ['FBP', 'SIRT']:
-            raise ValueError("Method must be either 'FBP' or 'SIRT'")
+        self.detector_tilt_deg = detector_tilt_deg
+        if detector_tilt_deg != 0:
+            raise NotImplementedError("Detector tilt is not implemented yet")
+        self.scaling_factor = 1e3
+        self.source_distance = 21.5 * self.scaling_factor
+        self.detector_distance = self.prop_distance * self.scaling_factor
+        self.pix_size_scaled = self.pixel_size * self.scaling_factor
+        self.show_geometry = show_geometry
 
     def load_projections(self, format='tif'):
         """
@@ -47,15 +54,7 @@ class VolumeBuilder:
             input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'T')
 
         tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
-
-        # Generate angles and create mask for <= 180°
-        angles = np.linspace(0, self.max_angle_rad, len(tiff_files))
-
-        if self.limit_max_angle:
-            valid_angles_mask = angles <= np.pi  # π radians = 180°
-            valid_indices = np.where(valid_angles_mask)[0]
-        else:
-            valid_indices = np.arange(len(tiff_files))
+        angles, valid_indices = self.get_valid_indices(self.max_angle_rad, len(tiff_files))
 
         projections = []
         for projection_i in tqdm(valid_indices, desc=f"Loading {self.channel} projections", unit="file"):
@@ -65,244 +64,106 @@ class VolumeBuilder:
             except Exception as e:
                 raise RuntimeError(f"Failed to load projection from {tiff_files[projection_i]}: {str(e)}")
 
-        return np.array(projections), angles[valid_indices]
+        return np.array(projections), angles
 
-    @staticmethod
-    def reconstruct_slice(projections, angles, pixel_size, is_stitched=False, is_short_scan=False):
-        """
-        Reconstruct a single slice using FBP algorithm with ASTRA Toolbox.
-        Args:
-            projections: 2D numpy array of projection data (projections, rows, cols)
-            angles: Array of projection angles in radians
-            pixel_size: Size of detector pixels in mm
-            detector_cols: Number of detector columns
+    def get_valid_indices(self, max_angle, file_count):
+        angles = np.linspace(0, self.max_angle_rad, file_count)
+        valid_angles_mask = angles <= np.pi
+        valid_indices = np.where(valid_angles_mask)[0]
+        return angles[valid_angles_mask], valid_indices
 
-        Returns:
-            2D numpy array of reconstructed slice
-        """
+    def get_acquisition_geometry(self, n_cols, n_rows, angles):
+        #source_position = [0, -self.source_distance, 0] # Not required for parallel beam
+        detector_position = [0, self.detector_distance, 0]
 
-        # Make sure this is a 2D object instead of (angles, 1, cols)
-        projection_slices = np.squeeze(projections)
-        detector_cols = projection_slices.shape[1]
+        # Calculate displacements of rotation axis in pixels
+        rot_offset_pix = -self.center_shift * self.scaling_factor
+        rot_axis_shift = rot_offset_pix * self.pix_size_scaled
 
-        if is_stitched:
-            vol_geom = astra.create_vol_geom(int(detector_cols * 1.7), int(detector_cols * 1.7))
+        detector_direction_y = [0, 0, 1]
+        detector_direction_x = [1, 0, 0]
+
+        ag = AcquisitionGeometry.create_Parallel3D(
+            detector_position=detector_position,
+            detector_direction_x=detector_direction_x,
+            detector_direction_y=detector_direction_y,
+            rotation_axis_position=[rot_axis_shift, 0, 0]) \
+            .set_panel(num_pixels=[n_cols, n_rows]) \
+            .set_angles(angles=angles)
+
+        if self.show_geometry:
+            show_geometry(ag)
+
+        return ag
+
+    def process_chunk(self, chunk_projections, angles):
+        n_rows = chunk_projections.shape[1]
+        n_cols = chunk_projections.shape[2]
+        ag = self.get_acquisition_geometry(n_cols, n_rows, angles)
+
+        data = AcquisitionData(chunk_projections.astype('float32'), geometry=ag)
+        data = self.apply_projection_ring_filter(data)
+
+        fdk = FBP(data)
+        out = fdk.run()
+
+        out = self.apply_reconstruction_ring_filter(out)
+
+        return out
+
+    def apply_projection_ring_filter(self, data):
+        ring_filter = RingRemover()
+        ring_filter.set_input(data)
+        return ring_filter.get_output()
+
+    def apply_reconstruction_ring_filter(self, data, rwidth=None):
+        if rwidth is not None:
+            return tomopy.misc.corr.remove_ring(data, rwidth=rwidth)
         else:
-            vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
+            return tomopy.misc.corr.remove_ring(data)
 
-        scaling_factor = 1e6
-        source_distance = 21.5 * scaling_factor
-        detector_distance = 0.158 * scaling_factor
-        pixel_size = 1.444e-6 * scaling_factor
+    def save_reconstruction(self, data, counter_offset, prefix='recon'):
+        save_folder = self.data_loader.get_save_path() / prefix
+        os.makedirs(save_folder, exist_ok=True)
+        writer = cil.io.TIFFWriter(data, save_folder + f'/{prefix}', counter_offset=counter_offset)
+        writer.write()
 
-        # Create projection geometry with center shift
-        proj_geom = astra.create_proj_geom('fanflat', pixel_size, detector_cols, angles, source_distance, detector_distance)
+    def calculate_beer_lambert(self, projections):
+        epsilon = 1e-8
+        projections = np.clip(projections, epsilon, 1.0)
+        projections = -np.log(projections)
+        return projections
 
-        # Create sinogram
-        sino_id = astra.data2d.create('-sino', proj_geom, projection_slices)
-        print('Sinogram shape:', projection_slices.shape)
-        print(angles.shape)
-        print(angles)
-        # Create reconstruction volume
-        rec_id = astra.data2d.create('-vol', vol_geom)
+    def convert_to_edensity(self, slice_result):
+        wavevec = 2 * np.pi * self.energy / (
+                scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
+        r0 = scipy.constants.physical_constants['classical electron radius'][0]
+        conv = wavevec / (2 * np.pi) / r0 / 1E27
+        slice_result *= conv * 1E9  # convert to nm^3
 
-        proj_id = astra.create_projector('cuda', proj_geom, vol_geom)
+        return slice_result
 
-        # Create FBP configuration
-        cfg = astra.astra_dict('FBP_CUDA')
-        cfg['ProjectorId'] = proj_id
-        cfg['ProjectionDataId'] = sino_id
-        cfg['ReconstructionDataId'] = rec_id
-        print('Short scan is', is_short_scan)
-        cfg['option'] = {'ShortScan': is_short_scan, 'FilterType': 'Ram-Lak'}
+    def convert_to_mu(self, slice_result):
+        slice_result *= self.scaling_factor  # corrects for the scaling factor
+        slice_result /= 100  # converts to cm^-1
+        return slice_result
 
-        # Create and run the algorithm
-        alg_id = astra.algorithm.create(cfg)
-        astra.algorithm.run(alg_id)
-
-        # Get the result
-        result = astra.data2d.get(rec_id)
-
-        # Clean up
-        astra.algorithm.delete(alg_id)
-        astra.data2d.delete(rec_id)
-        astra.data2d.delete(sino_id)
-
-        return result  # Return the single slice
-
-    def reconstruct(self, ring_filter=True):
-        """
-        Efficient slice-by-slice FBP reconstruction using CUDA
-        Args:
-            projections: shape (angles, rows, cols)
-            angles: projection angles in radians
-        """
-
-        projections, angles = self.load_projections()
-
+    def reconstruct(self, projections, angles, chunk_size=1, sparse_factor=1):
         if self.channel == 'att':
-            epsilon = 1e-8
-            projections = np.clip(projections, epsilon, 1.0)
-            projections = -np.log(projections)
-            print('MIN: ', projections.min())
-            print('MAX: ', projections.max())
+            # For attenuation images, we calculate the log first according to Beer-Lambert
+            projections = self.calculate_beer_lambert(projections)
 
         n_slices = projections.shape[1]
-        detector_cols = projections.shape[2]
+        for i in range(n_slices // chunk_size):
+            chunk_projections = projections[::sparse_factor, i * chunk_size:(i + 1) * chunk_size, :]
+            volume = self.process_chunk(chunk_projections, angles)
+            rwidth = None
 
-        scaling_factor = 1e6
-        pixel_size = 1.444e-6 * scaling_factor
+            if self.channel == 'phase':
+                volume = self.convert_to_edensity(volume)
+            elif self.channel == 'att':
+                volume = self.convert_to_mu(volume)
+                rwidth = 15 # Attenuation needs a larger ring filter width
 
-        vol_geom = astra.create_vol_geom(detector_cols, detector_cols)
-        proj_geom = astra.create_proj_geom('parallel', pixel_size, detector_cols, angles)
-        proj_id = astra.create_projector('cuda', proj_geom, vol_geom)
-
-        # Pre-create configuration (reuse for all slices)
-        cfg = astra.astra_dict('FBP_CUDA')
-        cfg['ProjectorId'] = proj_id
-        cfg['option'] = {'FilterType': 'Ram-Lak'}
-
-        # Preallocate output array
-        result = np.zeros((n_slices, detector_cols, detector_cols))
-
-        try:
-            # Process all slices
-            for i in tqdm(range(n_slices), desc="Reconstructing slices"):
-                shifted_projection = Utils.apply_centershift(projections[:, i, :], self.center_shift)
-
-                # Create sinogram for this slice
-                sino_id = astra.data2d.create('-sino', proj_geom, shifted_projection)
-                rec_id = astra.data2d.create('-vol', vol_geom)
-
-                # Update config with new data IDs
-                cfg['ProjectionDataId'] = sino_id
-                cfg['ReconstructionDataId'] = rec_id
-
-                # Create and run algorithm
-                alg_id = astra.algorithm.create(cfg)
-                astra.algorithm.run(alg_id)
-
-                # Get result for this slice
-                slice_result = astra.data2d.get(rec_id)
-                result[i] = slice_result
-
-                # Convert to physical units
-                if self.channel == 'phase':
-                    wavevec = 2 * np.pi * self.energy / (
-                            scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
-                    r0 = scipy.constants.physical_constants['classical electron radius'][0]
-                    conv = wavevec / (2 * np.pi) / r0 / 1E27
-                    slice_result *= conv * 1E9 # convert to nm^3
-                    reco_channel = 'phase_reco'
-                    rf = RingFilter()
-                else:
-                    # Attenuation just needs to be divided by 100
-                    reco_channel = 'att_reco'
-                    slice_result *= scaling_factor # corrects for the scaling factor
-                    slice_result /= 100 # converts to cm^-1
-                    rf = RingFilter(rwidth=15)
-
-                print('appl. ring filter')
-                slice_result = rf.filter_slice(slice_result)
-
-                self.data_loader.save_tiff(
-                    channel=reco_channel,
-                    angle_i=i,
-                    data=slice_result,
-                    prefix='slice'
-                )
-
-                # Clean up slice-specific objects
-                astra.algorithm.delete(alg_id)
-                astra.data2d.delete(rec_id)
-                astra.data2d.delete(sino_id)
-
-        finally:
-            # Clean up shared objects
-            astra.projector.delete(proj_id)
-
-        return result
-
-    def reconstruct_3d(self, enable_short_scan=True, debug=False, chunk_size=128, vector_mode=True, format='tif'):
-        '''
-        Reconstruct a 3D volume using ASTRA Toolbox with FDK but quasi-parallel beam geometry (large source distance)
-        :param enable_short_scan: bool, True means 180° scan is sufficient
-        :param debug: bool, if True only loads first projection and skips saving
-        :param chunk_size: int, number of slices to process at once
-        :return: reconstruction result array
-        '''
-        input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'att')
-        tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
-        angles = np.linspace(0, self.max_angle_rad, len(tiff_files))
-
-        if self.limit_max_angle:
-            valid_angles_mask = angles <= np.pi
-            valid_indices = np.where(valid_angles_mask)[0]
-        else:
-            valid_indices = np.arange(len(tiff_files))
-
-        if debug:
-            data = tifffile.imread(tiff_files[valid_indices[0]])
-            template = np.zeros((len(valid_indices), *data.shape), dtype=data.dtype)
-            template[0] = data
-            projections = template
-        else:
-            projections = []
-            for projection_i in tqdm(valid_indices, desc=f"Loading {self.channel} projections", unit="file"):
-                try:
-                    data = tifffile.imread(tiff_files[projection_i])
-                    projections.append(data)
-                except Exception as e:
-                    raise RuntimeError(f"Failed to load projection from {tiff_files[projection_i]}: {str(e)}")
-            projections = np.array(projections)
-
-        angles = angles[valid_indices]
-
-        chunk_manager = ChunkManager(
-            projections=projections,
-            chunk_size=chunk_size,
-            angles=angles,
-            center_shift=self.center_shift,
-            channel=self.channel,
-            debug=debug,
-            vector_mode=vector_mode
-        )
-
-        print(f"Processing volume in {chunk_manager.n_chunks} chunks of {chunk_size} slices")
-        if vector_mode:
-            reconstructor = VectorReconstructor(enable_short_scan=enable_short_scan, center_shift=self.center_shift)
-        else:
-            reconstructor = BaseReconstructor(enable_short_scan=enable_short_scan, center_shift=self.center_shift)
-
-        # Process chunks
-        for chunk_idx in tqdm(range(chunk_manager.n_chunks), desc="Processing volume chunks"):
-            # Get chunk data
-            chunk_info = chunk_manager.get_chunk_data(chunk_idx)
-
-            print('Starting reconstruction...')
-            # Reconstruct chunk
-            chunk_result = reconstructor.reconstruct_chunk(
-                chunk_info['chunk_data'],
-                chunk_info,
-                angles
-            )
-            print(f'Chunk {chunk_idx} reconstruction finished')
-
-            # Save results
-            chunk_manager.save_chunk_result(chunk_result, chunk_info, self.data_loader)
-
-            # Force GPU memory cleanup
-            import gc
-            gc.collect()
-            try:
-                import cupy as cp
-                cp.get_default_memory_pool().free_all_blocks()
-            except ImportError:
-                pass
-
-            print('Chunk processing finished successfully!')
-
-        if debug:
-            print('Debug reconstruction completed - results not saved')
-        else:
-            print('Full reconstruction completed successfully!')
+            volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth)
+            self.save_reconstruction(volume, counter_offset=i * chunk_size)

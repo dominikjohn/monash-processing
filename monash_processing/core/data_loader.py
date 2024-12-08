@@ -40,6 +40,9 @@ class DataLoader:
         for h5_file in self.h5_files:
             self.logger.info(f"  {h5_file}")
 
+    def get_save_path(self):
+        return self.results_dir
+
     def create_pca_flatfields(self):
         flats = self.load_flat_fields()
         darks = self.load_flat_fields(dark=True)
