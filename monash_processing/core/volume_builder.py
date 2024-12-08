@@ -161,7 +161,6 @@ class VolumeBuilder:
             self.save_reconstruction(volume, center_shift=center_shift, counter_offset=i * chunk_size, prefix=prefix)
 
     def sweep_centershift(self, center_shift_range, chunk_size=1, sparse_factor=1):
-
         middle_slice = self.projections.shape[1] // 2
         slice_range = slice(middle_slice, middle_slice + 1)
         for center_shift in center_shift_range:
