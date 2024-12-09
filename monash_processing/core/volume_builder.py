@@ -105,16 +105,25 @@ class VolumeBuilder:
 
         return ag
 
+    def get_image_geometry(self, ag, center_shift):
+        if self.is_stitched:
+            ig = ag.get_ImageGeometry()
+            ig.voxel_num_x = (int)(ig.voxel_num_x + 2 * center_shift)
+            ig.voxel_num_y = (int)(ig.voxel_num_y + 2 * center_shift)
+        else:
+            ig = ag.get_ImageGeometry()
+        return ig
+
     def process_chunk(self, chunk_projections, angles, center_shift):
         n_rows = chunk_projections.shape[1]
         n_cols = chunk_projections.shape[2]
         ag = self.get_acquisition_geometry(n_cols, n_rows, angles, center_shift)
-        print(ag)
+        ig = self.get_image_geometry(ag, center_shift)
 
         data = AcquisitionData(chunk_projections.astype('float32'), geometry=ag)
         data = self.apply_projection_ring_filter(data)
 
-        fdk = FBP(data)
+        fdk = FBP(data, image_geometry=ig)
         out = fdk.run()
 
         return out

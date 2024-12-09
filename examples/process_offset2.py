@@ -127,11 +127,11 @@ volume_builder = VolumeBuilder(
     channel='phase',
     detector_tilt_deg=0,
     show_geometry=False,
-    sparse_factor=20,
+    sparse_factor=1,
     is_360_deg=True
 )
 
-center_shifts = np.linspace(-1000, 2000, 15)
+center_shifts = np.linspace(278.5, 278.9, 3)
 volume_builder.sweep_centershift(center_shifts)
 
 center_shift = 38.8

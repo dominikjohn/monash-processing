@@ -2,7 +2,7 @@ from monash_processing.postprocessing.stitch_phase_images import ProjectionStitc
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
 #from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
-#from monash_processing.core.volume_builder import VolumeBuilder
+from monash_processing.core.volume_builder import VolumeBuilder
 import h5py
 from pathlib import Path
 import numpy as np
@@ -91,9 +91,18 @@ volume_builder = VolumeBuilder(
     is_360_deg=True
 )
 
-sparse_factor = 20 # Only use every n-th projection
-center_shifts = np.linspace(-1000, 2000, 15)
+center_shifts = np.linspace(307, 312, 10)
 volume_builder.sweep_centershift(center_shifts)
+
+from cil.utilities.display import show_geometry
+
+center_shift = 309.3
+ag = volume_builder.get_acquisition_geometry(2550, 2150, angles,center_shift)
+ig = ag.get_ImageGeometry()
+ig.voxel_num_x = (int)(ig.voxel_num_x + 2 * center_shift)
+ig.voxel_num_y = (int)(ig.voxel_num_y + 2 * center_shift)
+ig.center_x = rot_axis_shift
+show_geometry(ag, ig)
 
 center_shift = 38.8
 volume_builder.reconstruct(center_shift=center_shift, chunk_count=30)
