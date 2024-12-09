@@ -14,7 +14,7 @@ import os
 
 class VolumeBuilder:
     def __init__(self, data_loader, max_angle, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
-                 detector_tilt_deg=0, show_geometry=False, sparse_factor=1, debug=False, is_360_deg=False, is_offset=False):
+                 detector_tilt_deg=0, show_geometry=False, sparse_factor=1, debug=False, is_360_deg=False, is_offset=False, suffix=None):
         self.data_loader = data_loader
         self.channel = channel
         self.pixel_size = pixel_size
@@ -32,9 +32,9 @@ class VolumeBuilder:
         self.show_geometry = show_geometry
         self.is_360_deg = is_360_deg
         self.is_offset = is_offset
-        self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor, debug=debug)
+        self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor, debug=debug, suffix=suffix)
 
-    def load_projections(self, sparse_factor=1, debug=False, format='tif'):
+    def load_projections(self, sparse_factor=1, debug=False, format='tif', suffix=None):
         """
         Load projections with option to skip files based on sparse_factor.
 
@@ -48,9 +48,15 @@ class VolumeBuilder:
                                                                               1820 // sparse_factor)
 
         if self.is_stitched:
-            input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'T_stitched')
+            if self.suffix is not None:
+                input_dir = self.data_loader.results_dir / (f'phi_stitched_{suffix}' if self.channel == 'phase' else 'T_stitched')
+            else:
+                input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'T_stitched')
         else:
-            input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'T')
+            if self.suffix is not None:
+                input_dir = self.data_loader.results_dir / (f'phi_{suffix}' if self.channel == 'phase' else 'T')
+            else:
+                input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'T')
 
         tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
         angles, valid_indices = self.get_valid_indices(len(tiff_files))
