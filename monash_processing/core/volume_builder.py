@@ -160,7 +160,7 @@ class VolumeBuilder:
             save_name = str(save_folder / f'recon_cs{cs_formatted}_{self.suffix}')
         else:
             save_name = str(save_folder / f'recon_cs{cs_formatted}')
-        writer = cil.io.TIFFWriter(data, file_name = str(save_folder / f'recon_cs{cs_formatted}'), counter_offset=counter_offset)
+        writer = cil.io.TIFFWriter(data, file_name = save_name, counter_offset=counter_offset)
         writer.write()
 
     def calculate_beer_lambert(self, projections):
