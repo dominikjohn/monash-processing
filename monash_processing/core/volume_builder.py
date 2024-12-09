@@ -109,10 +109,10 @@ class VolumeBuilder:
     def get_image_geometry(self, ag, center_shift):
         if self.is_offset:
             ig = ag.get_ImageGeometry()
-            ig.voxel_num_x = (int)(ig.voxel_num_x + 2 * center_shift)
-            ig.voxel_num_y = (int)(ig.voxel_num_y + 2 * center_shift)
-            ig.center_x = ag.config.system.rotation_axis._position[0] // 2
-            ig.center_y = ag.config.system.rotation_axis._position[0] // 2
+            #ig.voxel_num_x = (int)(ig.voxel_num_x + 2 * center_shift)
+            #ig.voxel_num_y = (int)(ig.voxel_num_y + 2 * center_shift)
+            #ig.center_x = ag.config.system.rotation_axis._position[0] // 2
+            #ig.center_y = ag.config.system.rotation_axis._position[0] // 2
         else:
             ig = ag.get_ImageGeometry()
         return ig
