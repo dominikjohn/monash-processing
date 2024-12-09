@@ -134,8 +134,8 @@ class VolumeBuilder:
         save_folder = self.data_loader.get_save_path() / prefix
         os.makedirs(save_folder, exist_ok=True)
         cs_formatted = self.get_shift_filename(center_shift)  # Center shift formatted to non-negative integer
-        writer = cil.io.TIFFWriter(data, str(save_folder / f'recon_cs{cs_formatted}'), counter_offset=counter_offset)
-        writer.write()
+        writer = cil.io.TIFFWriter(file_name = str(save_folder / f'recon_cs{cs_formatted}'), counter_offset=counter_offset)
+        writer.write(data)
 
     def calculate_beer_lambert(self, projections):
         epsilon = 1e-8
