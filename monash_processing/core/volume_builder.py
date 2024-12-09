@@ -82,13 +82,13 @@ class VolumeBuilder:
         rot_offset_pix = -center_shift * self.scaling_factor
         rot_axis_shift = rot_offset_pix * self.pix_size_scaled
 
-        detector_direction_y = [0, 0, 1]
-        detector_direction_x = [1, 0, 0]
+        #detector_direction_y = [0, 0, 1]
+        #detector_direction_x = [1, 0, 0]
 
         ag = AcquisitionGeometry.create_Parallel3D(
             detector_position=detector_position,
-            detector_direction_x=detector_direction_x,
-            detector_direction_y=detector_direction_y,
+            #detector_direction_x=detector_direction_x,
+            #detector_direction_y=detector_direction_y,
             rotation_axis_position=[rot_axis_shift, 0, 0]) \
             .set_panel(num_pixels=[n_cols, n_rows]) \
             .set_angles(angles=angles)
@@ -161,9 +161,7 @@ class VolumeBuilder:
         chunk_size = n_slices // chunk_count
         for i in range(chunk_count):
             print(f"Processing chunk {i + 1}/{chunk_count}")
-            print(projections.shape)
             chunk_projections = projections[::sparse_factor, i * chunk_size:(i + 1) * chunk_size, :]
-            print(chunk_projections.shape)
 
             volume = self.process_chunk(chunk_projections, self.angles, center_shift)
             rwidth = None
