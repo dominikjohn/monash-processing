@@ -116,7 +116,7 @@ class ProjectionStitcher:
             def process_single_projection(idx):
                 # Check if output already exists
                 output_path = (self.data_loader.results_dir /
-                               (channel + '_stitched') /
+                               (channel + f'_stitched_{self.offset:.2f}') /
                                f'projection_{idx:04d}.tif')
 
                 if output_path.exists():
