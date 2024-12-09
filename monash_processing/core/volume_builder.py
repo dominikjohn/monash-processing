@@ -93,7 +93,7 @@ class VolumeBuilder:
             #detector_direction_y=detector_direction_y,
             rotation_axis_position=[rot_axis_shift, 0, 0]) \
             .set_panel(num_pixels=[n_cols, n_rows]) \
-            .set_angles(angles=angles)
+            .set_angles(angles=np.rad2deg(angles))
 
         if self.show_geometry:
             show_geometry(ag)
