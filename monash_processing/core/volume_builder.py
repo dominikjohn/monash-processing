@@ -159,12 +159,12 @@ class VolumeBuilder:
 
         if slice_range is not None:
             projections = self.projections[:, slice_range, :]
-
-        print(projections.shape)
+        else:
+            projections = self.projections
 
         if self.channel == 'att':
             # For attenuation images, we calculate the log first according to Beer-Lambert
-            projections = self.calculate_beer_lambert(self.projections)
+            projections = self.calculate_beer_lambert(projections)
 
         n_slices = projections.shape[1]
         chunk_size = n_slices // chunk_count
