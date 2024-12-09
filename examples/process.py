@@ -74,8 +74,8 @@ volume_builder = VolumeBuilder(
 )
 
 sparse_factor = 1 # Only use every n-th projection
-center_shifts = np.linspace(30, 70, 5)
-volume_builder.sweep_centershift(center_shifts, sparse_factor=sparse_factor)
+#center_shifts = np.linspace(30, 70, 5)
+#volume_builder.sweep_centershift(center_shifts)
 
-
-volume_builder.reconstruct(center_shift=center_shift, chunk_size=50, sparse_factor=sparse_factor)
+center_shift = 38.8
+volume_builder.reconstruct(center_shift=center_shift, chunk_count=20)

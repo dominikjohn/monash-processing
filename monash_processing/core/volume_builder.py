@@ -156,7 +156,10 @@ class VolumeBuilder:
         return slice_result
 
     def reconstruct(self, center_shift=0, chunk_count=1, custom_folder=None, slice_range=None):
-        projections = self.projections[:, slice_range, :]
+
+        if slice_range is not None:
+            projections = self.projections[:, slice_range, :]
+
         if self.channel == 'att':
             # For attenuation images, we calculate the log first according to Beer-Lambert
             projections = self.calculate_beer_lambert(self.projections)
@@ -176,11 +179,11 @@ class VolumeBuilder:
                 volume = self.convert_to_mu(volume)
                 rwidth = 15  # Attenuation needs a larger ring filter width
 
-            # volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth)
+            volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth)
             prefix = 'recon' if custom_folder is None else custom_folder
             self.save_reconstruction(volume, center_shift=center_shift, counter_offset=i * chunk_size, prefix=prefix)
 
-    def sweep_centershift(self, center_shift_range, chunk_count=1, sparse_factor=1):
+    def sweep_centershift(self, center_shift_range, chunk_count=1):
         middle_slice = self.projections.shape[1] // 2
         slice_range = slice(middle_slice, middle_slice + 2)
         for center_shift in center_shift_range:
