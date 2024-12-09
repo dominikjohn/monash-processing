@@ -125,9 +125,9 @@ class VolumeBuilder:
         import tomopy
 
         if rwidth is not None:
-            return tomopy.misc.corr.remove_ring(data, rwidth=rwidth)
+            return tomopy.misc.corr.remove_ring(data.as_array(), rwidth=rwidth)
         else:
-            return tomopy.misc.corr.remove_ring(data)
+            return tomopy.misc.corr.remove_ring(data.as_array())
 
     def save_reconstruction(self, data, counter_offset, center_shift, prefix='recon'):
         save_folder = self.data_loader.get_save_path() / prefix
