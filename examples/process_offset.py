@@ -94,7 +94,8 @@ volume_builder = VolumeBuilder(
 
 #center_shifts = np.linspace(307, 312, 10)
 #volume_builder.sweep_centershift(center_shifts)
-
+area_left = np.s_[50:-50, 5:80]
+area_right = np.s_[50:-50, -80:-5]
 
 center_shift_list = np.arange(880, 895, 1)
 for center_shift in center_shift_list:
@@ -106,7 +107,6 @@ for center_shift in center_shift_list:
     parallel_phase_integrator.integrate_parallel(1800, n_workers=n_workers)
 
 volume_builder.reconstruct(center_shift=center_shift, chunk_count=30)
-
 
 
 center_shift = 38.8

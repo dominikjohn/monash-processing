@@ -24,8 +24,12 @@ class PhaseIntegrator:
 
         # Load dx, dy, f
         if self.stitched:
-            dx = self.data_loader.load_processed_projection(projection_i, 'dx_stitched')
-            dy = self.data_loader.load_processed_projection(projection_i, 'dy_stitched')
+            if self.suffix is not None:
+                dx = self.data_loader.load_processed_projection(projection_i, f'dx_stitched_{self.suffix}')
+                dy = self.data_loader.load_processed_projection(projection_i, f'dy_stitched_{self.suffix}')
+            else:
+                dx = self.data_loader.load_processed_projection(projection_i, 'dx_stitched')
+                dy = self.data_loader.load_processed_projection(projection_i, 'dy_stitched')
         else:
             dx = self.data_loader.load_processed_projection(projection_i, 'dx')
             dy = self.data_loader.load_processed_projection(projection_i, 'dy')

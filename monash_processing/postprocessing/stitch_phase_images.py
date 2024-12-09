@@ -112,8 +112,9 @@ class ProjectionStitcher:
                 # Process if needed
                 try:
                     stitched = self.stitch_projection_pair(idx, channel)
+                    save_channel = channel + f'_stitched_{self.offset:.2f}'
                     self.data_loader.save_tiff(
-                        channel=channel + '_stitched',
+                        channel=save_channel,
                         angle_i=idx,
                         data=stitched
                     )
@@ -139,6 +140,7 @@ class ProjectionStitcher:
             client.close()
             cluster.close()
 
+    @staticmethod
     def fourier_shift(img, shift):
         """
         Shift image by a sub-pixel offset using Fourier phase shifting,
