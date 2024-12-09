@@ -18,19 +18,6 @@ class ProjectionStitcher:
         if center_shift < 0:
             raise ValueError("Negative center shift not supported")
 
-    @staticmethod
-    def calculate_cross_correlation(proj_1, proj_2, shifts):
-        results = []
-        for shift in shifts:
-            # Shift the second signal
-            shifted = shift(proj_2, shift, mode='constant', cval=0)
-
-            # Calculate correlation
-            corr = np.corrcoef(proj_1, shifted)[0, 1]
-            results.append((shift, corr))
-
-        return results
-
     def load_and_prepare_projection(self, idx: int, channel: str) -> np.ndarray:
         proj = self.data_loader.load_processed_projection(idx, channel)
         if self.slices is not None:
