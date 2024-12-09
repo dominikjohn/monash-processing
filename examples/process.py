@@ -2,7 +2,6 @@ from monash_processing.core.volume_builder import VolumeBuilder
 from monash_processing.core.data_loader import DataLoader
 #from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 #from monash_processing.core.volume_builder import VolumeBuilder
-#from monash_processing.algorithms.centershift_finder import ReconstructionCalibrator
 #from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 
 import h5py

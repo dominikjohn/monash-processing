@@ -1,9 +1,8 @@
 from monash_processing.algorithms.phase_integration import PhaseIntegrator
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
-from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
+#from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.core.volume_builder import VolumeBuilder
-from monash_processing.algorithms.centershift_finder import ReconstructionCalibrator
 from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
 
 from tqdm import tqdm
@@ -118,22 +117,22 @@ ImageViewerPhi(phi_corr, vmin=0, vmax=0.6)
 ################################################
 
 
-
-
-
-
-# 5. Reconstruct volume
-print("Reconstructing volume")
-
-print('Find centershift')
-calibrator = ReconstructionCalibrator(loader)
-center_shift = calibrator.find_center_shift_3d(
+volume_builder = VolumeBuilder(
+    data_loader=loader,
     max_angle=max_angle,
-    enable_short_scan=False,
-    num_projections=300,
-    test_range=(-2000, 2000)
+    energy=energy,
+    prop_distance=prop_distance,
+    pixel_size=pixel_size,
+    is_stitched=False,
+    channel='phase',
+    detector_tilt_deg=0,
+    show_geometry=False,
+    sparse_factor=20,
+    is_360_deg=True
 )
-print(f"Found optimal center shift: {center_shift}")
 
-volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, method='FBP')
-volume = volume_builder.reconstruct_3d(enable_short_scan=False)
+center_shifts = np.linspace(-1000, 2000, 15)
+volume_builder.sweep_centershift(center_shifts)
+
+center_shift = 38.8
+volume_builder.reconstruct(center_shift=center_shift, chunk_count=30)

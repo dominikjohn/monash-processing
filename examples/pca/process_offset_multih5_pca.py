@@ -2,7 +2,6 @@ from monash_processing.core.multi_position_data_loader import MultiPositionDataL
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.core.volume_builder import VolumeBuilder
-from monash_processing.algorithms.centershift_finder import ReconstructionCalibrator
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 import h5py
 from pathlib import Path

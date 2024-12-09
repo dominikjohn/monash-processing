@@ -1,12 +1,9 @@
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
-from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
-from monash_processing.core.volume_builder import VolumeBuilder
-from monash_processing.algorithms.centershift_finder import ReconstructionCalibrator
+#from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
+#from monash_processing.core.volume_builder import VolumeBuilder
 import h5py
-from monash_processing.utils.utils import Utils
-import pyqtgraph as pg
 from pathlib import Path
 import numpy as np
 from monash_processing.utils.ImageViewer import ImageViewer as imshow
@@ -91,6 +88,7 @@ volume_builder = VolumeBuilder(
     detector_tilt_deg=0,
     show_geometry=False,
     sparse_factor=20,
+    is_360_deg=True
 )
 
 sparse_factor = 20 # Only use every n-th projection
