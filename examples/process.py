@@ -3,6 +3,7 @@ from monash_processing.core.data_loader import DataLoader
 #from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 #from monash_processing.core.volume_builder import VolumeBuilder
 #from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
+from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 
 import h5py
 from pathlib import Path
@@ -74,6 +75,9 @@ volume_builder = VolumeBuilder(
 sparse_factor = 1 # Only use every n-th projection
 #center_shifts = np.linspace(30, 70, 5)
 #volume_builder.sweep_centershift(center_shifts)
+
+
+stitcher = ProjectionStitcher(loader, .1, center_shift = 309.3)
 
 center_shift = 38.8
 volume_builder.reconstruct(center_shift=center_shift, chunk_count=30)

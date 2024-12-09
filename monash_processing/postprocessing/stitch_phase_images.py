@@ -9,12 +9,12 @@ class ProjectionStitcher:
 
     def __init__(self, data_loader, angle_spacing, center_shift):
         self.data_loader = data_loader
-        self.center_shift = center_shift
+        self.offset = 2 * center_shift
         self.angle_spacing = angle_spacing
-        self.ceil_center_shift = np.ceil(center_shift).astype(int)
-        self.residual = self.ceil_center_shift - center_shift
+        self.ceil_offset = np.ceil(self.offset).astype(int)
+        self.residual = self.ceil_offset - self.offset
 
-        if self.center_shift < 0:
+        if center_shift < 0:
             raise ValueError("Negative center shift not supported")
 
     def load_and_prepare_projection(self, idx: int, channel: str) -> np.ndarray:
@@ -48,13 +48,13 @@ class ProjectionStitcher:
         y_shape = proj1.shape[0]
         single_x_shape = proj1.shape[1]
 
-        full_width = single_x_shape + self.ceil_center_shift
+        full_width = single_x_shape + self.ceil_offset
 
         p1 = np.full((y_shape, full_width), np.nan)
         p2 = np.full((y_shape, full_width), np.nan)
 
         p2[:, :single_x_shape] = proj2_flipped
-        p1[:, self.ceil_center_shift:self.ceil_center_shift + single_x_shape] = proj1
+        p1[:, self.ceil_offset:self.ceil_offset + single_x_shape] = proj1
         p1 = shift(p1, shift=[0, -self.residual], mode='reflect', order=1)
 
         # Find overlap region
