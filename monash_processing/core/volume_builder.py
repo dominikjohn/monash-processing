@@ -121,13 +121,14 @@ class VolumeBuilder:
         ring_filter.set_input(data)
         return ring_filter.get_output()
 
-    def apply_reconstruction_ring_filter(self, data, rwidth=None):
+    def apply_reconstruction_ring_filter(self, volume, rwidth=None):
         import tomopy
-
+        data = volume.as_array()
         if rwidth is not None:
-            return tomopy.misc.corr.remove_ring(data.as_array(), rwidth=rwidth)
+            data = tomopy.misc.corr.remove_ring(data, rwidth=rwidth)
         else:
-            return tomopy.misc.corr.remove_ring(data.as_array())
+            data = tomopy.misc.corr.remove_ring(data)
+        return volume.fill(data)
 
     def save_reconstruction(self, data, counter_offset, center_shift, prefix='recon'):
         save_folder = self.data_loader.get_save_path() / prefix
