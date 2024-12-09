@@ -92,18 +92,17 @@ volume_builder = VolumeBuilder(
     is_offset=True,
 )
 
-center_shifts = np.linspace(307, 312, 10)
-volume_builder.sweep_centershift(center_shifts)
+#center_shifts = np.linspace(307, 312, 10)
+#volume_builder.sweep_centershift(center_shifts)
 
-from cil.utilities.display import show_geometry
+from monash_processing.utils.ImageViewer import ImageViewer as imshow
+import matplotlib
+matplotlib.use('TkAgg', force=True)
 
-center_shift = 309.3
-ag = volume_builder.get_acquisition_geometry(2550, 2150, angles,center_shift)
-ig = ag.get_ImageGeometry()
-ig.voxel_num_x = (int)(ig.voxel_num_x + 2 * center_shift)
-ig.voxel_num_y = (int)(ig.voxel_num_y + 2 * center_shift)
-ig.center_x = rot_axis_shift
-show_geometry(ag, ig)
+#stitcher = ProjectionStitcher(loader, .1, center_shift = 309.3)
+stitcher = ProjectionStitcher(loader, .1, center_shift = 500)
+composite = stitcher.stitch_projection_pair(0, 'dx')
+
 
 center_shift = 38.8
 volume_builder.reconstruct(center_shift=center_shift, chunk_count=30)

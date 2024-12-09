@@ -76,8 +76,5 @@ sparse_factor = 1 # Only use every n-th projection
 #center_shifts = np.linspace(30, 70, 5)
 #volume_builder.sweep_centershift(center_shifts)
 
-
-stitcher = ProjectionStitcher(loader, .1, center_shift = 309.3)
-
 center_shift = 38.8
 volume_builder.reconstruct(center_shift=center_shift, chunk_count=30)
