@@ -169,7 +169,7 @@ class VolumeBuilder:
 
     def sweep_centershift(self, center_shift_range, chunk_count=1, sparse_factor=1):
         middle_slice = self.projections.shape[1] // 2
-        slice_range = slice(middle_slice, middle_slice + 3)
+        slice_range = slice(middle_slice, middle_slice + 2)
         for center_shift in center_shift_range:
             print(f"Processing center shift {center_shift}")
             self.reconstruct(center_shift, chunk_count, sparse_factor, custom_folder='centershift_sweep', slice_range=slice_range)
