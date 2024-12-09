@@ -6,11 +6,11 @@ import scipy.constants
 from cil.framework import AcquisitionGeometry
 from cil.utilities.display import show_geometry
 from cil.framework import AcquisitionData
+from cil.framework import ImageData
 from cil.processors import RingRemover
 from cil.recon import FBP
 import cil.io
 import os
-
 
 class VolumeBuilder:
     def __init__(self, data_loader, max_angle, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
@@ -121,21 +121,21 @@ class VolumeBuilder:
         ring_filter.set_input(data)
         return ring_filter.get_output()
 
-    def apply_reconstruction_ring_filter(self, volume, rwidth=None):
+    def apply_reconstruction_ring_filter(self, volume, geometry, rwidth=None):
         import tomopy
         data = volume.as_array()
         if rwidth is not None:
             data = tomopy.misc.corr.remove_ring(data, rwidth=rwidth)
         else:
             data = tomopy.misc.corr.remove_ring(data)
-        return volume.fill(data)
+        return ImageData(data, geometry=geometry)
 
     def save_reconstruction(self, data, counter_offset, center_shift, prefix='recon'):
         save_folder = self.data_loader.get_save_path() / prefix
         os.makedirs(save_folder, exist_ok=True)
         cs_formatted = self.get_shift_filename(center_shift)  # Center shift formatted to non-negative integer
-        writer = cil.io.TIFFWriter(file_name = str(save_folder / f'recon_cs{cs_formatted}'), counter_offset=counter_offset)
-        writer.write(data)
+        writer = cil.io.TIFFWriter(data, file_name = str(save_folder / f'recon_cs{cs_formatted}'), counter_offset=counter_offset)
+        writer.write()
 
     def calculate_beer_lambert(self, projections):
         epsilon = 1e-8
@@ -186,7 +186,7 @@ class VolumeBuilder:
                 volume = self.convert_to_mu(volume)
                 rwidth = 15  # Attenuation needs a larger ring filter width
 
-            volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth)
+            volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth, geometry=volume.geometry)
             prefix = 'recon' if custom_folder is None else custom_folder
             self.save_reconstruction(volume, center_shift=center_shift, counter_offset=i * chunk_size, prefix=prefix)
 
