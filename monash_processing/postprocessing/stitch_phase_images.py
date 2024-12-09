@@ -111,14 +111,13 @@ class ProjectionStitcher:
 
                 # Process if needed
                 try:
-                    stitched, stats = self.stitch_projection_pair(idx, channel)
+                    stitched = self.stitch_projection_pair(idx, channel)
                     self.data_loader.save_tiff(
                         channel=channel + '_stitched',
                         angle_i=idx,
                         data=stitched
                     )
-                    print(f"Successfully processed {channel}-projection {idx}: {stats}")
-                    return stats
+                    print(f"Successfully processed {channel}-projection {idx}")
                 except Exception as e:
                     print(f"Failed to process {channel} projection {idx}: {str(e)}")
                     raise
