@@ -88,7 +88,8 @@ volume_builder = VolumeBuilder(
     detector_tilt_deg=0,
     show_geometry=False,
     sparse_factor=20,
-    is_360_deg=True
+    is_360_deg=True,
+    is_offset=True,
 )
 
 center_shifts = np.linspace(307, 312, 10)
