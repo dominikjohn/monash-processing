@@ -11,8 +11,10 @@ from cil.recon import FBP
 import cil.io
 import os
 
+
 class VolumeBuilder:
-    def __init__(self, data_loader, max_angle, energy, prop_distance, pixel_size, is_stitched=False, channel='phase', detector_tilt_deg=0, show_geometry=False, debug=False):
+    def __init__(self, data_loader, max_angle, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
+                 detector_tilt_deg=0, show_geometry=False, sparse_factor=1, debug=False):
         self.data_loader = data_loader
         self.channel = channel
         self.pixel_size = pixel_size
@@ -29,7 +31,7 @@ class VolumeBuilder:
         self.pix_size_scaled = self.pixel_size * self.scaling_factor
         self.show_geometry = show_geometry
 
-        self.projections, self.angles = self.load_projections(debug)
+        self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor, debug=debug)
 
     def load_projections(self, sparse_factor=1, debug=False, format='tif'):
         """
@@ -73,7 +75,7 @@ class VolumeBuilder:
         return angles[valid_angles_mask], valid_indices
 
     def get_acquisition_geometry(self, n_cols, n_rows, angles, center_shift):
-        #source_position = [0, -self.source_distance, 0] # Not required for parallel beam
+        # source_position = [0, -self.source_distance, 0] # Not required for parallel beam
         detector_position = [0, self.detector_distance, 0]
 
         # Calculate displacements of rotation axis in pixels
@@ -125,7 +127,7 @@ class VolumeBuilder:
     def save_reconstruction(self, data, counter_offset, center_shift, prefix='recon'):
         save_folder = self.data_loader.get_save_path() / prefix
         os.makedirs(save_folder, exist_ok=True)
-        cs_formatted = self.get_shift_filename(center_shift) # Center shift formatted to non-negative integer
+        cs_formatted = self.get_shift_filename(center_shift)  # Center shift formatted to non-negative integer
         writer = cil.io.TIFFWriter(data, save_folder / f'recon_cs{cs_formatted}', counter_offset=counter_offset)
         writer.write()
 
@@ -170,9 +172,9 @@ class VolumeBuilder:
                 volume = self.convert_to_edensity(volume)
             elif self.channel == 'att':
                 volume = self.convert_to_mu(volume)
-                rwidth = 15 # Attenuation needs a larger ring filter width
+                rwidth = 15  # Attenuation needs a larger ring filter width
 
-            #volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth)
+            # volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth)
             prefix = 'recon' if custom_folder is None else custom_folder
             self.save_reconstruction(volume, center_shift=center_shift, counter_offset=i * chunk_size, prefix=prefix)
 
@@ -181,7 +183,8 @@ class VolumeBuilder:
         slice_range = slice(middle_slice, middle_slice + 2)
         for center_shift in center_shift_range:
             print(f"Processing center shift {center_shift}")
-            self.reconstruct(center_shift, chunk_count, sparse_factor, custom_folder='centershift_sweep', slice_range=slice_range)
+            self.reconstruct(center_shift, chunk_count, sparse_factor, custom_folder='centershift_sweep',
+                             slice_range=slice_range)
 
     def get_shift_filename(self, center_shift):
         offset = 1000
