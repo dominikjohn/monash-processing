@@ -151,7 +151,11 @@ class VolumeBuilder:
         n_slices = projections.shape[1]
         chunk_size = n_slices // chunk_count
         for i in range(chunk_count):
+            print(f"Processing chunk {i + 1}/{chunk_count}")
+            print(projections.shape)
             chunk_projections = projections[::sparse_factor, i * chunk_size:(i + 1) * chunk_size, :]
+            print(chunk_projections.shape)
+
             volume = self.process_chunk(chunk_projections, self.angles, center_shift)
             rwidth = None
 
