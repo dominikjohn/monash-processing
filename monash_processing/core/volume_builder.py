@@ -52,7 +52,7 @@ class VolumeBuilder:
             input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'T')
 
         tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
-        angles, valid_indices = self.get_valid_indices(self.max_angle_rad, len(tiff_files))
+        angles, valid_indices = self.get_valid_indices(len(tiff_files))
 
         # Apply sparse factor to valid indices
         sparse_valid_indices = valid_indices[::sparse_factor]
@@ -68,10 +68,12 @@ class VolumeBuilder:
 
         return np.array(projections), sparse_angles
 
-    def get_valid_indices(self, max_angle, file_count):
+    def get_valid_indices(self, file_count):
         angles = np.linspace(0, self.max_angle_rad, file_count)
         valid_angles_mask = angles <= np.pi
         valid_indices = np.where(valid_angles_mask)[0]
+        print(valid_indices)
+        print(angles[valid_angles_mask])
         return angles[valid_angles_mask], valid_indices
 
     def get_acquisition_geometry(self, n_cols, n_rows, angles, center_shift):
