@@ -78,4 +78,4 @@ sparse_factor = 1 # Only use every n-th projection
 #volume_builder.sweep_centershift(center_shifts)
 
 center_shift = 38.8
-volume_builder.reconstruct(center_shift=center_shift, chunk_count=20)
+volume_builder.reconstruct(center_shift=center_shift, chunk_count=30)

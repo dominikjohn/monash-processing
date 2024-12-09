@@ -69,6 +69,7 @@ class VolumeBuilder:
         return np.array(projections), sparse_angles
 
     def get_valid_indices(self, file_count):
+        print('getting valid indices')
         angles = np.linspace(0, self.max_angle_rad, file_count)
         valid_angles_mask = angles <= np.pi
         valid_indices = np.where(valid_angles_mask)[0]
