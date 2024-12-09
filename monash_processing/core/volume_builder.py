@@ -165,12 +165,12 @@ class VolumeBuilder:
             prefix = 'recon' if custom_folder is None else custom_folder
             self.save_reconstruction(volume, center_shift=center_shift, counter_offset=i * chunk_size, prefix=prefix)
 
-    def sweep_centershift(self, center_shift_range, chunk_size=1, sparse_factor=1):
+    def sweep_centershift(self, center_shift_range, chunk_count=1, sparse_factor=1):
         middle_slice = self.projections.shape[1] // 2
         slice_range = slice(middle_slice, middle_slice + 1)
         for center_shift in center_shift_range:
             print(f"Processing center shift {center_shift}")
-            self.reconstruct(center_shift, chunk_size, sparse_factor, custom_folder='centershift_sweep', slice_range=slice_range)
+            self.reconstruct(center_shift, chunk_count, sparse_factor, custom_folder='centershift_sweep', slice_range=slice_range)
 
     def get_shift_filename(self, center_shift):
         offset = 1000
