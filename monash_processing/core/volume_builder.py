@@ -32,9 +32,10 @@ class VolumeBuilder:
         self.show_geometry = show_geometry
         self.is_360_deg = is_360_deg
         self.is_offset = is_offset
-        self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor, debug=debug, suffix=suffix)
+        self.suffix = suffix
+        self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor, debug=debug)
 
-    def load_projections(self, sparse_factor=1, debug=False, format='tif', suffix=None):
+    def load_projections(self, sparse_factor=1, debug=False, format='tif'):
         """
         Load projections with option to skip files based on sparse_factor.
 
@@ -49,12 +50,12 @@ class VolumeBuilder:
 
         if self.is_stitched:
             if self.suffix is not None:
-                input_dir = self.data_loader.results_dir / (f'phi_stitched_{suffix}' if self.channel == 'phase' else 'T_stitched')
+                input_dir = self.data_loader.results_dir / (f'phi_stitched_{self.suffix}' if self.channel == 'phase' else 'T_stitched')
             else:
                 input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'T_stitched')
         else:
             if self.suffix is not None:
-                input_dir = self.data_loader.results_dir / (f'phi_{suffix}' if self.channel == 'phase' else 'T')
+                input_dir = self.data_loader.results_dir / (f'phi_{self.suffix}' if self.channel == 'phase' else 'T')
             else:
                 input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'T')
 
