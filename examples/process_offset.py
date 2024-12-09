@@ -79,13 +79,13 @@ parallel_phase_integrator.integrate_parallel(3640, n_workers=n_workers)
 
 #center_shifts = np.linspace(307, 312, 10)
 #volume_builder.sweep_centershift(center_shifts)
-area_left = np.s_[50:-50, 5:80]
-area_right = np.s_[50:-50, -80:-5]
+area_left = np.s_[: 5:80]
+area_right = np.s_[:, -80:-5]
 
 center_shift_list = np.arange(880, 895, 1)
 for center_shift in center_shift_list:
     suffix = f'{(2 * center_shift):.2f}'
-    stitcher = ProjectionStitcher(loader, .1, center_shift=894 / 2, slices=(1000, 1030))
+    stitcher = ProjectionStitcher(loader, .1, center_shift=center_shift / 2, slices=(1000, 1030), suffix=suffix)
     stitcher.process_and_save_range(0, 1799, 'dx')
     stitcher.process_and_save_range(0, 1799, 'dy')
     parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
@@ -106,7 +106,7 @@ for center_shift in center_shift_list:
         is_offset=True,
         suffix=suffix
     )
-    volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(10,13))
+    volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(10,12))
 
 
 

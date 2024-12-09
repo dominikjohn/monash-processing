@@ -171,7 +171,7 @@ class VolumeBuilder:
         r0 = scipy.constants.physical_constants['classical electron radius'][0]
         conv = wavevec / (2 * np.pi) / r0 / 1E27
         slice_result *= conv * 1E9  # convert to nm^3
-
+        slice_result /= self.scaling_factor
         return slice_result
 
     def convert_to_mu(self, slice_result):
