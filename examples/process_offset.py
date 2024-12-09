@@ -100,9 +100,9 @@ import matplotlib
 matplotlib.use('TkAgg', force=True)
 
 #stitcher = ProjectionStitcher(loader, .1, center_shift = 309.3)
-stitcher = ProjectionStitcher(loader, .1, center_shift = 500)
+stitcher = ProjectionStitcher(loader, .1, center_shift = 309.3 * 2)
 composite = stitcher.stitch_projection_pair(0, 'dx')
-
+imshow(composite)
 
 center_shift = 38.8
 volume_builder.reconstruct(center_shift=center_shift, chunk_count=30)

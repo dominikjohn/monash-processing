@@ -24,7 +24,7 @@ class ProjectionStitcher:
 
     def load_opposing_projections(self, idx: int, channel: str) -> Tuple[np.ndarray, np.ndarray]:
         proj1 = self.load_and_prepare_projection(idx, channel)
-        proj2 = self.load_and_prepare_projection(int(idx + self.angle_spacing * 180), channel)
+        proj2 = self.load_and_prepare_projection(int(idx + 180/self.angle_spacing), channel)
         return proj1, proj2
 
     def normalize_projection(self, projection, part, channel):
