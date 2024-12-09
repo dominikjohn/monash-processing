@@ -79,7 +79,8 @@ class VolumeBuilder:
     def get_acquisition_geometry(self, n_cols, n_rows, angles, center_shift):
         # source_position = [0, -self.source_distance, 0] # Not required for parallel beam
         detector_position = [0, self.detector_distance, 0]
-
+        print(n_cols)
+        print(n_rows)
         # Calculate displacements of rotation axis in pixels
         rot_offset_pix = -center_shift * self.scaling_factor
         rot_axis_shift = rot_offset_pix * self.pix_size_scaled
@@ -107,7 +108,6 @@ class VolumeBuilder:
         print(ag)
 
         data = AcquisitionData(chunk_projections.astype('float32'), geometry=ag)
-        print(data.shape)
         data = self.apply_projection_ring_filter(data)
 
         fdk = FBP(data)
@@ -160,15 +160,20 @@ class VolumeBuilder:
         if slice_range is not None:
             projections = self.projections[:, slice_range, :]
 
+        print(projections.shape)
+
         if self.channel == 'att':
             # For attenuation images, we calculate the log first according to Beer-Lambert
             projections = self.calculate_beer_lambert(self.projections)
 
         n_slices = projections.shape[1]
         chunk_size = n_slices // chunk_count
+        print('Chunk size:', chunk_size)
         for i in range(chunk_count):
             print(f"Processing chunk {i + 1}/{chunk_count}")
             chunk_projections = projections[:, i * chunk_size:(i + 1) * chunk_size, :]
+
+            print(chunk_projections.shape)
 
             volume = self.process_chunk(chunk_projections, self.angles, center_shift)
             rwidth = None
