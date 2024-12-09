@@ -14,7 +14,7 @@ import os
 
 class VolumeBuilder:
     def __init__(self, data_loader, max_angle, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
-                 detector_tilt_deg=0, show_geometry=False, sparse_factor=1, debug=False):
+                 detector_tilt_deg=0, show_geometry=False, sparse_factor=1, debug=False, is_360_deg=False):
         self.data_loader = data_loader
         self.channel = channel
         self.pixel_size = pixel_size
@@ -30,7 +30,7 @@ class VolumeBuilder:
         self.detector_distance = self.prop_distance * self.scaling_factor
         self.pix_size_scaled = self.pixel_size * self.scaling_factor
         self.show_geometry = show_geometry
-
+        self.is_360_deg = is_360_deg
         self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor, debug=debug)
 
     def load_projections(self, sparse_factor=1, debug=False, format='tif'):
@@ -71,7 +71,10 @@ class VolumeBuilder:
     def get_valid_indices(self, file_count):
         print('getting valid indices')
         angles = np.linspace(0, self.max_angle_rad, file_count)
-        valid_angles_mask = angles <= np.pi
+        if self.is_360_deg:
+            valid_angles_mask = angles <= 2 * np.pi
+        else:
+            valid_angles_mask = angles <= np.pi
         valid_indices = np.where(valid_angles_mask)[0]
         print(valid_indices)
         print(angles[valid_angles_mask])

@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
 scan_name = "P5_Manual"
-pixel_size = 1.434e-6 # m
+pixel_size = 1.444e-6 # m
 energy = 25000 # eV
 prop_distance = 0.315 #
 max_angle = 364
@@ -80,50 +80,22 @@ area_right = np.s_[50:-50, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader, stitched=False)
 parallel_phase_integrator.integrate_parallel(3640, n_workers=n_workers)
 
-
-#stitcher = ProjectionStitcher(loader, 817)
-# For a different range of shifts
-#fig, slider = stitcher.visualize_alignment(proj_index=1, shift_range=(500, 2500))
-#plt.show()
-#phase_stitcher.process_and_save_range(0)
-
-
-# 5. Reconstruct volume
-print("Reconstructing volume")
-
-print('Find centershift')
-calibrator = ReconstructionCalibrator(loader)
-
-# For parallel beam geometry
-shift = calibrator.find_center_shift(
-    max_angle=182,
-    slice_idx= 1900,
-    pixel_size=pixel_size,
-    binning_factor=2,
-    test_range=(-15, 15),
-    stepping=15,
-    num_projections=500,
-)
-
-center_shift = calibrator.find_center_shift(
-    max_angle=182,
-    pixel_size=pixel_size,
-    num_projections=1820,
-    test_range=(-10, 10),
-    stepping=20,
-    is_short_scan=False
-)
-calibrator = ReconstructionCalibrator(loader)
-
-center_shift = calibrator.find_center_shift_3d(
+volume_builder = VolumeBuilder(
+    data_loader=loader,
     max_angle=max_angle,
-    enable_short_scan=True,
-    num_projections=100,
-    test_range=(-1000, 1000),
+    energy=energy,
+    prop_distance=prop_distance,
+    pixel_size=pixel_size,
     is_stitched=False,
+    channel='phase',
+    detector_tilt_deg=0,
+    show_geometry=False,
+    sparse_factor=20,
 )
 
-print(f"Found optimal center shift: {center_shift}")
+sparse_factor = 20 # Only use every n-th projection
+center_shifts = np.linspace(-1000, 2000, 15)
+volume_builder.sweep_centershift(center_shifts)
 
-volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, method='FBP')
-volume = volume_builder.reconstruct_3d(enable_short_scan=True)
+center_shift = 38.8
+volume_builder.reconstruct(center_shift=center_shift, chunk_count=30)

@@ -70,7 +70,6 @@ volume_builder = VolumeBuilder(
     channel='phase',
     detector_tilt_deg=0,
     show_geometry=False,
-    debug=True,
 )
 
 sparse_factor = 1 # Only use every n-th projection
