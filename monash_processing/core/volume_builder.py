@@ -31,13 +31,18 @@ class VolumeBuilder:
 
         self.projections, self.angles = self.load_projections(debug)
 
-    def load_projections(self, debug=False, format='tif'):
+    def load_projections(self, sparse_factor=1, debug=False, format='tif'):
         """
-        :return: np.ndarray, np.ndarray
-        """
+        Load projections with option to skip files based on sparse_factor.
 
+        :param sparse_factor: int, load every nth projection (e.g., 2 means load every other projection)
+        :param debug: bool, whether to return dummy data for debugging
+        :param format: str, file format extension
+        :return: np.ndarray, np.ndarray of projections and corresponding angles
+        """
         if debug:
-            return np.zeros((1820, 1024, 1024)), np.linspace(0, self.max_angle_rad, 1820)
+            return np.zeros((1820 // sparse_factor, 1024, 1024)), np.linspace(0, self.max_angle_rad,
+                                                                              1820 // sparse_factor)
 
         if self.is_stitched:
             input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'T_stitched')
@@ -47,15 +52,19 @@ class VolumeBuilder:
         tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
         angles, valid_indices = self.get_valid_indices(self.max_angle_rad, len(tiff_files))
 
+        # Apply sparse factor to valid indices
+        sparse_valid_indices = valid_indices[::sparse_factor]
+        sparse_angles = angles[::sparse_factor]
+
         projections = []
-        for projection_i in tqdm(valid_indices, desc=f"Loading {self.channel} projections", unit="file"):
+        for projection_i in tqdm(sparse_valid_indices, desc=f"Loading {self.channel} projections", unit="file"):
             try:
                 data = tifffile.imread(tiff_files[projection_i])
                 projections.append(data)
             except Exception as e:
                 raise RuntimeError(f"Failed to load projection from {tiff_files[projection_i]}: {str(e)}")
 
-        return np.array(projections), angles
+        return np.array(projections), sparse_angles
 
     def get_valid_indices(self, max_angle, file_count):
         angles = np.linspace(0, self.max_angle_rad, file_count)
