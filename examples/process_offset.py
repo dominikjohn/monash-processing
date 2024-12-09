@@ -1,3 +1,4 @@
+from algorithms.phase_integration import PhaseIntegrator
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
@@ -96,10 +97,16 @@ volume_builder = VolumeBuilder(
 #volume_builder.sweep_centershift(center_shifts)
 
 
-#stitcher = ProjectionStitcher(loader, .1, center_shift = 309.3)
-stitcher = ProjectionStitcher(loader, .1, center_shift = 894//2)
-composite = stitcher.stitch_projection_pair(500, 'dx')
-imshow(composite)
+center_shift_list = np.arange(880, 895, 1)
+for center_shift in center_shift_list:
+    stitcher = ProjectionStitcher(loader, .1, center_shift=894 / 2, slices=(1000, 1200))
+    stitcher.process_and_save_range(0, 1799, 'dx')
+    stitcher.process_and_save_range(0, 1799, 'dy')
+    parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
+                                                        loader, stitched=True, suffix=f'{(2 * center_shift):.2f}')
+    parallel_phase_integrator.integrate_parallel(1800, n_workers=n_workers)
+
+volume_builder.reconstruct(center_shift=center_shift, chunk_count=30)
 
 
 

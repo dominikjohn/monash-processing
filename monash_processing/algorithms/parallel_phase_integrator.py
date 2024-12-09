@@ -5,13 +5,14 @@ from monash_processing.algorithms.phase_integration import PhaseIntegrator
 from monash_processing.utils.utils import Utils
 
 class ParallelPhaseIntegrator:
-    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader, stitched=False):
+    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader, stitched=False, suffix=None):
         self.integrator = PhaseIntegrator(
             energy, prop_distance, pixel_size,
-            area_left, area_right, data_loader, stitched
+            area_left, area_right, data_loader, stitched, suffix
         )
         self.data_loader = data_loader
         self.stitched = stitched
+        self.suffix = suffix
 
     def integrate_parallel(self, num_angles, n_workers=None, min_size_kb=5):
         """
@@ -25,9 +26,15 @@ class ParallelPhaseIntegrator:
         """
         # Check which files need processing
         if self.stitched:
-            to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, 'phi_stitched')
+            if self.suffix is not None:
+                to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, f'phi_stitched_{self.suffix}')
+            else:
+                to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, 'phi_stitched')
         else:
-            to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, 'phi')
+            if self.suffix is not None:
+                to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, f'phi_{self.suffix}')
+            else:
+                to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, 'phi')
 
         if not to_process:
             print("All files already processed successfully!")

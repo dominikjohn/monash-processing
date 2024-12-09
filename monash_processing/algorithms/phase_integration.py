@@ -8,7 +8,7 @@ from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
 
 class PhaseIntegrator:
 
-    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader: DataLoader, stitched=False):
+    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader: DataLoader, stitched=False, suffix=None):
         self.energy = energy
         self.prop_distance = prop_distance
         self.pixel_size = pixel_size
@@ -18,6 +18,7 @@ class PhaseIntegrator:
         self.area_left = area_left
         self.area_right = area_right
         self.stitched = stitched
+        self.suffix = suffix
 
     def integrate_single(self, projection_i):
 
@@ -63,9 +64,15 @@ class PhaseIntegrator:
             phi_corr = np.zeros_like(phi_corr)
 
         if self.stitched:
-            self.data_loader.save_tiff('phi_stitched', projection_i, phi_corr)
+            if self.suffix is not None:
+                self.data_loader.save_tiff(f'phi_stitched_{self.suffix}', projection_i, phi_corr)
+            else:
+                self.data_loader.save_tiff('phi_stitched', projection_i, phi_corr)
         else:
-            self.data_loader.save_tiff('phi', projection_i, phi_corr)
+            if self.suffix is not None:
+                self.data_loader.save_tiff(f'phi_{self.suffix}', projection_i, phi_corr)
+            else:
+                self.data_loader.save_tiff('phi', projection_i, phi_corr)
 
     @staticmethod
     def antisym_mirror_im(im, diffaxis, mode='reflect'):
