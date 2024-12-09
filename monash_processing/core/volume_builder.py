@@ -98,8 +98,6 @@ class VolumeBuilder:
         fdk = FBP(data)
         out = fdk.run()
 
-        out = self.apply_reconstruction_ring_filter(out)
-
         return out
 
     def apply_projection_ring_filter(self, data):
