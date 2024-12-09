@@ -185,8 +185,7 @@ class VolumeBuilder:
         slice_range = slice(middle_slice, middle_slice + 2)
         for center_shift in center_shift_range:
             print(f"Processing center shift {center_shift}")
-            self.reconstruct(center_shift, chunk_count, sparse_factor, custom_folder='centershift_sweep',
-                             slice_range=slice_range)
+            self.reconstruct(center_shift, chunk_count, custom_folder='centershift_sweep', slice_range=slice_range)
 
     def get_shift_filename(self, center_shift):
         offset = 1000
