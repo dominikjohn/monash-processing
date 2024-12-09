@@ -7,13 +7,14 @@ from scipy.ndimage import shift
 
 class ProjectionStitcher:
 
-    def __init__(self, data_loader, angle_spacing, center_shift, slices=None):
+    def __init__(self, data_loader, angle_spacing, center_shift, slices=None, suffix=None):
         self.data_loader = data_loader
         self.offset = 2 * center_shift
         self.angle_spacing = angle_spacing
         self.ceil_offset = np.ceil(self.offset).astype(int)
         self.residual = self.ceil_offset - self.offset
         self.slices = slices
+        self.suffix = suffix
 
         if center_shift < 0:
             raise ValueError("Negative center shift not supported")
@@ -102,8 +103,13 @@ class ProjectionStitcher:
             # Create processing function that returns None if file exists
             def process_single_projection(idx):
                 # Check if output already exists
+                if self.suffix is not None:
+                    folder_name = f'{channel}_stitched_{self.suffix}'
+                else:
+                    folder_name = f'{channel}_stitched'
+
                 output_path = (self.data_loader.results_dir /
-                               (channel + f'_stitched_{self.offset:.2f}') /
+                               folder_name /
                                f'projection_{idx:04d}.tif')
 
                 if output_path.exists():
@@ -112,7 +118,11 @@ class ProjectionStitcher:
                 # Process if needed
                 try:
                     stitched = self.stitch_projection_pair(idx, channel)
-                    save_channel = channel + f'_stitched_{self.offset:.2f}'
+                    if self.suffix is not None:
+                        save_channel = channel + f'_stitched_{self.suffix}'
+                    else:
+                        save_channel = channel + '_stitched'
+
                     self.data_loader.save_tiff(
                         channel=save_channel,
                         angle_i=idx,

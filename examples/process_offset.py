@@ -77,21 +77,6 @@ area_right = np.s_[50:-50, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader, stitched=False)
 parallel_phase_integrator.integrate_parallel(3640, n_workers=n_workers)
 
-volume_builder = VolumeBuilder(
-    data_loader=loader,
-    max_angle=max_angle,
-    energy=energy,
-    prop_distance=prop_distance,
-    pixel_size=pixel_size,
-    is_stitched=False,
-    channel='phase',
-    detector_tilt_deg=0,
-    show_geometry=False,
-    sparse_factor=20,
-    is_360_deg=True,
-    is_offset=True,
-)
-
 #center_shifts = np.linspace(307, 312, 10)
 #volume_builder.sweep_centershift(center_shifts)
 area_left = np.s_[50:-50, 5:80]
@@ -99,14 +84,30 @@ area_right = np.s_[50:-50, -80:-5]
 
 center_shift_list = np.arange(880, 895, 1)
 for center_shift in center_shift_list:
-    stitcher = ProjectionStitcher(loader, .1, center_shift=894 / 2, slices=(1000, 1200))
+    suffix = f'{(2 * center_shift):.2f}'
+    stitcher = ProjectionStitcher(loader, .1, center_shift=894 / 2, slices=(1000, 1030))
     stitcher.process_and_save_range(0, 1799, 'dx')
     stitcher.process_and_save_range(0, 1799, 'dy')
     parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
-                                                        loader, stitched=True, suffix=f'{(2 * center_shift):.2f}')
+                                                        loader, stitched=True, suffix=suffix)
     parallel_phase_integrator.integrate_parallel(1800, n_workers=n_workers)
+    volume_builder = VolumeBuilder(
+        data_loader=loader,
+        max_angle=180,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=True,
+        channel='phase',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=False,
+        is_offset=True,
+        suffix=suffix
+    )
+    volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(10,13))
 
-volume_builder.reconstruct(center_shift=center_shift, chunk_count=30)
 
 
 center_shift = 38.8
