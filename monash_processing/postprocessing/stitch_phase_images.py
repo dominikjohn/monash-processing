@@ -117,10 +117,10 @@ class ProjectionStitcher:
                         angle_i=idx,
                         data=stitched
                     )
-                    self.logger.info(f"Successfully processed {channel}-projection {idx}: {stats}")
+                    print(f"Successfully processed {channel}-projection {idx}: {stats}")
                     return stats
                 except Exception as e:
-                    self.logger.error(f"Failed to process {channel} projection {idx}: {str(e)}")
+                    print(f"Failed to process {channel} projection {idx}: {str(e)}")
                     raise
 
             # Create dask bag of indices and process

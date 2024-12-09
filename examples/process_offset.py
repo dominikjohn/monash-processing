@@ -1,4 +1,3 @@
-from algorithms.phase_integration import PhaseIntegrator
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
