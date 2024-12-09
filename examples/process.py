@@ -60,25 +60,6 @@ area_right = np.s_[100:-100, -120:-20]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
 parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 
-
-##############################################################################################################
-# 3D center shift finder
-##############################################################################################################
-
-print('Find centershift')
-calibrator = ReconstructionCalibrator(loader)
-center_shift = calibrator.find_center_shift(
-    max_angle=max_angle,
-    slice_idx=1,
-    num_projections=500,
-    test_range=(53, 56),
-    pixel_size=pixel_size,
-    is_stitched=False
-)
-
-##############################################################################################################
-center_shift = 54
-
 volume_builder = VolumeBuilder(
     data_loader=loader,
     max_angle=max_angle,
