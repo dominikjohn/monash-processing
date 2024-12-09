@@ -7,18 +7,34 @@ from scipy.ndimage import shift
 
 class ProjectionStitcher:
 
-    def __init__(self, data_loader, angle_spacing, center_shift):
+    def __init__(self, data_loader, angle_spacing, center_shift, slices=None):
         self.data_loader = data_loader
         self.offset = 2 * center_shift
         self.angle_spacing = angle_spacing
         self.ceil_offset = np.ceil(self.offset).astype(int)
         self.residual = self.ceil_offset - self.offset
+        self.slices = slices
 
         if center_shift < 0:
             raise ValueError("Negative center shift not supported")
 
+    @staticmethod
+    def calculate_cross_correlation(proj_1, proj_2, shifts):
+        results = []
+        for shift in shifts:
+            # Shift the second signal
+            shifted = shift(proj_2, shift, mode='constant', cval=0)
+
+            # Calculate correlation
+            corr = np.corrcoef(proj_1, shifted)[0, 1]
+            results.append((shift, corr))
+
+        return results
+
     def load_and_prepare_projection(self, idx: int, channel: str) -> np.ndarray:
         proj = self.data_loader.load_processed_projection(idx, channel)
+        if self.slices is not None:
+            proj = proj[self.slices[0]:self.slices[1], :]
         proj = BadPixelMask.correct_bad_pixels(proj)[0]
         return proj
 
@@ -73,67 +89,121 @@ class ProjectionStitcher:
 
         return composite
 
+    def process_and_save_range(self, start_idx: int, end_idx: int, channel: str) -> list:
+        """
+        Process and save a range of projection pairs using Dask for parallel processing.
 
-def process_and_save_range(self, start_idx: int, end_idx: int, channel: str) -> list:
-    """
-    Process and save a range of projection pairs using Dask for parallel processing.
+        Args:
+            start_idx: Starting projection index
+            end_idx: Ending projection index (inclusive)
+            channel: Name of the input channel directory
 
-    Args:
-        start_idx: Starting projection index
-        end_idx: Ending projection index (inclusive)
-        channel: Name of the input channel directory
+        Returns:
+            list: List of stitching statistics for each processed pair
+        """
+        # Set up local Dask cluster with simplified config
+        cluster = LocalCluster(
+            n_workers=50,
+            threads_per_worker=1,
+            memory_limit='4GB',
+            lifetime_stagger='2 seconds',
+            lifetime_restart=True,
+        )
+        client = Client(cluster)
 
-    Returns:
-        list: List of stitching statistics for each processed pair
-    """
-    # Set up local Dask cluster with simplified config
-    cluster = LocalCluster(
-        n_workers=50,
-        threads_per_worker=1,
-        memory_limit='4GB',
-        lifetime_stagger='2 seconds',
-        lifetime_restart=True,
-    )
-    client = Client(cluster)
+        try:
+            # Create processing function that returns None if file exists
+            def process_single_projection(idx):
+                # Check if output already exists
+                output_path = (self.data_loader.results_dir /
+                               (channel + '_stitched') /
+                               f'projection_{idx:04d}.tif')
 
-    try:
-        # Create processing function that returns None if file exists
-        def process_single_projection(idx):
-            # Check if output already exists
-            output_path = (self.data_loader.results_dir /
-                           (channel + '_stitched') /
-                           f'projection_{idx:04d}.tif')
+                if output_path.exists():
+                    return None
 
-            if output_path.exists():
-                return None
+                # Process if needed
+                try:
+                    stitched, stats = self.stitch_projection_pair(idx, channel)
+                    self.data_loader.save_tiff(
+                        channel=channel + '_stitched',
+                        angle_i=idx,
+                        data=stitched
+                    )
+                    self.logger.info(f"Successfully processed {channel}-projection {idx}: {stats}")
+                    return stats
+                except Exception as e:
+                    self.logger.error(f"Failed to process {channel} projection {idx}: {str(e)}")
+                    raise
 
-            # Process if needed
-            try:
-                stitched, stats = self.stitch_projection_pair(idx, channel)
-                self.data_loader.save_tiff(
-                    channel=channel + '_stitched',
-                    angle_i=idx,
-                    data=stitched
-                )
-                self.logger.info(f"Successfully processed {channel}-projection {idx}: {stats}")
-                return stats
-            except Exception as e:
-                self.logger.error(f"Failed to process {channel} projection {idx}: {str(e)}")
-                raise
+            # Create dask bag of indices and process
+            indices = list(range(start_idx, end_idx + 1))
+            bag = db.from_sequence(indices, npartitions=50)
 
-        # Create dask bag of indices and process
-        indices = list(range(start_idx, end_idx + 1))
-        bag = db.from_sequence(indices, npartitions=50)
+            # Process and collect results
+            futures = bag.map(process_single_projection).compute()
 
-        # Process and collect results
-        futures = bag.map(process_single_projection).compute()
+            # Filter out None results (already processed files)
+            stats_list = [s for s in futures if s is not None]
 
-        # Filter out None results (already processed files)
-        stats_list = [s for s in futures if s is not None]
+            return stats_list
 
-        return stats_list
+        finally:
+            # Clean up
+            client.close()
+            cluster.close()
 
-    finally:
-        # Clean up
-        client.close()
-        cluster.close()
+    def fourier_shift(img, shift):
+        """
+        Shift image by a sub-pixel offset using Fourier phase shifting,
+        with zero-padding to prevent wrapping
+        """
+        rows, cols = img.shape
+        # Pad the image to prevent wrapping
+        padded = np.pad(img, ((0, 0), (cols, cols)), mode='constant')
+
+        F = np.fft.fft2(padded)
+        phase_shift = np.exp(-2j * np.pi * (shift[1] * np.fft.fftfreq(padded.shape[1])))
+        F_shifted = F * phase_shift[np.newaxis, :]
+        shifted = np.real(np.fft.ifft2(F_shifted))
+
+        # Return only the valid region
+        return shifted[:, cols:2 * cols]
+
+    def calculate_cross_correlation(self, proj1, proj2, shifts):
+        results = []
+        for shift in shifts:
+            # Use Fourier phase shifting instead of ndimage.shift
+            shifted_proj1 = self.fourier_shift(proj1, (0, shift))
+
+            valid_region = min(proj2.shape[1], shifted_proj1.shape[1])
+            p1_valid = shifted_proj1[:, :valid_region].flatten()
+            p2_valid = proj2[:, :valid_region].flatten()
+
+            corr = np.corrcoef(p1_valid, p2_valid)[0, 1]
+            results.append((shift, corr))
+            print(f"Shift: {shift}, Correlation: {corr}")
+
+        return results
+
+    def test_correlation(self, range=np.linspace(400, 900, 30)):
+        import matplotlib
+        matplotlib.use('TkAgg', force=True)
+        import matplotlib.pyplot as plt
+
+        proj1_raw, proj2_raw = self.load_opposing_projections(500, 'dx')
+        proj1 = self.normalize_projection(proj1_raw, 'right', 'dx')
+        proj2_flipped = self.normalize_projection(proj2_raw, 'left', 'dx')
+
+        test = self.calculate_cross_correlation(proj1, proj2_flipped, range)
+
+        shifts = [x[0] for x in test]  # First element of each tuple
+        corrs = [x[1] for x in test]  # Second element of each tuple
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(shifts, corrs)
+        plt.xlabel('Shift')
+        plt.ylabel('Correlation')
+        plt.title('Cross-correlation vs Shift')
+        plt.grid(True)
+        plt.show()
