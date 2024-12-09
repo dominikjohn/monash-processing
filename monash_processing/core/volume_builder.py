@@ -104,8 +104,10 @@ class VolumeBuilder:
         n_rows = chunk_projections.shape[1]
         n_cols = chunk_projections.shape[2]
         ag = self.get_acquisition_geometry(n_cols, n_rows, angles, center_shift)
+        print(ag)
 
         data = AcquisitionData(chunk_projections.astype('float32'), geometry=ag)
+        print(data.shape)
         data = self.apply_projection_ring_filter(data)
 
         fdk = FBP(data)
@@ -153,7 +155,7 @@ class VolumeBuilder:
         slice_result /= 100  # converts to cm^-1
         return slice_result
 
-    def reconstruct(self, center_shift=0, chunk_count=1, sparse_factor=1, custom_folder=None, slice_range=None):
+    def reconstruct(self, center_shift=0, chunk_count=1, custom_folder=None, slice_range=None):
         projections = self.projections[:, slice_range, :]
         if self.channel == 'att':
             # For attenuation images, we calculate the log first according to Beer-Lambert
@@ -163,7 +165,7 @@ class VolumeBuilder:
         chunk_size = n_slices // chunk_count
         for i in range(chunk_count):
             print(f"Processing chunk {i + 1}/{chunk_count}")
-            chunk_projections = projections[::sparse_factor, i * chunk_size:(i + 1) * chunk_size, :]
+            chunk_projections = projections[:, i * chunk_size:(i + 1) * chunk_size, :]
 
             volume = self.process_chunk(chunk_projections, self.angles, center_shift)
             rwidth = None
