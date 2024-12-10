@@ -29,8 +29,8 @@ class ProjectionStitcher:
 
     def load_opposing_projections(self, idx: int, channel: str) -> Tuple[np.ndarray, np.ndarray]:
         proj1 = self.load_and_prepare_projection(idx, channel)
-        opposing_index = int(idx + 180/self.angle_spacing)
-        print('Loading projection ', opposing_index)
+        opposing_index = int(np.round(idx + 180/self.angle_spacing))
+        print(f'Loading projection pair {idx} and {opposing_index}, {opposing_index-idx} apart')
         proj2 = self.load_and_prepare_projection(opposing_index, channel)
         return proj1, proj2
 

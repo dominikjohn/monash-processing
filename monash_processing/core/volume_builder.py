@@ -13,12 +13,12 @@ import cil.io
 import os
 
 class VolumeBuilder:
-    def __init__(self, data_loader, max_angle, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
+    def __init__(self, data_loader, angles, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
                  detector_tilt_deg=0, show_geometry=False, sparse_factor=1, debug=False, is_360_deg=False, is_offset=False, suffix=None):
         self.data_loader = data_loader
         self.channel = channel
         self.pixel_size = pixel_size
-        self.max_angle_rad = np.deg2rad(max_angle)
+        self.angles = angles
         self.energy = energy
         self.prop_distance = prop_distance
         self.is_stitched = is_stitched
@@ -44,10 +44,6 @@ class VolumeBuilder:
         :param format: str, file format extension
         :return: np.ndarray, np.ndarray of projections and corresponding angles
         """
-        if debug:
-            return np.zeros((1820 // sparse_factor, 1024, 1024)), np.linspace(0, self.max_angle_rad,
-                                                                              1820 // sparse_factor)
-
         if self.is_stitched:
             if self.suffix is not None:
                 input_dir = self.data_loader.results_dir / (f'phi_stitched_{self.suffix}' if self.channel == 'phase' else 'T_stitched')
@@ -61,6 +57,9 @@ class VolumeBuilder:
 
         tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
         angles, valid_indices = self.get_valid_indices(len(tiff_files))
+
+        print('Angles:', angles)
+        print('Valid indices:', valid_indices)
 
         # Apply sparse factor to valid indices
         sparse_valid_indices = valid_indices[::sparse_factor]
@@ -77,16 +76,11 @@ class VolumeBuilder:
         return np.array(projections), sparse_angles
 
     def get_valid_indices(self, file_count):
-        print('getting valid indices')
-        angles = np.linspace(0, self.max_angle_rad, file_count)
-        if self.is_360_deg:
-            valid_angles_mask = angles <= 2 * np.pi
-        else:
-            valid_angles_mask = angles <= np.pi
-        valid_indices = np.where(valid_angles_mask)[0]
-        print(valid_indices)
-        print(angles[valid_angles_mask])
-        return angles[valid_angles_mask], valid_indices
+        angle_180 = self.angles[file_count]
+        print(f"Actual angle 180: {angle_180}")
+        if angle_180 - 180 > 0.1:
+            raise ValueError("The 180° projection is not within 0.1 of 180 degrees!")
+        return self.angles[:file_count], np.arange(file_count)
 
     def get_acquisition_geometry(self, n_cols, n_rows, angles, center_shift):
         # source_position = [0, -self.source_distance, 0] # Not required for parallel beam
