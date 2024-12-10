@@ -38,7 +38,7 @@ class Utils:
 
         print("Checking existing files...")
         for angle_i in tqdm(range(num_angles), desc="Checking files"):
-            file_path = results_dir / f'projection_{angle_i:04d}.{format}*'
+            file_path = results_dir / f'projection_{angle_i:04d}.{format}'
 
             # Check if file exists and is larger than min_size_kb
             needs_processing = (

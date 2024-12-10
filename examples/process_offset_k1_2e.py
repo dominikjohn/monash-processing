@@ -1,6 +1,6 @@
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
-from monash_processing.core.multi_position_data_loader import MultiPositionDataLoader
+from monash_processing.core.data_loader import DataLoader
 from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 #from monash_processing.core.volume_builder import VolumeBuilder
 import h5py
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
-scan_name = "K21N_sample"
+scan_name = "K1_2E"
 pixel_size = 1.444e-6 # m
 energy = 25000 # eV
 prop_distance = 0.15 # Grid to detector in this case, still not sure why
@@ -25,7 +25,7 @@ n_workers = 100
 
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
-loader = MultiPositionDataLoader(scan_path, scan_name, skip_positions={'03_03'})
+loader = DataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
 
@@ -46,7 +46,7 @@ processor = UMPAProcessor(
     scan_path,
     scan_name,
     loader,
-    n_workers=50
+    n_workers=n_workers
 )
 
 # Process projections
@@ -57,7 +57,7 @@ results = processor.process_projections(
 area_left = np.s_[: 5:80]
 area_right = np.s_[:, -80:-5]
 
-center_shift_list = np.linspace(1360, 1400, 5)
+center_shift_list = np.linspace(1310, 1350, 5)
 for center_shift in center_shift_list:
     suffix = f'{(2 * center_shift):.2f}'
     stitcher = ProjectionStitcher(loader, .1, center_shift=center_shift / 2, slices=(1000, 1010), suffix=suffix, format='tiff')
