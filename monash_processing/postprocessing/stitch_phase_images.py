@@ -7,7 +7,7 @@ from scipy.ndimage import shift
 
 class ProjectionStitcher:
 
-    def __init__(self, data_loader, angle_spacing, center_shift, slices=None, suffix=None):
+    def __init__(self, data_loader, angle_spacing, center_shift, slices=None, suffix=None, format='tif'):
         self.data_loader = data_loader
         self.offset = 2 * center_shift
         self.angle_spacing = angle_spacing
@@ -15,12 +15,13 @@ class ProjectionStitcher:
         self.residual = self.ceil_offset - self.offset
         self.slices = slices
         self.suffix = suffix
+        self.format = format
 
         if center_shift < 0:
             raise ValueError("Negative center shift not supported")
 
     def load_and_prepare_projection(self, idx: int, channel: str) -> np.ndarray:
-        proj = self.data_loader.load_processed_projection(idx, channel)
+        proj = self.data_loader.load_processed_projection(idx, channel, format=self.format)
         if self.slices is not None:
             proj = proj[self.slices[0]:self.slices[1], :]
         proj = BadPixelMask.correct_bad_pixels(proj)[0]

@@ -1,6 +1,6 @@
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
-from monash_processing.core.data_loader import DataLoader
+from monash_processing.core.multi_position_data_loader import MultiPositionDataLoader
 #from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.core.volume_builder import VolumeBuilder
 import h5py
@@ -15,17 +15,17 @@ import matplotlib.pyplot as plt
 
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
-scan_name = "P5_Manual"
+scan_name = "K21N_sample"
 pixel_size = 1.444e-6 # m
 energy = 25000 # eV
-prop_distance = 0.315 #
+prop_distance = 0.15 # Grid to detector in this case, still not sure why
 max_angle = 364
 umpa_w = 1
 n_workers = 100
 
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
-loader = DataLoader(scan_path, scan_name)
+loader = MultiPositionDataLoader(scan_path, scan_name, skip_positions={'03_03'})
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
 
@@ -54,21 +54,10 @@ results = processor.process_projections(
     num_angles=num_angles
 )
 
-#single phase integration
-# 4. Phase integrate
-print("Phase integrating")
-#area_left, area_right = Utils.select_areas(loader.load_projections(projection_i=0)[0])
-area_left = []
-area_right = np.s_[50:-50, -80:-5]
-parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader, stitched=False)
-parallel_phase_integrator.integrate_parallel(3640, n_workers=n_workers)
-
-#center_shifts = np.linspace(307, 312, 10)
-#volume_builder.sweep_centershift(center_shifts)
 area_left = np.s_[: 5:80]
 area_right = np.s_[:, -80:-5]
 
-center_shift_list = np.arange(898, 905, 1)
+center_shift_list = np.arange(700, 1000, 50)
 for center_shift in center_shift_list:
     suffix = f'{(2 * center_shift):.2f}'
     stitcher = ProjectionStitcher(loader, .1, center_shift=center_shift / 2, slices=(1000, 1020), suffix=suffix)
