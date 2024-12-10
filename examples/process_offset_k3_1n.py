@@ -15,10 +15,10 @@ import matplotlib.pyplot as plt
 
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
-scan_name = "P5_Manual"
+scan_name = "K3_1N"
 pixel_size = 1.444e-6 # m
 energy = 25000 # eV
-prop_distance = 0.315 #
+prop_distance = 0.15 #
 max_angle = 364
 umpa_w = 1
 n_workers = 100
@@ -78,7 +78,7 @@ area_right = np.s_[:, -80:-5]
 max_index = int(np.round(180 / angle_step))
 print('Uppermost projection index: ', max_index)
 
-center_shift_list = np.arange(893, 896, 1)
+center_shift_list = np.arange(1020, 1045, 5)
 for center_shift in center_shift_list:
     suffix = f'{(2 * center_shift):.2f}'
     stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=center_shift / 2, slices=(1000, 1010), suffix=suffix)
@@ -107,9 +107,9 @@ for center_shift in center_shift_list:
 
 best_value = 893
 stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2)
-stitcher.process_and_save_range(index_0, index_180, 'dx')
-stitcher.process_and_save_range(index_0, index_180, 'dy')
-stitcher.process_and_save_range(index_0, index_180, 'T')
+stitcher.process_and_save_range(index_0, index_180+1, 'dx')
+stitcher.process_and_save_range(index_0, index_180+1, 'dy')
+stitcher.process_and_save_range(index_0, index_180+1, 'T')
 area_left = np.s_[: 5:50]
 area_right = np.s_[:, -50:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
@@ -131,20 +131,7 @@ volume_builder = VolumeBuilder(
         is_offset=True,
     )
 
-volume_builder = VolumeBuilder(
-        data_loader=loader,
-        original_angles=angles,
-        energy=energy,
-        prop_distance=prop_distance,
-        pixel_size=pixel_size,
-        is_stitched=True,
-        channel='att',
-        detector_tilt_deg=0,
-        show_geometry=False,
-        sparse_factor=1,
-        is_360_deg=False,
-        is_offset=True,
-    )
+volume_builder.sweep_centershift([-1, 0.5, 0, 0.5, 1])
 
-#volume_builder.sweep_centershift([-1, 0.5, 0, 0.5, 1])
-volume_builder.reconstruct(center_shift=0, chunk_count=20)
+center_shift = 0
+volume_builder.reconstruct(center_shift=center_shift, chunk_count=20)
