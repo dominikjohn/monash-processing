@@ -13,12 +13,12 @@ import cil.io
 import os
 
 class VolumeBuilder:
-    def __init__(self, data_loader, angles, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
+    def __init__(self, data_loader, original_angles, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
                  detector_tilt_deg=0, show_geometry=False, sparse_factor=1, debug=False, is_360_deg=False, is_offset=False, suffix=None):
         self.data_loader = data_loader
         self.channel = channel
         self.pixel_size = pixel_size
-        self.angles = angles
+        self.original_angles = original_angles
         self.energy = energy
         self.prop_distance = prop_distance
         self.is_stitched = is_stitched
@@ -76,11 +76,11 @@ class VolumeBuilder:
         return np.array(projections), sparse_angles
 
     def get_valid_indices(self, file_count):
-        angle_180 = self.angles[file_count]
+        angle_180 = self.original_angles[file_count]
         print(f"Actual angle 180: {angle_180}")
         if angle_180 - 180 > 0.1:
             raise ValueError("The 180° projection is not within 0.1 of 180 degrees!")
-        return self.angles[:file_count], np.arange(file_count)
+        return self.original_angles[:file_count], np.arange(file_count)
 
     def get_acquisition_geometry(self, n_cols, n_rows, angles, center_shift):
         # source_position = [0, -self.source_distance, 0] # Not required for parallel beam
@@ -100,7 +100,7 @@ class VolumeBuilder:
             #detector_direction_y=detector_direction_y,
             rotation_axis_position=[rot_axis_shift, 0, 0]) \
             .set_panel(num_pixels=[n_cols, n_rows]) \
-            .set_angles(angles=np.rad2deg(angles))
+            .set_angles(angles=angles)
 
         if self.show_geometry:
             show_geometry(ag)
