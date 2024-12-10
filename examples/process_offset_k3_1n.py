@@ -105,11 +105,11 @@ for center_shift in center_shift_list:
     volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(2,4))
 
 
-best_value = 893
+best_value = 1040
 stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2)
-stitcher.process_and_save_range(index_0, index_180+1, 'dx')
-stitcher.process_and_save_range(index_0, index_180+1, 'dy')
-stitcher.process_and_save_range(index_0, index_180+1, 'T')
+stitcher.process_and_save_range(index_0, index_180, 'dx')
+stitcher.process_and_save_range(index_0, index_180, 'dy')
+stitcher.process_and_save_range(index_0, index_180, 'T')
 area_left = np.s_[: 5:50]
 area_right = np.s_[:, -50:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,

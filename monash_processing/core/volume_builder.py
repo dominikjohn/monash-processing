@@ -55,6 +55,7 @@ class VolumeBuilder:
                 input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'T')
 
         tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
+        print(tiff_files)
         angles, valid_indices = self.get_valid_indices(len(tiff_files))
 
         print('Angles:', angles)
@@ -77,7 +78,7 @@ class VolumeBuilder:
     def get_valid_indices(self, file_count):
         print(f"File count: {file_count}")
         print(f"Original angles: {self.original_angles}")
-        angle_180 = self.original_angles[file_count]
+        angle_180 = self.original_angles[file_count-1]
         print(f"Actual angle 180: {angle_180}")
         if angle_180 - 180 > 0.1:
             print(str(angle_180-180))

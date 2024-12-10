@@ -128,7 +128,6 @@ volume_builder = VolumeBuilder(
         show_geometry=False,
         sparse_factor=1,
         is_360_deg=False,
-        is_offset=True,
     )
 
 volume_builder = VolumeBuilder(
@@ -143,7 +142,6 @@ volume_builder = VolumeBuilder(
         show_geometry=False,
         sparse_factor=1,
         is_360_deg=False,
-        is_offset=True,
     )
 
 #volume_builder.sweep_centershift([-1, 0.5, 0, 0.5, 1])
