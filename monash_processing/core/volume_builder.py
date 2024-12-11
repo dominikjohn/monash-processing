@@ -167,7 +167,7 @@ class VolumeBuilder:
         return slice_result
 
     def convert_to_mu(self, slice_result):
-        slice_result *= self.scaling_factor  # corrects for the scaling factor
+        slice_result *= self.scaling_factor**2  # corrects for the scaling factor
         slice_result /= 100  # converts to cm^-1
         return slice_result
 

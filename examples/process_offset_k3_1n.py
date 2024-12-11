@@ -130,6 +130,25 @@ volume_builder = VolumeBuilder(
         is_360_deg=False,
     )
 
+volume_builder.reconstruct(center_shift=center_shift, chunk_count=20)
+
+volume_builder = VolumeBuilder(
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=True,
+        channel='att',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=False,
+    )
+
+volume_builder.reconstruct(center_shift=center_shift, chunk_count=20)
+
+
 volume_builder.sweep_centershift([-1, 0.5, 0, 0.5, 1])
 
 center_shift = 0
