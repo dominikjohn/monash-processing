@@ -110,8 +110,8 @@ stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=bes
 stitcher.process_and_save_range(index_0, index_180, 'dx')
 stitcher.process_and_save_range(index_0, index_180, 'dy')
 stitcher.process_and_save_range(index_0, index_180, 'T')
-area_left = np.s_[: 5:50]
-area_right = np.s_[:, -50:-5]
+area_left = np.s_[:, 5:80]
+area_right = np.s_[:, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
                                                     loader, stitched=True)
 parallel_phase_integrator.integrate_parallel(max_index, n_workers=n_workers)

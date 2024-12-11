@@ -88,8 +88,6 @@ class VolumeBuilder:
     def get_acquisition_geometry(self, n_cols, n_rows, angles, center_shift):
         # source_position = [0, -self.source_distance, 0] # Not required for parallel beam
         detector_position = [0, self.detector_distance, 0]
-        print(n_cols)
-        print(n_rows)
         # Calculate displacements of rotation axis in pixels
         rot_offset_pix = -center_shift * self.scaling_factor
         rot_axis_shift = rot_offset_pix * self.pix_size_scaled
@@ -143,7 +141,7 @@ class VolumeBuilder:
         return ImageData(data, geometry=geometry)
 
     def save_reconstruction(self, data, counter_offset, center_shift, prefix='recon'):
-        save_folder = self.data_loader.get_save_path() / prefix
+        save_folder = self.data_loader.get_save_path() / (prefix + '_' + self.channel)
         os.makedirs(save_folder, exist_ok=True)
         cs_formatted = self.get_shift_filename(center_shift)  # Center shift formatted to non-negative integer
         if self.suffix is not None:

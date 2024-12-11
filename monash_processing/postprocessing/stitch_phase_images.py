@@ -30,7 +30,6 @@ class ProjectionStitcher:
     def load_opposing_projections(self, idx: int, channel: str) -> Tuple[np.ndarray, np.ndarray]:
         proj1 = self.load_and_prepare_projection(idx, channel)
         opposing_index = int(np.round(idx + 180/self.angle_spacing))
-        print(f'Loading projection pair {idx} and {opposing_index}, {opposing_index-idx} apart')
         proj2 = self.load_and_prepare_projection(opposing_index, channel)
         return proj1, proj2
 
@@ -49,8 +48,12 @@ class ProjectionStitcher:
     def stitch_projection_pair(self, proj_index: int, channel: str) -> Tuple[np.ndarray, dict]:
 
         proj1_raw, proj2_raw = self.load_opposing_projections(proj_index, channel)
-        proj1 = self.normalize_projection(proj1_raw, 'right', channel)
-        proj2_flipped = self.normalize_projection(proj2_raw, 'left', channel)
+        if channel == 'T':
+            proj1 = proj1_raw
+            proj2_flipped = np.fliplr(proj2_raw)
+        else:
+            proj1 = self.normalize_projection(proj1_raw, 'right', channel)
+            proj2_flipped = self.normalize_projection(proj2_raw, 'left', channel)
 
         y_shape = proj1.shape[0]
         single_x_shape = proj1.shape[1]
@@ -116,7 +119,6 @@ class ProjectionStitcher:
                 if output_path.exists():
                     return None
 
-                # Process if needed
                 try:
                     stitched = self.stitch_projection_pair(idx, channel)
                     if self.suffix is not None:
@@ -129,7 +131,6 @@ class ProjectionStitcher:
                         angle_i=idx,
                         data=stitched
                     )
-                    print(f"Successfully processed {channel}-projection {idx}")
                 except Exception as e:
                     print(f"Failed to process {channel} projection {idx}: {str(e)}")
                     raise
