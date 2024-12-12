@@ -4,11 +4,9 @@ from monash_processing.core.data_loader_desy import DataLoaderDesy
 #from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 #from monash_processing.core.volume_builder import VolumeBuilder
 #from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
-from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from pathlib import Path
 import numpy as np
-
-from postprocessing.stitch_phase_images_non_offset import ProjectionStitcherNonOffset
+from monash_processing.postprocessing.stitch_phase_images_non_offset import ProjectionStitcherNonOffset
 
 scan_base = '/asap3/petra3/gpfs/p07/2024/data/11020408/'
 scan_name_left = "scratch_cc/016_basel5_a_left_dpc/w3/"

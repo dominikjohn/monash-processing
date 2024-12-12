@@ -46,7 +46,7 @@ class ProjectionStitcherNonOffset(ProjectionStitcher):
     def stitch_projection_pair(self, proj_index: int, channel: str) -> Tuple[np.ndarray, dict]:
 
         proj_left, proj_right = self.load_projection_pair(proj_index, channel)
-        if channel is not 'T':
+        if channel != 'T':
             proj_left = self.normalize_projection(proj_left, 'right', channel)
             proj_right = self.normalize_projection(proj_right, 'left', channel)
 
