@@ -121,8 +121,7 @@ class VolumeBuilder:
 
         data = AcquisitionData(chunk_projections.astype('float32'), geometry=ag)
         data = self.apply_projection_ring_filter(data)
-        data.reorder('astra')
-        fdk = FBP(data, image_geometry=ig, backend='astra')
+        fdk = FBP(data, image_geometry=ig)
         out = fdk.run()
 
         return out
