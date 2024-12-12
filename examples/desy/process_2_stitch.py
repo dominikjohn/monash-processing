@@ -1,4 +1,4 @@
-from algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
+from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.volume_builder import VolumeBuilder
 from monash_processing.core.data_loader_desy import DataLoaderDesy
 #from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
@@ -10,11 +10,11 @@ import numpy as np
 
 from postprocessing.stitch_phase_images_non_offset import ProjectionStitcherNonOffset
 
-scan_base = '/asap3/petra3/gpfs/p07/2024/data/11020408/scratch_cc/'
-scan_name_left = "016_basel5_a_left_dpc/w3/"
-scan_name_right = "016_basel5_a_right_dpc/w3/"
+scan_base = '/asap3/petra3/gpfs/p07/2024/data/11020408/'
+scan_name_left = "scratch_cc/016_basel5_a_left_dpc/w3/"
+scan_name_right = "scratch_cc/016_basel5_a_right_dpc/w3/"
 
-stitched_name = "016_basel5_a_stitched_dpc/"
+stitched_name = "processed/016_basel5_a_stitched_dpc/"
 if not Path(scan_base + stitched_name).exists():
     Path(scan_base + stitched_name).mkdir()
 

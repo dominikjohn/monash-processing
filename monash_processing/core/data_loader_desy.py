@@ -7,7 +7,7 @@ import re
 import tifffile
 from tqdm import tqdm
 
-from core.data_loader import DataLoader
+from monash_processing.core.data_loader import DataLoader
 from PIL import Image
 
 class DataLoaderDesy(DataLoader):

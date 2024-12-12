@@ -104,7 +104,6 @@ for center_shift in center_shift_list:
     )
     volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(2,4))
 
-
 best_value = 893
 stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2)
 stitcher.process_and_save_range(index_0, index_180, 'dx')
