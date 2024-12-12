@@ -5,6 +5,7 @@ from typing import Union, Optional
 import logging
 import re
 import tifffile
+from contourpy.util.data import simple
 from tqdm import tqdm
 import cv2
 from monash_processing.core.eigenflats import EigenflatManager
@@ -228,9 +229,9 @@ class DataLoader:
         self.logger.info(f"Loaded angles array with shape {angles_array.shape}")
         return angles_array
 
-    def load_processed_projection(self, projection_i: int, channel: str, format='tif') -> np.ndarray:
+    def load_processed_projection(self, projection_i: int, channel: str, format='tif', simple_format=False) -> np.ndarray:
         """Load a single processed projection from a specific channel."""
-
+        del simple_format  # Just for compatibility purposes
         # Load from TIFF files
         tiff_path = self.results_dir / channel / f'projection_{projection_i:04d}.{format}'
         data = np.array(tifffile.imread(tiff_path))

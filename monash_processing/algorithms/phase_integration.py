@@ -8,7 +8,7 @@ from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
 
 class PhaseIntegrator:
 
-    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader: DataLoader, stitched=False, suffix=None):
+    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader: DataLoader, stitched=False, suffix=None, simple_format=True):
         self.energy = energy
         self.prop_distance = prop_distance
         self.pixel_size = pixel_size
@@ -19,20 +19,21 @@ class PhaseIntegrator:
         self.area_right = area_right
         self.stitched = stitched
         self.suffix = suffix
+        self.simple_format = simple_format
 
     def integrate_single(self, projection_i):
 
         # Load dx, dy, f
         if self.stitched:
             if self.suffix is not None:
-                dx = self.data_loader.load_processed_projection(projection_i, f'dx_stitched_{self.suffix}')
-                dy = self.data_loader.load_processed_projection(projection_i, f'dy_stitched_{self.suffix}')
+                dx = self.data_loader.load_processed_projection(projection_i, f'dx_stitched_{self.suffix}', simple_format=True)
+                dy = self.data_loader.load_processed_projection(projection_i, f'dy_stitched_{self.suffix}', simple_format=True)
             else:
-                dx = self.data_loader.load_processed_projection(projection_i, 'dx_stitched')
-                dy = self.data_loader.load_processed_projection(projection_i, 'dy_stitched')
+                dx = self.data_loader.load_processed_projection(projection_i, 'dx_stitched', simple_format=True)
+                dy = self.data_loader.load_processed_projection(projection_i, 'dy_stitched', simple_format=True)
         else:
-            dx = self.data_loader.load_processed_projection(projection_i, 'dx')
-            dy = self.data_loader.load_processed_projection(projection_i, 'dy')
+            dx = self.data_loader.load_processed_projection(projection_i, 'dx', simple_format=self.simple_format)
+            dy = self.data_loader.load_processed_projection(projection_i, 'dy', simple_format=self.simple_format)
 
         # Create a mask for the ramp correction based on the previous user input
         mask = np.zeros_like(dx, dtype=bool)

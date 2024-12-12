@@ -62,11 +62,13 @@ class DataLoaderDesy(DataLoader):
         self.logger.info(f"Loaded angles array with shape {angles_array.shape}")
         return angles_array
 
-    def load_processed_projection(self, projection_i: int, channel: str, format='tif') -> np.ndarray:
+    def load_processed_projection(self, projection_i: int, channel: str, format='tif', simple_format=False) -> np.ndarray:
         """Load a single processed projection from a specific channel."""
-
         # Load from TIFF files
-        tiff_path = self.results_dir / channel / f'{channel}_{projection_i:04d}.{format}'
+        if simple_format:
+            tiff_path = self.results_dir / channel / f'projection_{projection_i:04d}.{format}'
+        else:
+            tiff_path = self.results_dir / channel / f'{channel}_{projection_i:04d}.{format}'
         data = np.array(tifffile.imread(tiff_path))
 
         return data

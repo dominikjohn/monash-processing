@@ -37,11 +37,11 @@ center_shift_list = np.linspace(500, 3000, 10)
 for center_shift in center_shift_list:
     suffix = f'{(2 * center_shift):.2f}'
     stitcher = ProjectionStitcherNonOffset(loader_left, loader_right, loader_stitched, angle_spacing=angle_step, center_shift=center_shift / 2, slices=(1000, 1010), suffix=suffix, format='tif')
-    stitcher.process_and_save_range(0, 4501, 'dx')
-    stitcher.process_and_save_range(0, 4501, 'dy')
+    stitcher.process_and_save_range(0, max_index-1, 'dx')
+    stitcher.process_and_save_range(0, max_index-1, 'dy')
     parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
-                                                        loader_stitched, stitched=True, suffix=suffix)
-    parallel_phase_integrator.integrate_parallel(max_index, n_workers=n_workers)
+                                                        loader_stitched, stitched=True, suffix=suffix, simple_format=False)
+    parallel_phase_integrator.integrate_parallel(max_index-1, n_workers=n_workers)
     volume_builder = VolumeBuilder(
         data_loader=loader_stitched,
         original_angles=angles,
