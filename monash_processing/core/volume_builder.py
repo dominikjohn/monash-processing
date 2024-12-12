@@ -95,6 +95,7 @@ class VolumeBuilder:
         #detector_direction_y = [0, 0, 1]
         #detector_direction_x = [1, 0, 0]
 
+
         ag = AcquisitionGeometry.create_Parallel3D(
             detector_position=detector_position,
             #detector_direction_x=detector_direction_x,
@@ -120,8 +121,8 @@ class VolumeBuilder:
 
         data = AcquisitionData(chunk_projections.astype('float32'), geometry=ag)
         data = self.apply_projection_ring_filter(data)
-
-        fdk = FBP(data.reorder(['angle', 'vertical', 'horizontal']), image_geometry=ig, backend='astra')
+        data.reorder('astra')
+        fdk = FBP(data, image_geometry=ig, backend='astra')
         out = fdk.run()
 
         return out

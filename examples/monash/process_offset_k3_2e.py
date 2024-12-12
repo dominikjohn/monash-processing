@@ -18,7 +18,7 @@ scan_path = Path("/data/mct/22203/")
 scan_name = "K3_2E"
 pixel_size = 1.444e-6 # m
 energy = 25000 # eV
-prop_distance = 0.15 #
+prop_distance = 0.155 #
 max_angle = 364
 umpa_w = 1
 n_workers = 100
@@ -86,7 +86,7 @@ for center_shift in center_shift_list:
     stitcher.process_and_save_range(index_0, index_180, 'dy')
     parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
                                                         loader, stitched=True, suffix=suffix)
-    parallel_phase_integrator.integrate_parallel(max_index, n_workers=n_workers)
+    parallel_phase_integrator.integrate_parallel(max_index+1, n_workers=n_workers)
     volume_builder = VolumeBuilder(
         data_loader=loader,
         original_angles=angles,
@@ -113,7 +113,7 @@ area_left = np.s_[:, 5:80]
 area_right = np.s_[:, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
                                                     loader, stitched=True)
-parallel_phase_integrator.integrate_parallel(max_index, n_workers=n_workers)
+parallel_phase_integrator.integrate_parallel(max_index+1, n_workers=n_workers)
 
 volume_builder = VolumeBuilder(
         data_loader=loader,
