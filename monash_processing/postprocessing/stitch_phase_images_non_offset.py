@@ -1,12 +1,9 @@
 import numpy as np
 from typing import Optional, Tuple
-from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
 from dask.distributed import Client, LocalCluster
 import dask.bag as db
 from scipy.ndimage import shift
-
-from postprocessing.stitch_phase_images import ProjectionStitcher
-
+from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 
 # This class is used to stitch projections that are not acquired using offset scans
 class ProjectionStitcherNonOffset(ProjectionStitcher):

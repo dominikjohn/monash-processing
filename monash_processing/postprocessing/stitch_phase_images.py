@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Optional, Tuple
+from typing import Tuple
 from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
 from dask.distributed import Client, LocalCluster
 import dask.bag as db
