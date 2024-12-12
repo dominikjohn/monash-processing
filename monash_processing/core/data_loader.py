@@ -43,13 +43,6 @@ class DataLoader:
     def get_save_path(self):
         return self.results_dir
 
-    def create_pca_flatfields(self):
-        flats = self.load_flat_fields()
-        darks = self.load_flat_fields(dark=True)
-
-        # Subtract darks from flats
-        flats = flats - darks
-
     def load_flat_fields(self, dark=False, pca=False):
         """Load flat field data from all files and combine, averaging multiple fields per file."""
 
