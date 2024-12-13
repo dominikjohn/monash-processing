@@ -35,9 +35,9 @@ class ProjectionStitcherNonOffset(ProjectionStitcher):
 
     def normalize_projection(self, projection, part, channel):
         if part == 'right':
-            mean = np.mean(projection[:, -500:-5])
+            mean = np.mean(projection[:, -800:-5])
         elif part == 'left':
-            mean = np.mean(projection[:, 5:500])
+            mean = np.mean(projection[:, 5:800])
         else:
             raise ValueError("Invalid part")
 
@@ -53,14 +53,14 @@ class ProjectionStitcherNonOffset(ProjectionStitcher):
         y_shape = proj_left.shape[0]
         single_x_shape = proj_left.shape[1]
 
-        full_width = single_x_shape + self.ceil_offset
+        full_width = 2 * single_x_shape - self.ceil_offset
 
         p1 = np.full((y_shape, full_width), np.nan)
         p2 = np.full((y_shape, full_width), np.nan)
 
-        p2[:, :single_x_shape] = proj_right
-        p1[:, self.ceil_offset:self.ceil_offset + single_x_shape] = proj_left
-        p1 = shift(p1, shift=[0, -self.residual], mode='reflect', order=1)
+        p1[:, :single_x_shape] = proj_left
+        p2[:, single_x_shape-self.ceil_offset:] = proj_right
+        #p1 = shift(p1, shift=[0, -self.residual], mode='reflect', order=1)
 
         # Find overlap region
         overlap = ~(np.isnan(p1) | np.isnan(p2))
