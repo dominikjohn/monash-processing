@@ -33,7 +33,7 @@ angles = np.linspace(0, 180, max_index)
 area_left = np.s_[:, 50:600]
 area_right = np.s_[:, -600:-50]
 
-center_shift_list = np.linspace(500, 1500, 6)
+center_shift_list = np.linspace(800, 1400, 6)
 for center_shift in center_shift_list:
     suffix = f'{(2 * center_shift):.2f}'
     stitcher = ProjectionStitcherNonOffset(loader_left, loader_right, loader_stitched, angle_spacing=angle_step, center_shift=center_shift / 2, slices=(1000, 1020), suffix=suffix, format='tif')
