@@ -5,10 +5,11 @@ from monash_processing.algorithms.phase_integration import PhaseIntegrator
 from monash_processing.utils.utils import Utils
 
 class ParallelPhaseIntegrator:
-    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader, stitched=False, suffix=None, simple_format=True):
+    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader, stitched=False, suffix=None, simple_format=True, slicing=None):
         self.integrator = PhaseIntegrator(
             energy, prop_distance, pixel_size,
             area_left, area_right, data_loader, stitched, suffix, simple_format=simple_format,
+            slicing=slicing
         )
         self.data_loader = data_loader
         self.stitched = stitched

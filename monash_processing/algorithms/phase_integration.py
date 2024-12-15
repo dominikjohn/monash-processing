@@ -8,7 +8,7 @@ from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
 
 class PhaseIntegrator:
 
-    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader: DataLoader, stitched=False, suffix=None, simple_format=True):
+    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader: DataLoader, stitched=False, suffix=None, simple_format=True, slicing=None):
         self.energy = energy
         self.prop_distance = prop_distance
         self.pixel_size = pixel_size
@@ -20,6 +20,7 @@ class PhaseIntegrator:
         self.stitched = stitched
         self.suffix = suffix
         self.simple_format = simple_format
+        self.slicing = slicing
 
     def integrate_single(self, projection_i):
 
@@ -34,6 +35,11 @@ class PhaseIntegrator:
         else:
             dx = self.data_loader.load_processed_projection(projection_i, 'dx', simple_format=self.simple_format)
             dy = self.data_loader.load_processed_projection(projection_i, 'dy', simple_format=self.simple_format)
+
+        if self.slicing is not None:
+            dx = dx[self.slicing]
+            dy = dy[self.slicing]
+            print('sliced to new dimensions dx:', dx.shape, 'dy:', dy.shape)
 
         # Create a mask for the ramp correction based on the previous user input
         mask = np.zeros_like(dx, dtype=bool)
