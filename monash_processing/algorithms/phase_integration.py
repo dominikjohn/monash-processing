@@ -39,7 +39,6 @@ class PhaseIntegrator:
         if self.slicing is not None:
             dx = dx[self.slicing]
             dy = dy[self.slicing]
-            print('sliced to new dimensions dx:', dx.shape, 'dy:', dy.shape)
 
         # Create a mask for the ramp correction based on the previous user input
         mask = np.zeros_like(dx, dtype=bool)
