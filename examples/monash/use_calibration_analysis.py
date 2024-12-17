@@ -44,7 +44,7 @@ base_path = "/data/mct/22203/results/P6_Manual"
 material_slices = [250, 250, 1070, 1300, 1900]
 
 # Load the reconstruction stacks
-phase_stack, att_stack = calibration.load_reconstruction_stacks(base_path, max_slices=2050)
+phase_stack, att_stack = calibration.load_reconstruction_stacks(base_path, max_slices=2050, bin_factor=4)
 
 # Perform the analysis
 phase_results, att_results = calibration.analyze_materials(

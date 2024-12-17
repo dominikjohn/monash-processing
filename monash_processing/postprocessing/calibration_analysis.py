@@ -6,14 +6,48 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import xraylib
 
+
 class CalibrationAnalysis:
-    def __init__(self, materials, energy_keV=25):
-        self.materials = materials
+    def __init__(self, materials=None, energy_keV=25):
+        self._materials = materials if materials is not None else {}
         self.energy_keV = energy_keV
         self.last_results = None
         self.last_rois = None
         self.phase_stack = None
         self.att_stack = None
+
+    @property
+    def materials(self):
+        """Get the current materials dictionary."""
+        return self._materials
+
+    @materials.setter
+    def materials(self, new_materials):
+        """Set new materials dictionary."""
+        if not isinstance(new_materials, dict):
+            raise TypeError("Materials must be a dictionary")
+        self._materials = new_materials
+
+    def update_material(self, name, properties):
+        """
+        Update or add a single material's properties.
+
+        Args:
+            name (str): Name of the material
+            properties (dict): Material properties including density, molecular_weight,
+                             electrons, and composition
+        """
+        required_keys = {'density', 'molecular_weight', 'electrons', 'composition'}
+        if not all(key in properties for key in required_keys):
+            raise ValueError(f"Material properties must include all of: {required_keys}")
+        self._materials[name] = properties
+
+    def remove_material(self, name):
+        """Remove a material from the library."""
+        if name in self._materials:
+            del self._materials[name]
+        else:
+            raise KeyError(f"Material '{name}' not found in the library")
 
     def calculate_electron_density(self, density, molecular_weight, electrons_per_molecule):
         avogadro_number = 6.022e23
@@ -37,13 +71,24 @@ class CalibrationAnalysis:
 
         return total_mass_atten * density
 
-    def load_reconstruction_stacks(self, base_path, max_slices=None):
+    def load_reconstruction_stacks(self, base_path, max_slices=None, bin_factor=4):
         base_path = Path(base_path)
         phase_dir = base_path / 'recon_phase'
         att_dir = base_path / 'recon_att'
 
-        def load_tif_stack(directory: Path) -> np.ndarray:
-            tif_files = sorted(directory.glob('*.tif*'))
+        def process_directory(directory: Path) -> np.ndarray:
+            # Check for existing binned data
+            binned_dir = directory / f'binned{bin_factor}'
+            if binned_dir.exists():
+                print(f"Loading existing {bin_factor}x binned data from {binned_dir}")
+                source_dir = binned_dir
+            else:
+                print(f"No existing {bin_factor}x binned data found. Creating new binned data...")
+                binner = Binner(directory)
+                source_dir = binner.process_stack(bin_factor)
+
+            # Load the binned stack
+            tif_files = sorted(source_dir.glob('*.tif*'))
             first_img = imread(tif_files[0])
             stack = np.zeros((len(tif_files), *first_img.shape), dtype=first_img.dtype)
             for i, tif_path in tqdm(enumerate(tif_files)):
@@ -52,7 +97,11 @@ class CalibrationAnalysis:
                 stack[i] = imread(tif_path)
             return stack
 
-        self.phase_stack, self.att_stack = load_tif_stack(phase_dir), load_tif_stack(att_dir)
+        print("Processing phase reconstruction stack...")
+        self.phase_stack = process_directory(phase_dir)
+        print("\nProcessing attenuation reconstruction stack...")
+        self.att_stack = process_directory(att_dir)
+
         return self.phase_stack, self.att_stack
 
     def get_roi_mean(self, stack, slice_idx, roi_coords, n_slices=100, mat_idx=None):
