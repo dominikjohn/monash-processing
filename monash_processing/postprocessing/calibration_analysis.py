@@ -5,7 +5,7 @@ from matplotlib.widgets import RectangleSelector
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import xraylib
-
+from monash_processing.postprocessing.binner import Binner
 
 class CalibrationAnalysis:
     def __init__(self, materials=None, energy_keV=25):
