@@ -11,6 +11,7 @@ from cil.processors import RingRemover
 from cil.recon import FBP
 import cil.io
 import os
+from monash_processing.postprocessing.binner import Binner
 
 class VolumeBuilder:
     def __init__(self, data_loader, original_angles, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
@@ -177,12 +178,35 @@ class VolumeBuilder:
         slice_result /= 100  # converts to cm^-1
         return slice_result
 
-    def reconstruct(self, center_shift=0, chunk_count=1, custom_folder=None, slice_range=None):
+    def reconstruct(self, center_shift=0, chunk_count=1, custom_folder=None, slice_range=None, binning_factor=1):
+        """
+        Reconstruct volume from projections with optional binning.
 
+        Args:
+            center_shift: Shift of rotation center
+            chunk_count: Number of chunks to process
+            custom_folder: Custom output folder name
+            slice_range: Range of slices to process
+            binning_factor: Factor by which to bin projections (default=1, no binning)
+        """
         if slice_range is not None:
             projections = self.projections[:, slice_range, :]
         else:
             projections = self.projections
+
+        if binning_factor > 1:
+            print(f"\nBinning projections {binning_factor}x...")
+            # Create a binner instance (path doesn't matter since we're only using _bin_2d)
+            binner = Binner(".")
+
+            # Bin each projection
+            binned_projections = np.stack([
+                binner._bin_2d(proj, binning_factor)
+                for proj in tqdm(projections)
+            ])
+
+            projections = binned_projections
+            print(f"Binned projection shape: {projections.shape}")
 
         if self.channel == 'att':
             # For attenuation images, we calculate the log first according to Beer-Lambert
@@ -191,10 +215,10 @@ class VolumeBuilder:
         n_slices = projections.shape[1]
         chunk_size = n_slices // chunk_count
         print('Chunk size:', chunk_size)
+
         for i in range(chunk_count):
             print(f"Processing chunk {i + 1}/{chunk_count}")
             chunk_projections = projections[:, i * chunk_size:(i + 1) * chunk_size, :]
-
             print(chunk_projections.shape)
 
             volume = self.process_chunk(chunk_projections, self.angles, center_shift)
@@ -207,8 +231,16 @@ class VolumeBuilder:
                 rwidth = 15  # Attenuation needs a larger ring filter width
 
             volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth, geometry=volume.geometry)
-            prefix = 'recon' if custom_folder is None else custom_folder
-            self.save_reconstruction(volume, center_shift=center_shift, counter_offset=i * chunk_size, prefix=prefix)
+
+            # Add binning info to folder name if binning was applied
+            prefix = 'recon'
+            if custom_folder is not None:
+                prefix = custom_folder
+            if binning_factor > 1:
+                prefix = f"{prefix}_bin{binning_factor}"
+
+            self.save_reconstruction(volume, center_shift=center_shift,
+                                     counter_offset=i * chunk_size, prefix=prefix)
 
     def sweep_centershift(self, center_shift_range, chunk_count=1):
         middle_slice = self.projections.shape[1] // 2

@@ -86,13 +86,13 @@ volume_builder = VolumeBuilder(
         prop_distance=prop_distance,
         pixel_size=pixel_size,
         is_stitched=True,
-        channel='phase',
+        channel='original_phi',
         detector_tilt_deg=0,
         show_geometry=False,
         sparse_factor=1,
         is_360_deg=False,
     )
-volume_builder.reconstruct(center_shift=center_shift, chunk_count=50)
+volume_builder.reconstruct(center_shift=center_shift, chunk_count=100)
 
 
 

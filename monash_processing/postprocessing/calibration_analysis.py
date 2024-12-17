@@ -5,7 +5,7 @@ from matplotlib.widgets import RectangleSelector
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import xraylib
-
+from monash_processing.postprocessing.binner import Binner
 
 class CalibrationAnalysis:
     def __init__(self, materials=None, energy_keV=25):
@@ -276,9 +276,8 @@ class CalibrationAnalysis:
                         edgecolors=colors[i % len(colors)],
                         linewidth=2)
 
-        plt.xlabel('Electron Density (electrons/nm³) / Phase Contrast Signal')
-        plt.ylabel(f'Linear Attenuation Coefficient at {self.energy_keV} keV (1/cm) / Attenuation Signal')
-        plt.title('Material Properties: Measured vs Theoretical Values')
+        plt.xlabel('Electron density [1/nm³]')
+        plt.ylabel(f'Attenuation coefficient $\mu$ [1/cm]')
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.legend()
 
