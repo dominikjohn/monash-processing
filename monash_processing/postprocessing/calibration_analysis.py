@@ -276,7 +276,7 @@ class CalibrationAnalysis:
                         edgecolors=colors[i % len(colors)],
                         linewidth=2)
 
-        plt.xlabel('Electron density [1/nm³]')
+        plt.xlabel('Electron density $\rho_\text{e}$ [1/nm³]')
         plt.ylabel(f'Attenuation coefficient $\mu$ [1/cm]')
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.legend()

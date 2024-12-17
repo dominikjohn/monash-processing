@@ -1,3 +1,4 @@
+from core.volume_builder_desy import VolumeBuilderDesy
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.volume_builder import VolumeBuilder
 from monash_processing.core.data_loader_desy import DataLoaderDesy
@@ -79,7 +80,7 @@ parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel
                                                     loader_stitched, stitched=True, simple_format=False, slicing=slicing)
 parallel_phase_integrator.integrate_parallel(max_index, n_workers=n_workers)
 
-volume_builder = VolumeBuilder(
+volume_builder = VolumeBuilderDesy(
         data_loader=loader_stitched,
         original_angles=angles,
         energy=energy,

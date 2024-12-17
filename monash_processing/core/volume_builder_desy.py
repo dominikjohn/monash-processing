@@ -1,7 +1,6 @@
 import numpy as np
 from tqdm import tqdm
 import tifffile
-
 import scipy.constants
 from cil.framework import AcquisitionGeometry
 from cil.utilities.display import show_geometry
@@ -13,8 +12,9 @@ import cil.io
 import os
 from monash_processing.postprocessing.binner import Binner
 
-class VolumeBuilder:
-    def __init__(self, data_loader, original_angles, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
+class VolumeBuilderDesy:
+    def __init__(self, data_loader, original_angles, energy, prop_distance, pixel_size, is_stitched=False,
+                 channel='phase',
                  detector_tilt_deg=0, show_geometry=False, sparse_factor=1, is_360_deg=False, suffix=None):
         self.data_loader = data_loader
         self.channel = channel
@@ -33,21 +33,17 @@ class VolumeBuilder:
         self.show_geometry = show_geometry
         self.is_360_deg = is_360_deg
         self.suffix = suffix
-        self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor)
+        self.tiff_files = None
+        self.valid_angles = None
+        self.valid_indices = None
+        self._initialize_file_list(sparse_factor)
 
-    def load_projections(self, sparse_factor=1, format='tif'):
-        """
-        Load projections with option to skip files based on sparse_factor.
-
-        :param sparse_factor: int, load every nth projection (e.g., 2 means load every other projection)
-        :param debug: bool, whether to return dummy data for debugging
-        :param format: str, file format extension
-        :return: np.ndarray, np.ndarray of projections and corresponding angles
-        """
-
+    def _initialize_file_list(self, sparse_factor=1):
+        """Initialize the list of files and angles without loading the data."""
         if self.is_stitched:
             if self.suffix is not None:
-                input_dir = self.data_loader.results_dir / (f'phi_stitched_{self.suffix}' if self.channel == 'phase' else 'T_stitched')
+                input_dir = self.data_loader.results_dir / (
+                    f'phi_stitched_{self.suffix}' if self.channel == 'phase' else 'T_stitched')
             else:
                 input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'T_stitched')
         else:
@@ -56,30 +52,116 @@ class VolumeBuilder:
             else:
                 input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'T')
 
-        if self.channel != 'phase' and self.channel != 'att':
+        if self.channel not in ['phase', 'att']:
             input_dir = self.data_loader.results_dir / self.channel
             print('Using custom input dir for channel:', self.channel)
 
-        tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
-        print(tiff_files)
-        angles, valid_indices = self.get_valid_indices(len(tiff_files))
+        self.tiff_files = sorted(input_dir.glob('projection_*.tif*'))
+        angles, valid_indices = self.get_valid_indices(len(self.tiff_files))
 
-        print('Angles:', angles)
-        print('Valid indices:', valid_indices)
+        # Apply sparse factor
+        self.valid_indices = valid_indices[::sparse_factor]
+        self.valid_angles = angles[::sparse_factor]
 
-        # Apply sparse factor to valid indices
-        sparse_valid_indices = valid_indices[::sparse_factor]
-        sparse_angles = angles[::sparse_factor]
+    def load_projection_slices(self, slice_range=None):
+        """
+        Load specific slices of projections to reduce memory usage.
+
+        Args:
+            slice_range: tuple or slice object specifying the range of slices to load
+                        (e.g., (start, end) or slice(start, end))
+
+        Returns:
+            np.ndarray: Array of projections for the specified slices
+            np.ndarray: Corresponding angles
+        """
+        if not self.tiff_files:
+            raise RuntimeError("File list not initialized. Call _initialize_file_list first.")
+
+        # Load first projection to get dimensions
+        sample_data = tifffile.imread(self.tiff_files[0])
+        total_height = sample_data.shape[0]
+
+        # If no slice range specified, use full height
+        if slice_range is None:
+            slice_range = slice(0, total_height)
+        elif isinstance(slice_range, tuple):
+            slice_range = slice(*slice_range)
 
         projections = []
-        for projection_i in tqdm(sparse_valid_indices, desc=f"Loading {self.channel} projections", unit="file"):
+        for projection_i in tqdm(self.valid_indices, desc=f"Loading {self.channel} projections", unit="file"):
             try:
-                data = tifffile.imread(tiff_files[projection_i])
+                # Load only the specified slices
+                data = tifffile.imread(self.tiff_files[projection_i])[slice_range]
                 projections.append(data)
             except Exception as e:
-                raise RuntimeError(f"Failed to load projection from {tiff_files[projection_i]}: {str(e)}")
+                raise RuntimeError(f"Failed to load projection from {self.tiff_files[projection_i]}: {str(e)}")
 
-        return np.array(projections), sparse_angles
+        return np.array(projections), self.valid_angles
+
+    def reconstruct(self, center_shift=0, chunk_count=1, custom_folder=None, slice_range=None, binning_factor=1):
+        """
+        Reconstruct volume from projections with optional binning.
+
+        Args:
+            center_shift: Shift of rotation center
+            chunk_count: Number of chunks to process
+            custom_folder: Custom output folder name
+            slice_range: Range of slices to process as tuple (start, end) or slice object
+            binning_factor: Factor by which to bin projections (default=1, no binning)
+        """
+        # Load only the specified slices of projections
+        projections, angles = self.load_projection_slices(slice_range)
+
+        if binning_factor > 1:
+            print(f"\nBinning projections {binning_factor}x...")
+            binner = Binner(".")
+            binned_projections = np.stack([
+                binner._bin_2d(proj, binning_factor)
+                for proj in tqdm(projections)
+            ])
+            projections = binned_projections
+            print(f"Binned projection shape: {projections.shape}")
+
+        if self.channel == 'att':
+            projections = self.calculate_beer_lambert(projections)
+
+        n_slices = projections.shape[1]
+        chunk_size = n_slices // chunk_count
+        print('Chunk size:', chunk_size)
+
+        for i in range(chunk_count):
+            print(f"Processing chunk {i + 1}/{chunk_count}")
+            chunk_projections = projections[:, i * chunk_size:(i + 1) * chunk_size, :]
+            print(chunk_projections.shape)
+
+            volume = self.process_chunk(chunk_projections, angles, center_shift)
+            rwidth = None
+
+            if self.channel == 'phase':
+                volume = self.convert_to_edensity(volume)
+            elif self.channel == 'att':
+                volume = self.convert_to_mu(volume)
+                rwidth = 15
+
+            volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth, geometry=volume.geometry)
+
+            prefix = 'recon'
+            if custom_folder is not None:
+                prefix = custom_folder
+            if binning_factor > 1:
+                prefix = f"{prefix}_bin{binning_factor}"
+
+            self.save_reconstruction(volume, center_shift=center_shift,
+                                     counter_offset=i * chunk_size, prefix=prefix)
+
+    def sweep_centershift(self, center_shift_range, chunk_count=1):
+        """Modified to use slice loading for memory efficiency"""
+        middle_slice = tifffile.imread(self.tiff_files[0]).shape[0] // 2
+        slice_range = (middle_slice, middle_slice + 2)
+        for center_shift in center_shift_range:
+            print(f"Processing center shift {center_shift}")
+            self.reconstruct(center_shift, chunk_count, custom_folder='centershift_sweep', slice_range=slice_range)
 
     def get_valid_indices(self, file_count):
         print(f"File count: {file_count}")
@@ -177,77 +259,6 @@ class VolumeBuilder:
         slice_result *= self.scaling_factor**2  # corrects for the scaling factor
         slice_result /= 100  # converts to cm^-1
         return slice_result
-
-    def reconstruct(self, center_shift=0, chunk_count=1, custom_folder=None, slice_range=None, binning_factor=1):
-        """
-        Reconstruct volume from projections with optional binning.
-
-        Args:
-            center_shift: Shift of rotation center
-            chunk_count: Number of chunks to process
-            custom_folder: Custom output folder name
-            slice_range: Range of slices to process
-            binning_factor: Factor by which to bin projections (default=1, no binning)
-        """
-        if slice_range is not None:
-            projections = self.projections[:, slice_range, :]
-        else:
-            projections = self.projections
-
-        if binning_factor > 1:
-            print(f"\nBinning projections {binning_factor}x...")
-            # Create a binner instance (path doesn't matter since we're only using _bin_2d)
-            binner = Binner(".")
-
-            # Bin each projection
-            binned_projections = np.stack([
-                binner._bin_2d(proj, binning_factor)
-                for proj in tqdm(projections)
-            ])
-
-            projections = binned_projections
-            print(f"Binned projection shape: {projections.shape}")
-
-        if self.channel == 'att':
-            # For attenuation images, we calculate the log first according to Beer-Lambert
-            projections = self.calculate_beer_lambert(projections)
-
-        n_slices = projections.shape[1]
-        chunk_size = n_slices // chunk_count
-        print('Chunk size:', chunk_size)
-
-        for i in range(chunk_count):
-            print(f"Processing chunk {i + 1}/{chunk_count}")
-            chunk_projections = projections[:, i * chunk_size:(i + 1) * chunk_size, :]
-            print(chunk_projections.shape)
-
-            volume = self.process_chunk(chunk_projections, self.angles, center_shift)
-            rwidth = None
-
-            if self.channel == 'phase':
-                volume = self.convert_to_edensity(volume)
-            elif self.channel == 'att':
-                volume = self.convert_to_mu(volume)
-                rwidth = 15  # Attenuation needs a larger ring filter width
-
-            volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth, geometry=volume.geometry)
-
-            # Add binning info to folder name if binning was applied
-            prefix = 'recon'
-            if custom_folder is not None:
-                prefix = custom_folder
-            if binning_factor > 1:
-                prefix = f"{prefix}_bin{binning_factor}"
-
-            self.save_reconstruction(volume, center_shift=center_shift,
-                                     counter_offset=i * chunk_size, prefix=prefix)
-
-    def sweep_centershift(self, center_shift_range, chunk_count=1):
-        middle_slice = self.projections.shape[1] // 2
-        slice_range = slice(middle_slice, middle_slice + 2)
-        for center_shift in center_shift_range:
-            print(f"Processing center shift {center_shift}")
-            self.reconstruct(center_shift, chunk_count, custom_folder='centershift_sweep', slice_range=slice_range)
 
     def get_shift_filename(self, center_shift):
         offset = 1000
