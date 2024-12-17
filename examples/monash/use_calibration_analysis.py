@@ -41,18 +41,51 @@ calibration = CalibrationAnalysis(materials, energy_keV=25)
 
 # Set up analysis parameters
 base_path = "/data/mct/22203/results/P6_Manual"
-material_slices = [250, 250, 1070, 1300, 1900]
+material_slices = [0, 250, 1070, 1505, 2000]
 
 # Load the reconstruction stacks
 phase_stack, att_stack = calibration.load_reconstruction_stacks(base_path, max_slices=2050, bin_factor=4)
 
-# Perform the analysis
+# Initial correction factor
+initial_correction = 0.32/0.155
+print(f"\nInitial correction factor: {initial_correction:.4f}")
+
+# Perform analysis
 phase_results, att_results = calibration.analyze_materials(
     material_slices,
     n_slices=50,
     use_att=False,
-    phase_correction_factor=0.32/0.155
+    phase_correction_factor=initial_correction
 )
 
-# Plot the results
+# Plot initial results
 calibration.plot_phase_vs_attenuation(phase_results, att_results)
+
+# Calculate theoretical electron density for PMMA
+pmma_density = materials['PMMA']['density']
+pmma_mw = materials['PMMA']['molecular_weight']
+pmma_electrons = materials['PMMA']['electrons']
+theoretical_ed = calibration.calculate_electron_density(pmma_density, pmma_mw, pmma_electrons)
+
+# Get measured phase signal for PMMA (assuming same order as in materials dictionary)
+pmma_idx = list(materials.keys()).index('PMMA')
+measured_phase = phase_results[pmma_idx][0]
+
+# Calculate new correction factor
+new_correction = initial_correction * (theoretical_ed / measured_phase)
+print(f"\nBased on PMMA:")
+print(f"Theoretical electron density: {theoretical_ed:.2f}")
+print(f"Measured phase signal: {measured_phase:.2f}")
+print(f"New correction factor: {new_correction:.4f}")
+
+# Run analysis with new correction
+phase_results_corrected, att_results_corrected = calibration.analyze_materials(
+    material_slices,
+    n_slices=50,
+    use_att=False,
+    phase_correction_factor=new_correction
+)
+
+# Plot corrected results
+plt.figure()
+calibration.plot_phase_vs_attenuation(phase_results_corrected, att_results_corrected)

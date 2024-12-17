@@ -5,7 +5,7 @@ from matplotlib.widgets import RectangleSelector
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import xraylib
-from monash_processing.postprocessing.binner import Binner
+
 
 class CalibrationAnalysis:
     def __init__(self, materials=None, energy_keV=25):
@@ -175,8 +175,58 @@ class CalibrationAnalysis:
 
         return phase_results, att_results
 
+    def calculate_theoretical_values(self):
+        """Calculate theoretical electron densities and attenuations for all materials."""
+        electron_densities = {}
+        attenuations = {}
+
+        for material, props in self.materials.items():
+            electron_densities[material] = self.calculate_electron_density(
+                props['density'],
+                props['molecular_weight'],
+                props['electrons']
+            )
+            attenuations[material] = self.calculate_attenuation(
+                props['composition'],
+                props['density']
+            )
+
+        return electron_densities, attenuations
+
+    def calculate_correction_factor(self, phase_results, att_results, reference_material='PMMA'):
+        """
+        Calculate phase correction factor based on a reference material.
+
+        Args:
+            phase_results: List of [mean, std] for phase measurements
+            att_results: List of [mean, std] for attenuation measurements
+            reference_material: Name of the material to use as reference
+
+        Returns:
+            float: New correction factor
+        """
+        if reference_material not in self.materials:
+            raise ValueError(f"Reference material {reference_material} not found in materials library")
+
+        # Get theoretical values
+        electron_densities, _ = self.calculate_theoretical_values()
+        theoretical_value = electron_densities[reference_material]
+
+        # Get measured value
+        material_names = list(self.materials.keys())
+        ref_idx = material_names.index(reference_material)
+        measured_value = phase_results[ref_idx][0]
+
+        # Calculate correction factor
+        correction_factor = theoretical_value / measured_value
+        print(f"\nCalculated correction factor using {reference_material}:")
+        print(f"Theoretical electron density: {theoretical_value:.2f}")
+        print(f"Measured phase signal: {measured_value:.2f}")
+        print(f"Correction factor: {correction_factor:.4f}")
+
+        return correction_factor
+
     def plot_phase_vs_attenuation(self, phase_results, att_results):
-        plt.figure(figsize=(10, 8))
 
         # Extract means and standard deviations for measured values
         phase_means = [res[0] for res in phase_results if res is not None]
