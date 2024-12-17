@@ -73,7 +73,7 @@ for projection_i in tqdm(range(0, 4501)):
     weighted_phi_ft = phi_umpa_ft * (1 - np.exp(-np.sqrt(k ** 2 + l ** 2) / (2 * sigma ** 2))) + phi_coarse_ft * np.exp(
         -np.sqrt(k ** 2 + l ** 2) / (2 * sigma ** 2))
     final_phi = np.real(fft.ifft2(weighted_phi_ft))[phi_umpa_cor.shape[0]:, phi_umpa_cor.shape[1]:]
-    imshow(final_phi)
+    #imshow(final_phi)
 
     loader.save_tiff('corrected_phi', projection_i, final_phi)
     loader.save_tiff('original_phi', projection_i, phi_umpa_cor)

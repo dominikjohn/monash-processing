@@ -14,7 +14,7 @@ import os
 
 class VolumeBuilder:
     def __init__(self, data_loader, original_angles, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
-                 detector_tilt_deg=0, show_geometry=False, sparse_factor=1, debug=False, is_360_deg=False, suffix=None):
+                 detector_tilt_deg=0, show_geometry=False, sparse_factor=1, is_360_deg=False, suffix=None):
         self.data_loader = data_loader
         self.channel = channel
         self.pixel_size = pixel_size
@@ -32,9 +32,9 @@ class VolumeBuilder:
         self.show_geometry = show_geometry
         self.is_360_deg = is_360_deg
         self.suffix = suffix
-        self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor, debug=debug)
+        self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor)
 
-    def load_projections(self, sparse_factor=1, debug=False, format='tif'):
+    def load_projections(self, sparse_factor=1, format='tif'):
         """
         Load projections with option to skip files based on sparse_factor.
 
@@ -43,6 +43,7 @@ class VolumeBuilder:
         :param format: str, file format extension
         :return: np.ndarray, np.ndarray of projections and corresponding angles
         """
+
         if self.is_stitched:
             if self.suffix is not None:
                 input_dir = self.data_loader.results_dir / (f'phi_stitched_{self.suffix}' if self.channel == 'phase' else 'T_stitched')
@@ -53,6 +54,10 @@ class VolumeBuilder:
                 input_dir = self.data_loader.results_dir / (f'phi_{self.suffix}' if self.channel == 'phase' else 'T')
             else:
                 input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'T')
+
+        if self.channel != 'phase' and self.channel != 'att':
+            input_dir = self.data_loader.results_dir / self.channel
+            print('Using custom input dir for channel:', self.channel)
 
         tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
         print(tiff_files)
