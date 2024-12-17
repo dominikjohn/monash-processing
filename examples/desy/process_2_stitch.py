@@ -19,24 +19,23 @@ stitched_name = "processed/016_basel5_a_stitched_dpc/"
 if not Path(scan_base + stitched_name).exists():
     Path(scan_base + stitched_name).mkdir()
 
-pixel_size = 1.434e-6 # m
-energy = 25000 # keV
-prop_distance = 0.158 #
+pixel_size = 1.28e-6 # m
+energy = 40.555 # keV
+prop_distance = 0.3999 #
 max_angle = 182
 umpa_w = 1
 n_workers = 50
 
 max_index = 4501
-angle_step = np.round(180/max_index)
+angle_step = np.round(179.95/max_index)
 loader_left = DataLoaderDesy(scan_base, scan_name_left)
 loader_right = DataLoaderDesy(scan_base, scan_name_right)
 loader_stitched = DataLoaderDesy(scan_base, stitched_name)
 
-angles = np.linspace(0, 180, max_index)
+angles = np.linspace(0, 179.95, max_index)
 
 area_left = np.s_[:, 50:600]
 area_right = np.s_[:, -600:-50]
-
 
 center_shift_list = np.linspace(1150, 1220, 15)
 for center_shift in center_shift_list:
@@ -87,13 +86,14 @@ volume_builder = VolumeBuilderDesy(
         prop_distance=prop_distance,
         pixel_size=pixel_size,
         is_stitched=True,
-        channel='original_phi',
+        #channel='original_phi',
+        #channel='corrected_phi',
         detector_tilt_deg=0,
         show_geometry=False,
         sparse_factor=1,
         is_360_deg=False,
     )
-volume_builder.reconstruct(center_shift=center_shift, chunk_count=100, binning_factor=2)
+volume_builder.reconstruct(center_shift=center_shift, chunk_count=100, binning_factor=4)
 
 
 

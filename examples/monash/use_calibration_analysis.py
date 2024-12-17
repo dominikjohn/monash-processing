@@ -41,14 +41,18 @@ materials = {
 calibration = CalibrationAnalysis(materials, energy_keV=25)
 
 # Set up analysis parameters
-base_path = "/data/mct/22203/results/P6_Manual"
-material_slices = [0, 250, 1070, 1505, 2000]
+#base_path = "/data/mct/22203/results/P6_Manual"
+#base_path = "/data/mct/22203/results/P6_ReverseOrder"
+base_path = "/data/mct/22203/results/P5_Manual"
+#material_slices = [0, 250, 1070, 1505, 2000]
+material_slices = [250, 250, 1070, 1300, 1900]
 
 # Load the reconstruction stacks
 phase_stack, att_stack = calibration.load_reconstruction_stacks(base_path, max_slices=2050, bin_factor=4)
 
 # Initial correction factor
-initial_correction = 0.32/0.155
+#initial_correction = 0.315/0.155
+initial_correction = 1
 print(f"\nInitial correction factor: {initial_correction:.4f}")
 
 # Perform analysis
@@ -61,9 +65,9 @@ phase_results, att_results = calibration.analyze_materials(
 
 font_params = {
     'title_size': 14,    # Size of plot titles
-    'label_size': 12,    # Size of axis labels
-    'tick_size': 10,     # Size of tick labels
-    'legend_size': 11    # Size of legend text (for phase vs attenuation plot)
+    'label_size': 18,    # Size of axis labels
+    'tick_size': 16,     # Size of tick labels
+    'legend_size': 16    # Size of legend text (for phase vs attenuation plot)
 }
 
 # Plot initial results
@@ -95,5 +99,4 @@ phase_results_corrected, att_results_corrected = calibration.analyze_materials(
 )
 
 # Plot corrected results
-plt.figure()
-calibration.plot_phase_vs_attenuation(phase_results_corrected, att_results_corrected)
+calibration.plot_phase_vs_attenuation(phase_results_corrected, att_results_corrected, font_params=font_params)

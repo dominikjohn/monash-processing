@@ -311,3 +311,15 @@ class DataLoader:
         averaged_data = np.mean(data, axis=0)
         self.logger.debug(f"Averaged fields from shape {data.shape} to {averaged_data.shape}")
         return averaged_data
+
+    def load_reconstruction(self, channel, binning_factor=1) -> np.ndarray:
+        # Load from TIFF files
+        tiff_path = self.results_dir / channel
+        if binning_factor != 1:
+            tiff_path = tiff_path / f'binned{binning_factor}'
+        tiff_file_list = sorted(tiff_path.glob('*.tif'))
+        data = []
+        for tiff_file_name in tqdm(tiff_file_list):
+            data.append(tifffile.imread(tiff_file_name))
+
+        return np.array(data)

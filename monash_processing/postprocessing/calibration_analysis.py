@@ -50,7 +50,8 @@ class CalibrationAnalysis:
         else:
             raise KeyError(f"Material '{name}' not found in the library")
 
-    def calculate_electron_density(self, density, molecular_weight, electrons_per_molecule):
+    @staticmethod
+    def calculate_electron_density(density, molecular_weight, electrons_per_molecule):
         avogadro_number = 6.022e23
         moles_per_cm3 = density / molecular_weight
         molecules_per_cm3 = moles_per_cm3 * avogadro_number
@@ -58,7 +59,8 @@ class CalibrationAnalysis:
         electron_density_per_nm3 = electrons_per_cm3 / (10 ** 21)
         return electron_density_per_nm3
 
-    def calculate_attenuation(self, composition, density):
+    @staticmethod
+    def calculate_attenuation(composition, density, energy):
         """Calculate total attenuation coefficient for a material"""
         molecular_mass = sum(count * xraylib.AtomicWeight(xraylib.SymbolToAtomicNumber(element))
                              for element, count in composition.items())
@@ -66,7 +68,7 @@ class CalibrationAnalysis:
         total_mass_atten = 0
         for element, count in composition.items():
             atomic_number = xraylib.SymbolToAtomicNumber(element)
-            mass_atten = xraylib.CS_Total(atomic_number, self.energy_keV)
+            mass_atten = xraylib.CS_Total(atomic_number, energy)
             weight_fraction = (count * xraylib.AtomicWeight(atomic_number)) / molecular_mass
             total_mass_atten += mass_atten * weight_fraction
 
@@ -214,7 +216,8 @@ class CalibrationAnalysis:
             )
             attenuations[material] = self.calculate_attenuation(
                 props['composition'],
-                props['density']
+                props['density'],
+                self.energy_keV
             )
 
         return electron_densities, attenuations
