@@ -7,6 +7,7 @@ from tqdm import tqdm
 import xraylib
 from monash_processing.postprocessing.binner import Binner
 
+
 class CalibrationAnalysis:
     def __init__(self, materials=None, energy_keV=25):
         self._materials = materials if materials is not None else {}
@@ -77,7 +78,6 @@ class CalibrationAnalysis:
         att_dir = base_path / 'recon_att'
 
         def process_directory(directory: Path) -> np.ndarray:
-            # Check for existing binned data
             binned_dir = directory / f'binned{bin_factor}'
             if binned_dir.exists():
                 print(f"Loading existing {bin_factor}x binned data from {binned_dir}")
@@ -87,7 +87,6 @@ class CalibrationAnalysis:
                 binner = Binner(directory)
                 source_dir = binner.process_stack(bin_factor)
 
-            # Load the binned stack
             tif_files = sorted(source_dir.glob('*.tif*'))
             first_img = imread(tif_files[0])
             stack = np.zeros((len(tif_files), *first_img.shape), dtype=first_img.dtype)
@@ -124,9 +123,32 @@ class CalibrationAnalysis:
 
         return onselect
 
-    def analyze_materials(self, material_slices, n_slices=30, use_att=False, phase_correction_factor=1.0):
+    def analyze_materials(self, material_slices, n_slices=30, use_att=False, phase_correction_factor=1.0,
+                          font_params=None):
+        """
+        Analyze materials with customizable font parameters.
+
+        Args:
+            material_slices: List of slice indices to analyze
+            n_slices: Number of slices to average over
+            use_att: Whether to use attenuation data
+            phase_correction_factor: Correction factor for phase data
+            font_params (dict): Dictionary of font parameters including:
+                - 'title_size': Size of plot titles
+                - 'label_size': Size of axis labels
+                - 'tick_size': Size of tick labels
+                Default values will be used if not specified
+        """
         if self.phase_stack is None or self.att_stack is None:
             raise ValueError("Please load reconstruction stacks first using load_reconstruction_stacks()")
+
+        # Set default font parameters if none provided
+        if font_params is None:
+            font_params = {
+                'title_size': 12,
+                'label_size': 10,
+                'tick_size': 10
+            }
 
         self.last_results = [None] * len(material_slices)
         self.last_rois = [None] * len(material_slices)
@@ -139,9 +161,13 @@ class CalibrationAnalysis:
                 print(f"Warning: Slice {slice_idx} is out of bounds (max: {selection_stack.shape[0] - 1})")
                 continue
 
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(10, 8))
             ax.imshow(selection_stack[slice_idx], cmap='grey')
-            ax.set_title(f'Material {mat_idx} (Slice {slice_idx}) - {selection_type}')
+
+            # Apply font sizes
+            ax.set_title(f'Material {mat_idx} (Slice {slice_idx}) - {selection_type}',
+                         fontsize=font_params['title_size'])
+            ax.tick_params(axis='both', labelsize=font_params['tick_size'])
 
             rs = RectangleSelector(ax, self.make_onselect(selection_stack, slice_idx, n_slices, mat_idx),
                                    useblit=True, interactive=True)
@@ -175,58 +201,32 @@ class CalibrationAnalysis:
 
         return phase_results, att_results
 
-    def calculate_theoretical_values(self):
-        """Calculate theoretical electron densities and attenuations for all materials."""
-        electron_densities = {}
-        attenuations = {}
-
-        for material, props in self.materials.items():
-            electron_densities[material] = self.calculate_electron_density(
-                props['density'],
-                props['molecular_weight'],
-                props['electrons']
-            )
-            attenuations[material] = self.calculate_attenuation(
-                props['composition'],
-                props['density']
-            )
-
-        return electron_densities, attenuations
-
-    def calculate_correction_factor(self, phase_results, att_results, reference_material='PMMA'):
+    def plot_phase_vs_attenuation(self, phase_results, att_results, figsize=(10, 8), font_params=None):
         """
-        Calculate phase correction factor based on a reference material.
+        Plot phase vs attenuation with customizable font parameters.
 
         Args:
-            phase_results: List of [mean, std] for phase measurements
-            att_results: List of [mean, std] for attenuation measurements
-            reference_material: Name of the material to use as reference
-
-        Returns:
-            float: New correction factor
+            phase_results: List of phase measurement results
+            att_results: List of attenuation measurement results
+            figsize: Tuple of figure dimensions (width, height)
+            font_params (dict): Dictionary of font parameters including:
+                - 'title_size': Size of plot title
+                - 'label_size': Size of axis labels
+                - 'tick_size': Size of tick labels
+                - 'legend_size': Size of legend text
+                Default values will be used if not specified
         """
-        if reference_material not in self.materials:
-            raise ValueError(f"Reference material {reference_material} not found in materials library")
+        # Set default font parameters if none provided
+        if font_params is None:
+            font_params = {
+                'title_size': 12,
+                'label_size': 10,
+                'tick_size': 10,
+                'legend_size': 10
+            }
 
-        # Get theoretical values
-        electron_densities, _ = self.calculate_theoretical_values()
-        theoretical_value = electron_densities[reference_material]
-
-        # Get measured value
-        material_names = list(self.materials.keys())
-        ref_idx = material_names.index(reference_material)
-        measured_value = phase_results[ref_idx][0]
-
-        # Calculate correction factor
-        correction_factor = theoretical_value / measured_value
-        print(f"\nCalculated correction factor using {reference_material}:")
-        print(f"Theoretical electron density: {theoretical_value:.2f}")
-        print(f"Measured phase signal: {measured_value:.2f}")
-        print(f"Correction factor: {correction_factor:.4f}")
-
-        return correction_factor
-
-    def plot_phase_vs_attenuation(self, phase_results, att_results):
+        # Create figure with specified size
+        plt.figure(figsize=figsize)
 
         # Extract means and standard deviations for measured values
         phase_means = [res[0] for res in phase_results if res is not None]
@@ -235,19 +235,7 @@ class CalibrationAnalysis:
         att_stds = [res[1] for res in att_results if res is not None]
 
         # Calculate theoretical values
-        electron_densities = {}
-        attenuations = {}
-
-        for material, props in self.materials.items():
-            electron_densities[material] = self.calculate_electron_density(
-                props['density'],
-                props['molecular_weight'],
-                props['electrons']
-            )
-            attenuations[material] = self.calculate_attenuation(
-                props['composition'],
-                props['density']
-            )
+        electron_densities, attenuations = self.calculate_theoretical_values()
 
         # Define plot styles
         colors = ['blue', 'red', 'green', 'purple', 'orange', 'brown']
@@ -276,10 +264,11 @@ class CalibrationAnalysis:
                         edgecolors=colors[i % len(colors)],
                         linewidth=2)
 
-        plt.xlabel('Electron density $\rho_\text{e}$ [1/nm³]')
-        plt.ylabel(f'Attenuation coefficient $\mu$ [1/cm]')
+        plt.xlabel('Electron density [1/nm³]', fontsize=font_params['label_size'])
+        plt.ylabel(f'Attenuation coefficient $\mu$ [1/cm]', fontsize=font_params['label_size'])
         plt.grid(True, linestyle='--', alpha=0.7)
-        plt.legend()
+        plt.legend(fontsize=font_params['legend_size'])
+        plt.tick_params(axis='both', labelsize=font_params['tick_size'])
 
         # Print the values
         self._print_results(phase_results, att_results, electron_densities, attenuations)

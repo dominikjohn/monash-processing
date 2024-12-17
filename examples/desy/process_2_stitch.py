@@ -1,4 +1,4 @@
-from core.volume_builder_desy import VolumeBuilderDesy
+from monash_processing.core.volume_builder_desy import VolumeBuilderDesy
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.volume_builder import VolumeBuilder
 from monash_processing.core.data_loader_desy import DataLoaderDesy
@@ -93,7 +93,7 @@ volume_builder = VolumeBuilderDesy(
         sparse_factor=1,
         is_360_deg=False,
     )
-volume_builder.reconstruct(center_shift=center_shift, chunk_count=100)
+volume_builder.reconstruct(center_shift=center_shift, chunk_count=100, binning_factor=2)
 
 
 

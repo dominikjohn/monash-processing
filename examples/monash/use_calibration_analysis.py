@@ -1,6 +1,7 @@
 import matplotlib
 matplotlib.use('TkAgg', force=True)
 from monash_processing.postprocessing.calibration_analysis import CalibrationAnalysis
+import matplotlib.pyplot as plt
 
 # Define materials dictionary
 materials = {
