@@ -59,8 +59,15 @@ phase_results, att_results = calibration.analyze_materials(
     phase_correction_factor=initial_correction
 )
 
+font_params = {
+    'title_size': 14,    # Size of plot titles
+    'label_size': 12,    # Size of axis labels
+    'tick_size': 10,     # Size of tick labels
+    'legend_size': 11    # Size of legend text (for phase vs attenuation plot)
+}
+
 # Plot initial results
-calibration.plot_phase_vs_attenuation(phase_results, att_results)
+calibration.plot_phase_vs_attenuation(phase_results, att_results, font_params=font_params)
 
 # Calculate theoretical electron density for PMMA
 pmma_density = materials['PMMA']['density']

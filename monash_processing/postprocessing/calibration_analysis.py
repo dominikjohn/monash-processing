@@ -201,6 +201,24 @@ class CalibrationAnalysis:
 
         return phase_results, att_results
 
+    def calculate_theoretical_values(self):
+        """Calculate theoretical electron densities and attenuations for all materials."""
+        electron_densities = {}
+        attenuations = {}
+
+        for material, props in self.materials.items():
+            electron_densities[material] = self.calculate_electron_density(
+                props['density'],
+                props['molecular_weight'],
+                props['electrons']
+            )
+            attenuations[material] = self.calculate_attenuation(
+                props['composition'],
+                props['density']
+            )
+
+        return electron_densities, attenuations
+
     def plot_phase_vs_attenuation(self, phase_results, att_results, figsize=(10, 8), font_params=None):
         """
         Plot phase vs attenuation with customizable font parameters.
