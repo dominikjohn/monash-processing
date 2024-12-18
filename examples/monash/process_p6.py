@@ -1,6 +1,6 @@
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
-from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
+# from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.core.volume_builder import VolumeBuilder
 from tqdm import tqdm
 import h5py
@@ -12,9 +12,9 @@ import numpy as np
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
 scan_name = "P6_Manual"
-pixel_size = 1.444e-6 # m
-energy = 25 # keV
-prop_distance = 0.32 # 17 cm sample-grid,
+pixel_size = 1.444e-6  # m
+energy = 25000
+prop_distance = 0.155  # 17 cm sample-grid,
 max_angle = 182
 umpa_w = 1
 n_workers = 50
@@ -24,6 +24,14 @@ print(f"Loading data from {scan_path}, scan name: {scan_name}")
 loader = DataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
+
+angles = np.mean(loader.load_angles(), axis=0)
+angle_step = np.diff(angles).mean()
+print('Angle step:', angle_step)
+index_0 = np.argmin(np.abs(angles - 0))
+index_180 = np.argmin(np.abs(angles - 180))
+print('Index at 0°:', index_0)
+print('Index at 180°:', index_180)
 
 # Get number of projections (we need this for the loop)
 with h5py.File(loader.h5_files[0], 'r') as f:
@@ -47,46 +55,47 @@ processor = UMPAProcessor(
 
 # Process projections
 results = processor.process_projections(
-    num_angles=num_angles
+    num_angles=max_angle,
 )
 
 # 4. Phase integrate
 print("Phase integrating")
-#area_left, area_right = Utils.select_areas(loader.load_projections(projection_i=0)[0])
+# area_left, area_right = Utils.select_areas(loader.load_projections(projection_i=0)[0])
 area_left = np.s_[100:-100, 20:120]
 area_right = np.s_[100:-100, -120:-20]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
-parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
+parallel_phase_integrator.integrate_parallel(index_180, n_workers=n_workers)
 
+volume_builder = VolumeBuilder(
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=False,
+        channel='phase',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=False,
+    )
 
-##############################################################################################################
-# 3D center shift finder
-##############################################################################################################
+#volume_builder.sweep_centershift(np.linspace(17.5, 19, 5))
+volume_builder.reconstruct(center_shift=17.5, chunk_count=10)
 
-#print('Find centershift')
-#calibrator = ReconstructionCalibrator(loader)
-#center_shift = calibrator.find_center_shift(
-#    max_angle=max_angle,
-#    num_projections=500,
-#    test_range=(10, 30),
-#    stepping=15,
-#    pixel_size=pixel_size,
-#    is_stitched=False
-#)
-energy = 25000
-##############################################################################################################
-center_shift = 24
-volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift=center_shift, energy=energy, is_stitched=False, method='FBP')
-volume = volume_builder.reconstruct()
-#pg.image(volume)
+volume_builder = VolumeBuilder(
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=False,
+        channel='att',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=False,
+    )
 
-center_shift = 24
-volume_builder = VolumeBuilder(pixel_size, max_angle, 'att', loader, center_shift=center_shift, energy=energy, is_stitched=False, method='FBP')
-volume = volume_builder.reconstruct()
-
-#### OR
-
-volume_builder = VolumeBuilder(pixel_size, max_angle, 'phase', loader, center_shift, method='FBP', limit_max_angle=False)
-volume = volume_builder.reconstruct_3d(enable_short_scan=True, debug=True)
-
-pg.image(volume)
+#volume_builder.sweep_centershift(np.linspace(17.5, 19, 5))
+volume_builder.reconstruct(center_shift=17.5, chunk_count=10)

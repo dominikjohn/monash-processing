@@ -317,7 +317,7 @@ class DataLoader:
         tiff_path = self.results_dir / channel
         if binning_factor != 1:
             tiff_path = tiff_path / f'binned{binning_factor}'
-        tiff_file_list = sorted(tiff_path.glob('*.tif'))
+        tiff_file_list = sorted(tiff_path.glob('*.tif*'))
         data = []
         for tiff_file_name in tqdm(tiff_file_list):
             data.append(tifffile.imread(tiff_file_name))
