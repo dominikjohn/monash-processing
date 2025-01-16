@@ -94,7 +94,7 @@ for center_shift in center_shift_list:
     volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(2,4))
 
 best_value = 1313
-stitcher = ProjectionStitcher(loader, .1, center_shift=center_shift / 2)
+stitcher = ProjectionStitcher(loader, .1, center_shift=best_value / 2)
 stitcher.process_and_save_range(index_0, index_180, 'dx')
 stitcher.process_and_save_range(index_0, index_180, 'dy')
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,

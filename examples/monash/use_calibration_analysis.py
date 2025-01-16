@@ -41,11 +41,11 @@ materials = {
 calibration = CalibrationAnalysis(materials, energy_keV=25)
 
 # Set up analysis parameters
-base_path = "/data/mct/22203/results/P6_Manual"
+#base_path = "/data/mct/22203/results/P6_Manual"
 #base_path = "/data/mct/22203/results/P6_ReverseOrder"
-#base_path = "/data/mct/22203/results/P5_Manual"
-material_slices = [0, 250, 1070, 1505, 1850]
-#material_slices = [250, 250, 1070, 1300, 1900]
+base_path = "/data/mct/22203/results/P5_Manual"
+#material_slices = [0, 250, 1070, 1505, 1850]
+material_slices = [250, 250, 1070, 1300, 1900]
 
 # Load the reconstruction stacks
 phase_stack, att_stack = calibration.load_reconstruction_stacks(base_path, max_slices=2050, bin_factor=4)

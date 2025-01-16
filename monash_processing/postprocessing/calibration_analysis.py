@@ -13,7 +13,7 @@ class CalibrationAnalysis:
         self._materials = materials if materials is not None else {}
         self.energy_keV = energy_keV
         self.last_results = None
-        self.last_rois = None
+        self.saved_rois = {}  # Dictionary to store ROIs by material index
         self.phase_stack = None
         self.att_stack = None
 
@@ -114,7 +114,10 @@ class CalibrationAnalysis:
         print(f"Material at slice {slice_idx}, ROI mean over slices {z_start}-{z_end}: {roi_mean:.6f} ± {roi_std:.6f}")
 
         self.last_results[mat_idx - 1] = [roi_mean, roi_std]
-        self.last_rois[mat_idx - 1] = roi_coords
+        self.saved_rois[mat_idx] = {
+            'coords': roi_coords,
+            'slice_idx': slice_idx
+        }
 
     def make_onselect(self, stack, slice_idx, n_slices, mat_idx):
         def onselect(eclick, erelease):
@@ -126,25 +129,21 @@ class CalibrationAnalysis:
         return onselect
 
     def analyze_materials(self, material_slices, n_slices=30, use_att=False, phase_correction_factor=1.0,
-                          font_params=None):
+                          font_params=None, overwrite=False):
         """
-        Analyze materials with customizable font parameters.
+        Analyze materials with saved ROI support.
 
         Args:
             material_slices: List of slice indices to analyze
             n_slices: Number of slices to average over
             use_att: Whether to use attenuation data
             phase_correction_factor: Correction factor for phase data
-            font_params (dict): Dictionary of font parameters including:
-                - 'title_size': Size of plot titles
-                - 'label_size': Size of axis labels
-                - 'tick_size': Size of tick labels
-                Default values will be used if not specified
+            font_params (dict): Dictionary of font parameters
+            overwrite (bool): If True, allow selection of new ROIs even if saved ones exist
         """
         if self.phase_stack is None or self.att_stack is None:
             raise ValueError("Please load reconstruction stacks first using load_reconstruction_stacks()")
 
-        # Set default font parameters if none provided
         if font_params is None:
             font_params = {
                 'title_size': 12,
@@ -153,8 +152,6 @@ class CalibrationAnalysis:
             }
 
         self.last_results = [None] * len(material_slices)
-        self.last_rois = [None] * len(material_slices)
-
         selection_stack = self.att_stack if use_att else self.phase_stack
         selection_type = "attenuation" if use_att else "phase contrast"
 
@@ -163,25 +160,44 @@ class CalibrationAnalysis:
                 print(f"Warning: Slice {slice_idx} is out of bounds (max: {selection_stack.shape[0] - 1})")
                 continue
 
-            fig, ax = plt.subplots(figsize=(10, 8))
-            ax.imshow(selection_stack[slice_idx], cmap='grey')
+            # Check if we have saved ROIs and shouldn't overwrite
+            if mat_idx in self.saved_rois and not overwrite:
+                saved_roi = self.saved_rois[mat_idx]
+                print(f"Using saved ROI for material {mat_idx}")
+                self.get_roi_mean(selection_stack, saved_roi['slice_idx'],
+                                  saved_roi['coords'], n_slices, mat_idx)
 
-            # Apply font sizes
-            ax.set_title(f'Material {mat_idx} (Slice {slice_idx}) - {selection_type}',
-                         fontsize=font_params['title_size'])
-            ax.tick_params(axis='both', labelsize=font_params['tick_size'])
+                # Optionally display the saved ROI
+                fig, ax = plt.subplots(figsize=(10, 8))
+                ax.imshow(selection_stack[saved_roi['slice_idx']], cmap='grey')
+                xmin, xmax, ymin, ymax = saved_roi['coords']
+                rect = plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+                                     fill=False, edgecolor='red', linewidth=2)
+                ax.add_patch(rect)
+                ax.set_title(f'Material {mat_idx} (Slice {slice_idx}) - Saved ROI',
+                             fontsize=font_params['title_size'])
+                plt.show()
+            else:
+                # Allow new ROI selection
+                fig, ax = plt.subplots(figsize=(10, 8))
+                ax.imshow(selection_stack[slice_idx], cmap='grey')
+                ax.set_title(f'Material {mat_idx} (Slice {slice_idx}) - {selection_type}',
+                             fontsize=font_params['title_size'])
+                ax.tick_params(axis='both', labelsize=font_params['tick_size'])
 
-            rs = RectangleSelector(ax, self.make_onselect(selection_stack, slice_idx, n_slices, mat_idx),
-                                   useblit=True, interactive=True)
-            plt.show()
+                rs = RectangleSelector(ax, self.make_onselect(selection_stack, slice_idx, n_slices, mat_idx),
+                                       useblit=True, interactive=True)
+                plt.show()
 
         phase_results = []
         att_results = []
 
+        # Process results for both phase and attenuation using saved ROIs
         if use_att:
             att_results = self.last_results.copy()
-            for i, (slice_idx, roi) in enumerate(zip(material_slices, self.last_rois)):
-                if roi is not None:
+            for i, slice_idx in enumerate(material_slices):
+                if i + 1 in self.saved_rois:
+                    roi = self.saved_rois[i + 1]['coords']
                     xmin, xmax, ymin, ymax = roi
                     z_start = slice_idx
                     z_end = min(slice_idx + n_slices, self.phase_stack.shape[0])
@@ -192,8 +208,9 @@ class CalibrationAnalysis:
         else:
             phase_results = [[r[0] * phase_correction_factor, r[1] * phase_correction_factor]
                              for r in self.last_results.copy()]
-            for i, (slice_idx, roi) in enumerate(zip(material_slices, self.last_rois)):
-                if roi is not None:
+            for i, slice_idx in enumerate(material_slices):
+                if i + 1 in self.saved_rois:
+                    roi = self.saved_rois[i + 1]['coords']
                     xmin, xmax, ymin, ymax = roi
                     z_start = slice_idx
                     z_end = min(slice_idx + n_slices, self.att_stack.shape[0])
@@ -202,6 +219,11 @@ class CalibrationAnalysis:
                     att_results.append([roi_mean, roi_std])
 
         return phase_results, att_results
+
+    def clear_saved_rois(self):
+        """Clear all saved ROIs."""
+        self.saved_rois = {}
+        print("All saved ROIs have been cleared.")
 
     def calculate_theoretical_values(self):
         """Calculate theoretical electron densities and attenuations for all materials."""
