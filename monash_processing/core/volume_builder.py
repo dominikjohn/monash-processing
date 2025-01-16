@@ -88,7 +88,7 @@ class VolumeBuilder:
         print(f"Actual angle 180: {angle_180}")
         if angle_180 - 180 > 0.1:
             print(str(angle_180-180))
-            raise ValueError("The 180° projection is not within 0.1 of 180 degrees!")
+            print('"###### WARNING! The 180° projection is not within 0.1 of 180 degrees! This can lead to unexpected results.')
         return self.original_angles[:file_count], np.arange(file_count)
 
     def get_acquisition_geometry(self, n_cols, n_rows, angles, center_shift):

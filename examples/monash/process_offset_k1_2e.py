@@ -1,3 +1,4 @@
+from monash_processing.core.data_loader import DataLoader
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.multi_position_data_loader import MultiPositionDataLoader
@@ -25,7 +26,7 @@ n_workers = 100
 
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
-loader = MultiPositionDataLoader(scan_path, scan_name, skip_positions={'03_03'})
+loader = DataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
 
