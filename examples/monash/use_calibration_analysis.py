@@ -44,11 +44,27 @@ calibration = CalibrationAnalysis(materials, energy_keV=25)
 base_path = "/data/mct/22203/results/P6_Manual"
 #base_path = "/data/mct/22203/results/P6_ReverseOrder"
 #base_path = "/data/mct/22203/results/P5_Manual"
-material_slices = [0, 250, 1070, 1505, 2000]
+material_slices = [0, 250, 1070, 1505, 1850]
 #material_slices = [250, 250, 1070, 1300, 1900]
 
 # Load the reconstruction stacks
 phase_stack, att_stack = calibration.load_reconstruction_stacks(base_path, max_slices=2050, bin_factor=4)
+
+def bin_z_direction(stack, z_bin_factor):
+    # Get the new z dimension size
+    new_z = stack.shape[0] // z_bin_factor
+
+    # Reshape to prepare for z-binning and take mean
+    # Assuming stack shape is (z, y, x)
+    reshaped = stack[:new_z * z_bin_factor]  # Trim any extra slices
+    binned = reshaped.reshape(new_z, z_bin_factor, *stack.shape[1:]).mean(axis=1)
+
+    return binned
+
+# Apply to both stacks
+z_bin_factor = 4  # Or whatever factor you want to use
+phase_stack_binned = bin_z_direction(phase_stack, z_bin_factor)
+att_stack_binned = bin_z_direction(att_stack, z_bin_factor)
 
 # Initial correction factor
 #initial_correction = 0.315/0.155

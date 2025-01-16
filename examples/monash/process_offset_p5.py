@@ -3,7 +3,6 @@ from monash_processing.algorithms.parallel_phase_integrator import ParallelPhase
 from monash_processing.core.data_loader import DataLoader
 #from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.core.volume_builder import VolumeBuilder
-from monash_processing.postprocessing.calibrator import Calibrator
 import h5py
 from pathlib import Path
 import numpy as np
@@ -148,6 +147,3 @@ volume_builder = VolumeBuilder(
 
 #volume_builder.sweep_centershift([-1, 0.5, 0, 0.5, 1])
 volume_builder.reconstruct(center_shift=0, chunk_count=20)
-
-calibrator = Calibrator(loader, reference_material='PMMA')
-calibrated_stack = calibrator.calibrate(slice_idx=500, n_slices=30)

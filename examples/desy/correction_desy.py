@@ -10,8 +10,7 @@ from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
 from monash_processing.utils.ImageViewer import ImageViewer as imshow
 import cv2
 import matplotlib
-
-#matplotlib.use('TkAgg', force=True)
+matplotlib.use('TkAgg', force=True)
 from tqdm import tqdm
 
 scan_base = '/asap3/petra3/gpfs/p07/2024/data/11020408/'

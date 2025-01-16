@@ -65,6 +65,8 @@ class UMPAProcessor:
             projection = self.data_loader.load_projections(projection_i=angle_i) - dark
             flats = self.data_loader.load_flat_fields()
 
+            print(f"Projection shape: {projection.shape}, Flats shape: {flats.shape}")
+
             # Perform UMPA processing
             results = UMPA.match_unbiased(
                 projection.astype(np.float64),

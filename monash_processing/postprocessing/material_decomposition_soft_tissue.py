@@ -15,6 +15,7 @@ from monash_processing.postprocessing.calibration_analysis import CalibrationAna
 
 matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
 import matplotlib.pyplot as plt
+from scipy import fftpack
 
 binning_factor = 4
 psize = 1.444e-6 * binning_factor
@@ -22,22 +23,15 @@ psize = 1.444e-6 * binning_factor
 energy = 25000
 energy_keV = energy / 1000
 wavevec = 2 * np.pi * energy / (scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
-
+wavelength = 1.24e-9 / energy_keV
 loader = DataLoader(Path("/data/mct/22203/"), "P6_Manual")
 edensity_volume = loader.load_reconstruction('recon_phase', binning_factor=4)
 mu_volume = loader.load_reconstruction('recon_att', binning_factor=1)
 
-#edensity_volume = block_reduce(edensity_volume, (binning_factor, 1, 1), np.mean)
-#mu_volume = block_reduce(mu_volume, (binning_factor, 1, 1), np.mean)
-
-edensity_volume = block_reduce(edensity_volume, (binning_factor*2, 2, 2), np.mean)
-mu_volume = block_reduce(mu_volume, (binning_factor*2, 2, 2), np.mean)
-#filtered_mu_volume = cv2.medianBlur(mu_volume.astype(np.float32), 3)
-
-calibration = .8567
+calibration = .857
 edensity_volume *= calibration
 
-m3_to_nm3 = 1e27
+#m3_to_nm3 = 1e27
 #delta = 2 * np.pi * edensity_volume * scipy.constants.physical_constants['classical electron radius'][0] * m3_to_nm3 / (
 #        wavevec ** 2)
 #beta = mu_volume / 2 * wavevec
@@ -50,57 +44,67 @@ m3_to_nm3 = 1e27
 #    'composition': {'C': 2, 'H': 6, 'O': 1}
 #}
 
-# 96 % ethanol mixture
-material1 = {
-    'density': 0.797,
-    'molecular_weight': 44.661,
-    'electrons': 25.2,
-    'composition': {'C': 1.8996789727126806, 'H': 5.799357945425361, 'O': 1.0}
+lead = {
+    'density': 11.35,
+    'molecular_weight': 207.2,
+    'electrons': 82,
+    'composition': {'Pb': 1}
 }
 
-# PMMA
-material2 = {
-    'density': 1.18,
-    'molecular_weight': 100.12,
-    'electrons': 54,
-    'composition': {'C': 5, 'H': 8, 'O': 2}
-}
+# soft tissue as determined by native measurement (K3.1N)
+rho_1 = 305.6
+mu_1 = 0.576
 
-#PTFE
-material2 = {
-        'density': 2.2,
-        'molecular_weight': 100.02,
-        'electrons': 48,
-        'composition': {'C': 2, 'F': 4}
-    }
-
-#PVC
-material2 =  {
-        'density': 1.4,
-        'molecular_weight': 62.5,
-        'electrons': 32,
-        'composition': {'C': 2, 'H': 3, 'Cl': 1}
-}
-
-rho_1 = CalibrationAnalysis.calculate_electron_density(material1['density'],
-                                                            material1['molecular_weight'],
-                                                            material1['electrons'])
-rho_2 = CalibrationAnalysis.calculate_electron_density(material2['density'],
-                                                            material2['molecular_weight'],
-                                                            material2['electrons'])
-
-mu_1 = CalibrationAnalysis.calculate_attenuation(material1['composition'], material1['density'], energy_keV)
-mu_2 = CalibrationAnalysis.calculate_attenuation(material2['composition'], material2['density'], energy_keV)
+rho_2 = 1570
+mu_2 = 340.69
+#rho_2 = CalibrationAnalysis.calculate_electron_density(lead['density'], lead['molecular_weight'], lead['electrons'])
+#mu_2 = CalibrationAnalysis.calculate_attenuation(lead['composition'], lead['density'], energy_keV)
 
 matrix = np.array([[rho_1, rho_2],
                    [mu_1, mu_2]])
 
 inverse = np.linalg.inv(matrix)
 
-n1_volume = inverse[0, 0] * edensity_volume + inverse[0, 1] * mu_volume
-n2_volume = inverse[1, 0] * edensity_volume + inverse[1, 1] * mu_volume
+# Lead
+delta = 2.9625e-06
+beta = 2.083e-07
+delta_beta_ratio = delta/beta
 
-preview_slice = 500
+def paganin_filter(image, pixel_size, dist, wavelength, delta_beta_ratio):
+    # Convert energy to wavelength
+      # wavelength in meters
+
+    # Get image dimensions
+    ny, nx = image.shape
+
+    # Create coordinate grids
+    y, x = np.ogrid[-ny // 2:ny // 2, -nx // 2:nx // 2]
+    y = fftpack.fftshift(y)
+    x = fftpack.fftshift(x)
+
+    # Calculate spatial frequencies
+    kx = 2 * np.pi * x / (nx * pixel_size)
+    ky = 2 * np.pi * y / (ny * pixel_size)
+    k = np.sqrt(kx ** 2 + ky ** 2)
+
+    # Create Paganin filter
+    denom = 1 + wavelength * dist * delta_beta_ratio * k ** 2
+    paganin_filter = 1 / denom
+
+    # Apply filter in Fourier space
+    image_fft = fftpack.fft2(image)
+    filtered_fft = image_fft * paganin_filter
+    filtered_image = np.real(fftpack.ifft2(filtered_fft))
+
+    return filtered_image
+
+edensity_slice = edensity_volume[1500]
+mu_slice = mu_volume[1500]
+filtered_mu_slice = paganin_filter(mu_slice, psize, 0.155, wavelength, 14.2)
+
+n1_slice = inverse[0, 0] * edensity_slice + inverse[0, 1] * filtered_mu_slice
+n2_slice = inverse[1, 0] * edensity_slice + inverse[1, 1] * filtered_mu_slice
+
 
 rho_values = np.clip(edensity_volume[preview_slice, :, :].ravel(), 300, 500)
 mu_values = np.clip(mu_volume[preview_slice, :, :].ravel(), 0.5, 2)
