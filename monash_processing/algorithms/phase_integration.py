@@ -66,8 +66,16 @@ class PhaseIntegrator:
 
         phi_corr = phi_raw * (self.wavevec / self.prop_distance) * (self.pixel_size ** 2)
 
+        print('Before correction')
+        print('MEAN LEFT: ', np.mean(phi_corr[self.area_left]))
+        print('MEAN RIGHT: ', np.mean(phi_corr[self.area_right]))
+
         p_phi_corr = PhaseIntegrator.img_poly_fit(phi_corr, order=1, mask=mask)
         phi_corr -= p_phi_corr
+
+        print('After correction')
+        print('MEAN LEFT: ', np.mean(phi_corr[self.area_left]))
+        print('MEAN RIGHT: ', np.mean(phi_corr[self.area_right]))
 
         if np.percentile(phi_corr, 99) > 1E3:
             print(f'Integration of projection {projection_i} failed!')

@@ -1,14 +1,11 @@
-from monash_processing.core.data_loader import DataLoader
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
-from monash_processing.core.multi_position_data_loader import MultiPositionDataLoader
+from monash_processing.core.data_loader import DataLoader
 #from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.core.volume_builder import VolumeBuilder
 import h5py
 from pathlib import Path
 import numpy as np
-from monash_processing.utils.ImageViewer import ImageViewer as imshow
-import cv2
 
 import matplotlib
 matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
@@ -16,10 +13,10 @@ import matplotlib.pyplot as plt
 
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
-scan_name = "K1_2E"
+scan_name = "K3_4HE_Manual"
 pixel_size = 1.444e-6 # m
 energy = 25000 # eV
-prop_distance = 0.155 # Grid to detector in this case, still not sure why
+prop_distance = 0.155 #
 max_angle = 364
 umpa_w = 1
 n_workers = 100
@@ -29,7 +26,6 @@ print(f"Loading data from {scan_path}, scan name: {scan_name}")
 loader = DataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
-
 angles = np.mean(loader.load_angles(), axis=0)
 angle_step = np.diff(angles).mean()
 print('Angle step:', angle_step)
@@ -63,18 +59,18 @@ results = processor.process_projections(
     num_angles=num_angles
 )
 
-area_left = np.s_[: 5:80]
+#center_shifts = np.linspace(307, 312, 10)
+#volume_builder.sweep_centershift(center_shifts)
+area_left = np.s_[:, 5:80]
 area_right = np.s_[:, -80:-5]
 
 max_index = int(np.round(180 / angle_step))
 print('Uppermost projection index: ', max_index)
 
-area_left = np.s_[:, 5:80]
-area_right = np.s_[:, -80:-5]
-center_shift_list = np.linspace(1100, 1400, 10)
+center_shift_list = np.linspace(1302, 1305, 5)
 for center_shift in center_shift_list:
     suffix = f'{(2 * center_shift):.2f}'
-    stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=center_shift / 2, slices=(1000, 1005), suffix=suffix, format='tif')
+    stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=center_shift / 2, slices=(1000, 1010), suffix=suffix)
     stitcher.process_and_save_range(index_0, index_180, 'dx')
     stitcher.process_and_save_range(index_0, index_180, 'dy')
     parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
@@ -92,12 +88,12 @@ for center_shift in center_shift_list:
         show_geometry=False,
         sparse_factor=1,
         is_360_deg=False,
-        suffix=suffix,
+        suffix=suffix
     )
     volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(2,4))
 
 
-best_value = 1300
+best_value = 1304
 
 stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2, format='tif')
 stitcher.process_and_save_range(index_0, index_180, 'dx')
@@ -138,5 +134,9 @@ volume_builder = VolumeBuilder(
         sparse_factor=1,
         is_360_deg=False,
     )
+
+volume_builder.reconstruct(center_shift=0, chunk_count=20)
+
+volume_builder.sweep_centershift([-1, 0.5, 0, 0.5, 1])
 
 volume_builder.reconstruct(center_shift=0, chunk_count=20)

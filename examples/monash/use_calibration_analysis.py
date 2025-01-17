@@ -76,7 +76,8 @@ phase_results, att_results = calibration.analyze_materials(
     material_slices,
     n_slices=50,
     use_att=False,
-    phase_correction_factor=initial_correction
+    phase_correction_factor=initial_correction,
+    overwrite=True
 )
 
 font_params = {
