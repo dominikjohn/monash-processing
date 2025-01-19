@@ -126,7 +126,7 @@ class VolumeBuilder:
         ig = self.get_image_geometry(ag)
 
         data = AcquisitionData(chunk_projections.astype('float32'), geometry=ag)
-        data = self.apply_projection_ring_filter(data)
+        #data = self.apply_projection_ring_filter(data)
         data.reorder('astra')
         fdk = FBP(data, image_geometry=ig, backend='astra')
         out = fdk.run()
@@ -230,8 +230,8 @@ class VolumeBuilder:
                 volume = self.convert_to_mu(volume)
                 rwidth = 15  # Attenuation needs a larger ring filter width
 
-            volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth, geometry=volume.geometry)
-
+            #volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth, geometry=volume.geometry)
+            print('Not using ring filter now!')
             # Add binning info to folder name if binning was applied
             prefix = 'recon'
             if custom_folder is not None:

@@ -1,8 +1,10 @@
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
-#from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
-from monash_processing.core.volume_builder import VolumeBuilder
+try:
+    from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
+except ImportError:
+    from monash_processing.core.volume_builder import VolumeBuilder
 import h5py
 from pathlib import Path
 import numpy as np
