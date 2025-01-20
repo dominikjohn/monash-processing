@@ -12,8 +12,6 @@ from monash_processing.utils.ImageViewer import ImageViewer as imshow
 import cv2
 from skimage.measure import block_reduce
 import matplotlib
-from matplotlib_scalebar.scalebar import ScaleBar
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import os
 from monash_processing.postprocessing.calibration_analysis import CalibrationAnalysis
 
@@ -28,7 +26,8 @@ energy_keV = energy / 1000
 wavelength = 1.24e-9 / energy_keV
 
 #loader = DataLoader(Path("/data/mct/22203/"), "P6_Manual")
-loader = DataLoader(Path("/data/mct/22203/"), "K3_3H_Manual")
+#loader = DataLoader(Path("/data/mct/22203/"), "K3_3H_Manual")
+loader = DataLoader(Path("/data/mct/22203/"), "K3_1N")
 #edensity_volume = loader.load_reconstruction('recon_phase', binning_factor=1)
 mu_volume = loader.load_reconstruction('recon_att', binning_factor=1)
 
@@ -71,8 +70,8 @@ def paganin_filter(image, pixel_size, dist, wavelength, delta_beta_ratio):
 
     return filtered_image
 
-filtered = paganin_filter(test_slice, psize, 0.155, wavelength, 50)
-imshow(filtered.T)
+#filtered = paganin_filter(test_slice, psize, 0.155, wavelength, 50)
+#imshow(filtered.T)
 
 filtered2 = paganin_filter(test_slice2, psize, 0.155, wavelength, delta_beta_ratio)
 imshow(filtered2.T)

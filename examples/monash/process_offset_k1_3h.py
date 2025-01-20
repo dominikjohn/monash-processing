@@ -62,7 +62,7 @@ results = processor.process_projections(
     num_angles=num_angles
 )
 
-area_left = np.s_[: 5:80]
+area_left = np.s_[:, 5:80]
 area_right = np.s_[:, -80:-5]
 
 max_index = int(np.round(180 / angle_step))
@@ -93,10 +93,11 @@ for center_shift in center_shift_list:
     )
     volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(2,4))
 
-best_value = 1313
-stitcher = ProjectionStitcher(loader, .1, center_shift=best_value / 2)
+best_value = 1311
+stitcher = ProjectionStitcher(loader, angle_step, center_shift=best_value / 2)
 stitcher.process_and_save_range(index_0, index_180, 'dx')
 stitcher.process_and_save_range(index_0, index_180, 'dy')
+stitcher.process_and_save_range(index_0, index_180, 'T')
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
                                                     loader, stitched=True)
 parallel_phase_integrator.integrate_parallel(max_index + 1, n_workers=n_workers)

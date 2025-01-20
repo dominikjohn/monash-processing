@@ -7,6 +7,13 @@ lead = {
     'electrons': 82,
     'composition': {'Pb': 1}
 }
+
+lead = {
+    'density': 1.18,
+    'molecular_weight': 100.12,
+    'electrons': 54,
+    'composition': {'C': 5, 'H': 8, 'O': 2}
+}
 energy = 25
 mu = CalibrationAnalysis.calculate_attenuation(lead['composition'], lead['density'], energy)
 rho = CalibrationAnalysis.calculate_electron_density(lead['density'], lead['molecular_weight'], lead['electrons'])

@@ -24,11 +24,13 @@ energy = 25000
 energy_keV = energy / 1000
 wavevec = 2 * np.pi * energy / (scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
 wavelength = 1.24e-9 / energy_keV
-loader = DataLoader(Path("/data/mct/22203/"), "P6_Manual")
-edensity_volume = loader.load_reconstruction('recon_phase', binning_factor=4)
+#loader = DataLoader(Path("/data/mct/22203/"), "P6_Manual")
+loader = DataLoader(Path("/data/mct/22203/"), "K3_1N")
+edensity_volume = loader.load_reconstruction('recon_phase', binning_factor=1)
 mu_volume = loader.load_reconstruction('recon_att', binning_factor=1)
 
-calibration = .857
+#calibration = .857
+calibration = .87
 edensity_volume *= calibration
 
 #m3_to_nm3 = 1e27
