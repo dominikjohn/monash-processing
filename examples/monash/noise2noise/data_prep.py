@@ -6,7 +6,7 @@ from monash_processing.core.volume_builder import VolumeBuilder
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 import matplotlib
-matplotlib.use('TkAgg', force=True)
+#matplotlib.use('TkAgg', force=True)
 
 # Set your parameters
 scan_path = Path("/vault3/other/AustralianSynchrotron/K3_3H_Manual/")

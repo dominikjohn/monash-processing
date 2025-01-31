@@ -46,7 +46,6 @@ for i in tqdm(range(len(angles))):
     T = -np.log((meaned_proj - dark_current) / (flats_meaned - dark_current))
     loader.save_tiff('T_raw', i, T)
 
-
 # Get number of projections (we need this for the loop)
 with h5py.File(loader.h5_files[0], 'r') as f:
     num_angles = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA'].shape[0]
@@ -80,15 +79,16 @@ area_right = np.s_[:, -80:-5]
 max_index = int(np.round(180 / angle_step))
 print('Uppermost projection index: ', max_index)
 
-center_shift_list = np.linspace(1302, 1305, 5)
+center_shift_list = np.linspace(1290, 1320, 10)
 for center_shift in center_shift_list:
     suffix = f'{(2 * center_shift):.2f}'
     stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=center_shift / 2, slices=(1000, 1010), suffix=suffix)
-    stitcher.process_and_save_range(index_0, index_180, 'dx')
-    stitcher.process_and_save_range(index_0, index_180, 'dy')
-    parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
-                                                        loader, stitched=True, suffix=suffix)
-    parallel_phase_integrator.integrate_parallel(max_index+1, n_workers=n_workers)
+    #stitcher.process_and_save_range(index_0, index_180, 'dx')
+    #stitcher.process_and_save_range(index_0, index_180, 'dy')
+    stitcher.process_and_save_range(index_0, index_180, 'T_raw')
+    #parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
+    #                                                    loader, stitched=True, suffix=suffix)
+    #parallel_phase_integrator.integrate_parallel(max_index+1, n_workers=n_workers)
     volume_builder = VolumeBuilder(
         data_loader=loader,
         original_angles=angles,
@@ -96,7 +96,7 @@ for center_shift in center_shift_list:
         prop_distance=prop_distance,
         pixel_size=pixel_size,
         is_stitched=True,
-        channel='phase',
+        channel='T_raw_stitched',
         detector_tilt_deg=0,
         show_geometry=False,
         sparse_factor=1,

@@ -15,7 +15,6 @@ setup(
         'scipy',
         'matplotlib',
         'scikit-image',
-        'rasterio',
         'joblib',
         'opencv-python',
         'PyQt5',

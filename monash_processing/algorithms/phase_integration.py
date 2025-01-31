@@ -1,6 +1,5 @@
 import numpy as np
 import cv2
-import rasterio.fill as rs
 import scipy.constants
 from monash_processing.core.data_loader import DataLoader
 from scipy import fft
@@ -148,6 +147,8 @@ class PhaseIntegrator:
 
     @staticmethod
     def cleanup_rio(image, f, thl):
+        import rasterio.fill as rs
+
         '''
         Corrects differential phase image for wrapping/bad UMPA fits.
         Requires rasterio to be installed.
