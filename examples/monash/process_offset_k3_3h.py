@@ -1,3 +1,5 @@
+import os
+
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
@@ -6,6 +8,7 @@ from monash_processing.core.volume_builder import VolumeBuilder
 import h5py
 from pathlib import Path
 import numpy as np
+from tqdm import tqdm
 
 import matplotlib
 matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
@@ -33,6 +36,16 @@ index_0 = np.argmin(np.abs(angles - 0))
 index_180 = np.argmin(np.abs(angles - 180))
 print('Index at 0°:', index_0)
 print('Index at 180°:', index_180)
+
+projections = loader.load_projections(projection_i=0)
+projections_meaned = np.mean(projections, axis=0)
+flats_meaned = np.mean(flat_fields, axis=0)
+
+for i in tqdm(range(len(angles))):
+    meaned_proj = np.mean(loader.load_projections(projection_i=i), axis=0)
+    T = -np.log((meaned_proj - dark_current) / (flats_meaned - dark_current))
+    loader.save_tiff('T_raw', i, T)
+
 
 # Get number of projections (we need this for the loop)
 with h5py.File(loader.h5_files[0], 'r') as f:
@@ -98,7 +111,7 @@ best_value = 1304
 stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2, format='tif')
 stitcher.process_and_save_range(index_0, index_180, 'dx')
 stitcher.process_and_save_range(index_0, index_180, 'dy')
-stitcher.process_and_save_range(index_0, index_180, 'T')
+stitcher.process_and_save_range(index_0, index_180, 'T_raw')
 area_left = np.s_[:, 5:80]
 area_right = np.s_[:, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
@@ -137,6 +150,18 @@ volume_builder = VolumeBuilder(
 
 volume_builder.reconstruct(center_shift=0, chunk_count=20)
 
-volume_builder.sweep_centershift([-1, 0.5, 0, 0.5, 1])
+volume_builder = VolumeBuilder(
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=True,
+        channel='T_raw_stitched',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=False,
+    )
 
 volume_builder.reconstruct(center_shift=0, chunk_count=20)

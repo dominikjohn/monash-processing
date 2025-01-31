@@ -44,6 +44,16 @@ class DataLoader:
     def get_save_path(self):
         return self.results_dir
 
+    def export_raw_transmission_projections(self, min_i, max_i):
+        flat_fields = self.load_flat_fields()
+        dark_current = self.load_flat_fields(dark=True)
+        flats_meaned = np.mean(flat_fields, axis=0)
+
+        for i in tqdm(range(min_i, max_i)):
+            meaned_proj = np.mean(self.load_projections(projection_i=i), axis=0)
+            T = -np.log((meaned_proj - dark_current) / (flats_meaned - dark_current))
+            self.save_tiff('T_raw', i, T)
+
     def load_flat_fields(self, dark=False, pca=False):
         """Load flat field data from all files and combine, averaging multiple fields per file."""
 

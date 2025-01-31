@@ -12,6 +12,8 @@ from monash_processing.utils.ImageViewer import ImageViewer as imshow
 import cv2
 from skimage.measure import block_reduce
 import matplotlib
+import cupy as cp
+
 import os
 from monash_processing.postprocessing.calibration_analysis import CalibrationAnalysis
 
@@ -38,35 +40,92 @@ test_slice2 = mu_volume[1200]
 imshow(test_slice.T)
 
 # Lead
-delta = 2.9625e-06
-beta = 2.083e-07
-delta_beta_ratio = delta/beta
+#delta = 2.9625e-06
+#beta = 2.083e-07
+#delta_beta_ratio = delta/beta
+
+delta_beta_ratio = 12.6896
+
 
 def paganin_filter(image, pixel_size, dist, wavelength, delta_beta_ratio):
-    # Convert energy to wavelength
-      # wavelength in meters
-
     # Get image dimensions
     ny, nx = image.shape
 
-    # Create coordinate grids
-    y, x = np.ogrid[-ny // 2:ny // 2, -nx // 2:nx // 2]
-    y = fftpack.fftshift(y)
-    x = fftpack.fftshift(x)
+    # Calculate frequencies using fftfreq
+    delta_x = pixel_size / (2 * np.pi)
+    kx = np.fft.fftfreq(nx, d=delta_x)
+    ky = np.fft.fftfreq(ny, d=delta_x)
+
+    # Create 2D frequency grid
+    kx_grid, ky_grid = np.meshgrid(kx, ky)
+    k_squared = kx_grid ** 2 + ky_grid ** 2
+
+    # Create Paganin filter with corrected formula
+    # Since we're using delta_beta_ratio = delta/beta, need to multiply by 1/(4π)
+    denom = 1 + dist * wavelength * (delta_beta_ratio / (4 * np.pi)) * k_squared
+    paganin_filter = 1 / denom
+
+    # Apply filter in Fourier space
+    image_fft = np.fft.fft2(image)
+    filtered_fft = image_fft * paganin_filter
+    filtered_image = np.real(np.fft.ifft2(filtered_fft))
+
+    return filtered_image
+
+
+def paganin_filter_gpu(image, pixel_size, dist, wavelength, delta_beta_ratio):
+    """
+    GPU-accelerated implementation of the Paganin phase retrieval filter.
+
+    Parameters:
+    -----------
+    image : numpy.ndarray
+        Input intensity image
+    pi  xel_size : float
+        Detector pixel size in meters
+    dist : float
+        Sample-to-detector distance in meters
+    wavelength : float
+        X-ray wavelength in meters
+    delta_beta_ratio : float
+        Ratio of refractive index decrement to absorption index
+
+    Returns:
+    --------
+    numpy.ndarray
+        Retrieved phase image
+    """
+    # Transfer image to GPU
+    image_gpu = cp.asarray(image)
+
+    # Get image dimensions
+    ny, nx = image_gpu.shape
+
+    # Create coordinate grids on GPU
+    y, x = cp.ogrid[-ny // 2:ny // 2, -nx // 2:nx // 2]
+    y = cp.fft.fftshift(y)
+    x = cp.fft.fftshift(x)
 
     # Calculate spatial frequencies
-    kx = 2 * np.pi * x / (nx * pixel_size)
-    ky = 2 * np.pi * y / (ny * pixel_size)
-    k = np.sqrt(kx ** 2 + ky ** 2)
+    kx = 2 * cp.pi * x / (nx * pixel_size)
+    ky = 2 * cp.pi * y / (ny * pixel_size)
+    k = cp.sqrt(kx ** 2 + ky ** 2)
 
     # Create Paganin filter
     denom = 1 + wavelength * dist * delta_beta_ratio * k ** 2
     paganin_filter = 1 / denom
 
     # Apply filter in Fourier space
-    image_fft = fftpack.fft2(image)
+    image_fft = cp.fft.fft2(image_gpu)
     filtered_fft = image_fft * paganin_filter
-    filtered_image = np.real(fftpack.ifft2(filtered_fft))
+    filtered_image_gpu = cp.real(cp.fft.ifft2(filtered_fft))
+
+    # Transfer result back to CPU
+    filtered_image = cp.asnumpy(filtered_image_gpu)
+
+    # Clean up GPU memory
+    del image_gpu, y, x, kx, ky, k, denom, paganin_filter, image_fft, filtered_fft, filtered_image_gpu
+    cp.get_default_memory_pool().free_all_blocks()
 
     return filtered_image
 

@@ -62,7 +62,7 @@ results = processor.process_projections(
     num_angles=num_angles
 )
 
-area_left = np.s_[: 5:80]
+area_left = np.s_[:, 5:80]
 area_right = np.s_[:, -80:-5]
 
 max_index = int(np.round(180 / angle_step))

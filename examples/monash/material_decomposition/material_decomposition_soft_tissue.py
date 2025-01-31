@@ -10,7 +10,6 @@ import matplotlib
 from matplotlib_scalebar.scalebar import ScaleBar
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import os
-
 from monash_processing.postprocessing.calibration_analysis import CalibrationAnalysis
 
 matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
@@ -106,7 +105,6 @@ filtered_mu_slice = paganin_filter(mu_slice, psize, 0.155, wavelength, 14.2)
 
 n1_slice = inverse[0, 0] * edensity_slice + inverse[0, 1] * filtered_mu_slice
 n2_slice = inverse[1, 0] * edensity_slice + inverse[1, 1] * filtered_mu_slice
-
 
 rho_values = np.clip(edensity_volume[preview_slice, :, :].ravel(), 300, 500)
 mu_values = np.clip(mu_volume[preview_slice, :, :].ravel(), 0.5, 2)

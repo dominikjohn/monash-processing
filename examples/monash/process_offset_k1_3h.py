@@ -97,10 +97,26 @@ best_value = 1311
 stitcher = ProjectionStitcher(loader, angle_step, center_shift=best_value / 2)
 stitcher.process_and_save_range(index_0, index_180, 'dx')
 stitcher.process_and_save_range(index_0, index_180, 'dy')
-stitcher.process_and_save_range(index_0, index_180, 'T')
+#stitcher.process_and_save_range(index_0, index_180, 'T')
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
                                                     loader, stitched=True)
 parallel_phase_integrator.integrate_parallel(max_index + 1, n_workers=n_workers)
+
+volume_builder = VolumeBuilder(
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=True,
+        channel='phase',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=False,
+    )
+
+volume_builder.reconstruct(center_shift=0, chunk_count=20)
 
 volume_builder = VolumeBuilder(
         data_loader=loader,
@@ -115,5 +131,5 @@ volume_builder = VolumeBuilder(
         sparse_factor=1,
         is_360_deg=False,
     )
-center_shift = 0
-volume_builder.reconstruct(center_shift=center_shift, chunk_count=20)
+
+volume_builder.reconstruct(center_shift=0, chunk_count=20)
