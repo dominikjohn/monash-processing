@@ -33,9 +33,6 @@ class DataLoader:
             key=natural_sort_key
         )
 
-        if not self.h5_files:
-            raise FileNotFoundError(f"No H5 files found matching pattern {scan_name}*.h5 in {scan_path}")
-
         self.logger.info(f"Found {len(self.h5_files)} H5 files:")
         # list the names of the h5 files
         for h5_file in self.h5_files:

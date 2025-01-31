@@ -36,12 +36,14 @@ with h5py.File(loader.h5_files[0], 'r') as f:
     num_angles = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA'].shape[0]
     print(f"Number of projections: {num_angles}")
 
-best_value = 1311
+
+
+best_value = 1304
 stitcher = ProjectionStitcher(loader, angle_step, center_shift=best_value / 2)
 area_left = np.s_[:, 5:80]
 area_right = np.s_[:, -80:-5]
-stitcher.process_and_save_range(index_0, index_180, 'dx_')
-stitcher.process_and_save_range(index_0, index_180, 'dy')
+stitcher.process_and_save_range(index_0, index_180, 'dx_denoised')
+stitcher.process_and_save_range(index_0, index_180, 'dy_denoised')
 #stitcher.process_and_save_range(index_0, index_180, 'T')
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
                                                     loader, stitched=True)
