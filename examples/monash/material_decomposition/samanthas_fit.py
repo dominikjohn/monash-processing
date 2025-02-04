@@ -225,24 +225,32 @@ def analyze_interface(image, start_point, end_point, gamma_guess, sod, odd, wave
 
     return results
 
-
 volume = []
 for i in range(201, 202):
     volume.append(np.asarray(tifffile.imread('/data/mct/22203/results/P6_Manual/recon_att/recon_cs01175_idx_0201.tiff')))
 volume = np.asarray(volume)
 
-start_point = (768, 1624)
-end_point = (842, 1656)
+start_point = (1200, 990)
+end_point = (1213, 1010)
 
-start_point = (1624, 768)
-end_point = (1656, 842)
+start_point = (1285,1604)
+end_point = (1291, 1559)
 
+start_point = (1446,1602)
+end_point = (1456,1610)
+
+start_point = (1346, 903)
+end_point = (1354,917)
+
+start_point = (1423,829)
+end_point = (1431,787)
 
 results = analyze_interface(
-    image=test2,  # or image_2d
+    image=test3,  # or image_2d
     start_point=start_point,
     end_point=end_point,
-    gamma_guess=50,
+    #gamma_guess=147.79,
+    gamma_guess=1079.29,
     sod=15e6,  # 15mm in microns
     odd=0.15e6,  # 0.15mm in microns
     wavelength=5e-5,  # in microns

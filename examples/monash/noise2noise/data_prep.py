@@ -2,11 +2,9 @@ from monash_processing.core.data_loader import DataLoader
 import h5py
 from pathlib import Path
 import numpy as np
-from monash_processing.core.volume_builder import VolumeBuilder
+#from monash_processing.core.volume_builder import VolumeBuilder
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
-import matplotlib
-#matplotlib.use('TkAgg', force=True)
 
 # Set your parameters
 scan_path = Path("/vault3/other/AustralianSynchrotron/K3_3H_Manual/")
@@ -18,32 +16,40 @@ max_angle = 364
 umpa_w = 1
 n_workers = 100
 
+
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
 loader = DataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
-angles = np.mean(loader.load_angles(), axis=0)
-angle_step = np.diff(angles).mean()
-print('Angle step:', angle_step)
-index_0 = np.argmin(np.abs(angles - 0))
-index_180 = np.argmin(np.abs(angles - 180))
-print('Index at 0°:', index_0)
-print('Index at 180°:', index_180)
+#angles = np.mean(loader.load_angles(), axis=0)
+#angle_step = np.diff(angles).mean()
+#print('Angle step:', angle_step)
+##index_0 = np.argmin(np.abs(angles - 0))
+#index_180 = np.argmin(np.abs(angles - 180))
+#print('Index at 0°:', index_0)
+#print('Index at 180°:', index_180)
+angle_step = 0.10033783
+index_0 = 0
+index_180 = 1794
+loader.results_dir = Path('/vault3/other/AustralianSynchrotron/K3_3H_Manual/')
 
 # Get number of projections (we need this for the loop)
 with h5py.File(loader.h5_files[0], 'r') as f:
     num_angles = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA'].shape[0]
     print(f"Number of projections: {num_angles}")
 
+angles = np.arange(0, 1794, angle_step)
 
+max_index = int(np.round(180 / angle_step))
+print('Uppermost projection index: ', max_index)
 
 best_value = 1304
 stitcher = ProjectionStitcher(loader, angle_step, center_shift=best_value / 2)
 area_left = np.s_[:, 5:80]
 area_right = np.s_[:, -80:-5]
-stitcher.process_and_save_range(index_0, index_180, 'dx_denoised')
-stitcher.process_and_save_range(index_0, index_180, 'dy_denoised')
+stitcher.process_and_save_range(index_0, index_180, 'dx_cor')
+stitcher.process_and_save_range(index_0, index_180, 'dy_cor')
 #stitcher.process_and_save_range(index_0, index_180, 'T')
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
                                                     loader, stitched=True)

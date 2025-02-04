@@ -37,7 +37,7 @@ class ProjectionStitcher:
         if part == 'right':
             mean = np.mean(projection[:, -100:-5])
         elif part == 'left':
-            flip_sign = -1 if channel == 'dx' else 1
+            flip_sign = -1 if channel.startswith('dx') else 1
             projection = flip_sign * np.fliplr(projection)
             mean = np.mean(projection[:, 5:100])
         else:

@@ -4,7 +4,7 @@ from monash_processing.postprocessing.stitch_phase_images import ProjectionStitc
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
 #from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
-from monash_processing.core.volume_builder import VolumeBuilder
+#from monash_processing.core.volume_builder import VolumeBuilder
 import h5py
 from pathlib import Path
 import numpy as np
@@ -79,7 +79,7 @@ area_right = np.s_[:, -80:-5]
 max_index = int(np.round(180 / angle_step))
 print('Uppermost projection index: ', max_index)
 
-center_shift_list = np.linspace(1290, 1320, 10)
+center_shift_list = np.linspace(1200, 1400, 5)
 for center_shift in center_shift_list:
     suffix = f'{(2 * center_shift):.2f}'
     stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=center_shift / 2, slices=(1000, 1010), suffix=suffix)
@@ -104,7 +104,6 @@ for center_shift in center_shift_list:
         suffix=suffix
     )
     volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(2,4))
-
 
 best_value = 1304
 
