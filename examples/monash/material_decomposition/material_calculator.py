@@ -8,25 +8,12 @@ lead = {
     'composition': {'Pb': 1}
 }
 
-lead = {
-    'density': 1.18,
-    'molecular_weight': 100.12,
-    'electrons': 54,
-    'composition': {'C': 5, 'H': 8, 'O': 2}
-}
 energy = 25
 mu = CalibrationAnalysis.calculate_attenuation(lead['composition'], lead['density'], energy)
 rho = CalibrationAnalysis.calculate_electron_density(lead['density'], lead['molecular_weight'], lead['electrons'])
 
 print(f"Attenuation coefficient: {mu:.4f} 1/cm")
 print(f"Electron density: {rho:.4f} electrons/nm^3")
-
-print(f"Refractive index: {CalibrationAnalysis.electron_density_to_refractive_index(rho, 1):.4f}")
-
-def electron_density_to_refractive_index(electron_density, wavelength):
-    r_e = 2.818e-15  # classical electron radius in meters
-    # Calculate delta (real part)
-    return (r_e * wavelength ** 2 * electron_density) / (2 * np.pi)
 
 import numpy as np
 
@@ -133,3 +120,25 @@ print(f"Electron Density: {results['electron_density']:.2e} electrons/nm³")
 linear_atten = calculator.calculate_linear_attenuation(
     results['complex_composition'], results['complex_density'])
 print(f"\nLinear Attenuation Coefficient at 25 keV: {linear_atten:.2f} 1/cm")
+
+
+def electron_density_to_refractive_index(electron_density, wavelength):
+    """Calculate refractive index delta from electron density"""
+    r_e = 2.818e-15  # classical electron radius in meters
+    return (r_e * wavelength ** 2 * electron_density) / (2 * np.pi)
+
+###
+# relative Delta beta calculation for lead
+#Soft tissue
+mu_st = .576 * 100 # 1/m
+edensity_st = 305.6 * 1e27 # electrons/m^3
+delta_st = electron_density_to_refractive_index(edensity_st, 0.05e-9)
+beta_st = mu_st / (2 * (2 * np.pi / 0.05e-9))
+# Lead
+mu_pb = 550.288 * 100 # 1/m
+edensity_pb = 2704 * 1e27 # electrons/m^3
+delta_pb = electron_density_to_refractive_index(edensity_pb, 0.05e-9)
+beta_pb = mu_pb / (2 * (2 * np.pi / 0.05e-9))
+#mu = 2 k beta <=> beta = mu / 2k
+
+print((delta_st-delta_pb)/(beta_st-beta_pb)) # ~12.29

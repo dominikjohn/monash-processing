@@ -69,7 +69,7 @@ area_right = np.s_[:, -80:-5]
 max_index = int(np.round(180 / angle_step))
 print('Uppermost projection index: ', max_index)
 
-center_shift_list = np.linspace(1300, 1350, 10)
+center_shift_list = np.linspace(1300, 1320, 10)
 for center_shift in center_shift_list:
     suffix = f'{(2 * center_shift):.2f}'
     stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=center_shift / 2, slices=(1000, 1010), suffix=suffix)
@@ -92,15 +92,14 @@ for center_shift in center_shift_list:
         is_360_deg=False,
         suffix=suffix
     )
-    volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(2,4))
+    volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(2,8))
 
 
-best_value = 1304
-
+best_value = 1306.5
 stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2, format='tif')
 stitcher.process_and_save_range(index_0, index_180, 'dx')
 stitcher.process_and_save_range(index_0, index_180, 'dy')
-stitcher.process_and_save_range(index_0, index_180, 'T')
+stitcher.process_and_save_range(index_0, index_180, 'T_')
 area_left = np.s_[:, 5:80]
 area_right = np.s_[:, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,

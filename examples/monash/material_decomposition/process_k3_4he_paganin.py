@@ -12,7 +12,7 @@ from functools import partial
 
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
-scan_name = "P6_Manual"
+scan_name = "K3_4HE_Manual"
 pixel_size = 1.444e-6  # m
 energy = 25000
 prop_distance = 0.155  # 17 cm sample-grid,
@@ -38,49 +38,66 @@ print('Index at 180°:', index_180)
 slicer = np.s_[5:-5, 5:-5]
 flat_cor = (np.mean(flat_fields, axis=0) - dark_current)[slicer]
 
-delta_ethanol = 2.957e-7
-delta_pvc = 4.772e-7
-delta_ptfe = 7.018e-7
+delta_st = 3.4265e-07
+delta_pb = 3.0319e-06
 
-experimental_correction = 1.2
-mu_ethanol = 0.311 * 100 * experimental_correction
-mu_pvc = 3.422 * 100 * experimental_correction
-mu_ptfe = 1.264 * 100 * experimental_correction
+mu_pb = 550.288 * 100 # 1/m
+mu_st = .576 * 100 # 1/m
+
+def beltran_two_material_filter_modified(I, I_ref, mu_enc, mu_2, delta_enc, delta_2, p_size, distance):
+    '''
+    Beltran et al. 2D and 3D X-ray phase retrieval of multi-material objects using a single defocus distance (2010)
+    :param I: intensity projection with sample
+    :param I_ref: reference projection
+    :param A: total thickness map
+    :param mu_enc: mu of enclosing material (e.g. soft tissue)
+    :param mu_2: mu of enclosed material (e.g. contrast agent)
+    :param delta_enc: delta of enclosing material (e.g. soft tissue)
+    :param delta_2: delta of enclosed material (e.g. contrast agent)
+    :param p_size: pixel size
+    :param distance: propagation distance
+    :return: Thickness map
+    '''
+
+    # Get image dimensions
+    ny, nx = I.shape
+
+    # Calculate frequencies using fftfreq
+    delta_x = p_size / (2 * np.pi)
+    kx = np.fft.fftfreq(nx, d=delta_x)
+    ky = np.fft.fftfreq(ny, d=delta_x)
+
+    # Create 2D frequency grid
+    kx_grid, ky_grid = np.meshgrid(kx, ky)
+    k_squared = kx_grid ** 2 + ky_grid ** 2
+
+    image_fft = np.fft.fft2(I / I_ref)
+
+    denom = (distance * (delta_2 - delta_enc) / (mu_2 - mu_enc)) * k_squared + 1
+    filter = 1 / denom
+
+    filtered_fft = image_fft * filter
+    log_image = -np.log(np.real(np.fft.ifft2(filtered_fft)))
+
+    return log_image
 
 for i in tqdm(range(index_0, index_180+1)):
     proj = (np.mean(loader.load_projections(i), axis=0) - dark_current)[slicer]
-    A = loader.load_processed_projection(i, 'thickness')
-
-    T_pvc = beltran_two_material_filter_modified(proj, flat_cor, mu_ethanol, mu_pvc, delta_ethanol, delta_pvc, pixel_size, prop_distance)
-    T_ptfe = beltran_two_material_filter_modified(proj, flat_cor, mu_ethanol, mu_ptfe, delta_ethanol, delta_ptfe, pixel_size, prop_distance)
-
-    #loader.save_tiff('T_pvc_modified', i, T_pvc)
-    loader.save_tiff('T_ptfe_modified_exp', i, T_ptfe)
+    T_lead_st = beltran_two_material_filter_modified(proj, flat_cor, mu_st, mu_pb, delta_st, delta_pb, pixel_size, prop_distance)
+    loader.save_tiff('T_pb_st', i, T_lead_st)
 
 def process_projection(i, loader, dark_current, slicer, flat_cor,
-                       mu_ethanol, mu_pvc, mu_ptfe,
-                       delta_ethanol, delta_pvc, delta_ptfe,
+                       mu_enc, mu_inside,
+                       delta_enc, delta_inside,
                        pixel_size, prop_distance):
-    # Load and process projection
     proj = (np.mean(loader.load_projections(i), axis=0) - dark_current)[slicer]
-    A = loader.load_processed_projection(i, 'thickness')
 
-    # Calculate thickness maps
-    T_pvc = beltran_two_material_filter_modified(
-        proj, flat_cor, mu_ethanol, mu_pvc,
-        delta_ethanol, delta_pvc, pixel_size, prop_distance
+    T_pb_st = beltran_two_material_filter_modified(
+        proj, flat_cor, mu_enc, mu_inside,
+        delta_enc, delta_inside, pixel_size, prop_distance
     )
-    T_ptfe = beltran_two_material_filter_modified(
-        proj, flat_cor, mu_ethanol, mu_ptfe,
-        delta_ethanol, delta_ptfe, pixel_size, prop_distance
-    )
-
-    # Save results
-    loader.save_tiff('T_pvc_modified', i, T_pvc)
-    loader.save_tiff('T_ptfe_modified', i, T_ptfe)
-
+    loader.save_tiff('T_pb_st', i, T_pb_st)
     return i  # Return index for progress tracking
-
 
 # Number of CPU cores to use (adjust as needed)
 num_cores = 32
@@ -92,18 +109,16 @@ process_proj_partial = partial(
     dark_current=dark_current,
     slicer=slicer,
     flat_cor=flat_cor,
-    mu_ethanol=mu_ethanol,
-    mu_pvc=mu_pvc,
-    mu_ptfe=mu_ptfe,
-    delta_ethanol=delta_ethanol,
-    delta_pvc=delta_pvc,
-    delta_ptfe=delta_ptfe,
+    mu_enc=mu_st,
+    mu_inside=mu_pb,
+    delta_enc=delta_st,
+    delta_inside=delta_pb,
     pixel_size=pixel_size,
     prop_distance=prop_distance
 )
 
 # Create index list
-indices = range(index_0, index_180)
+indices = range(index_0, index_180+1)
 
 # Create process pool and run parallel processing
 with Pool(num_cores) as pool:

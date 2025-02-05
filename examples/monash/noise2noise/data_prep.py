@@ -39,7 +39,7 @@ with h5py.File(loader.h5_files[0], 'r') as f:
     num_angles = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA'].shape[0]
     print(f"Number of projections: {num_angles}")
 
-angles = np.arange(0, 1794, angle_step)
+angles = np.arange(1794+1) * angle_step
 
 max_index = int(np.round(180 / angle_step))
 print('Uppermost projection index: ', max_index)
