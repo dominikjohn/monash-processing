@@ -37,6 +37,7 @@ class Utils:
         results_dir = dir / channel
 
         print("Checking existing files...")
+        print('using directory ', results_dir)
         for angle_i in tqdm(range(num_angles), desc="Checking files"):
             file_path = results_dir / f'projection_{angle_i:04d}.{format}'
 

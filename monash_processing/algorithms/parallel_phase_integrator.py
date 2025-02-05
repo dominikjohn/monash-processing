@@ -28,14 +28,16 @@ class ParallelPhaseIntegrator:
         # Check which files need processing
         if self.stitched:
             if self.suffix is not None:
-                to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, f'phi_stitched_{self.suffix}')
+                channel_name = f'phi_stitched_{self.suffix}'
             else:
-                to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, 'phi_stitched')
+                channel_name = f'phi_stitched'
         else:
             if self.suffix is not None:
-                to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, f'phi_{self.suffix}')
+                channel_name = f'phi_{self.suffix}'
             else:
-                to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, 'phi')
+                channel_name = f'phi'
+
+        to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, channel_name)
 
         if not to_process:
             print("All files already processed successfully!")
@@ -66,7 +68,7 @@ class ParallelPhaseIntegrator:
                 pass
 
             # Verify all files were processed correctly
-            remaining = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, 'phi')
+            remaining = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, channel_name)
             if remaining:
                 print(f"\nWarning: {len(remaining)} files still need processing after completion.")
                 print("These might have failed during processing:")

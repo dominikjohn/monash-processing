@@ -74,6 +74,7 @@ class PhaseIntegrator:
 
         if self.stitched:
             if self.suffix is not None:
+                print('saving to ', f'phi_stitched_{self.suffix}')
                 self.data_loader.save_tiff(f'phi_stitched_{self.suffix}', projection_i, phi_corr)
             else:
                 self.data_loader.save_tiff('phi_stitched', projection_i, phi_corr)

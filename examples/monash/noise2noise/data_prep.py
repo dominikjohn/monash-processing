@@ -50,9 +50,9 @@ area_left = np.s_[:, 5:80]
 area_right = np.s_[:, -80:-5]
 stitcher.process_and_save_range(index_0, index_180, 'dx_cor')
 stitcher.process_and_save_range(index_0, index_180, 'dy_cor')
-#stitcher.process_and_save_range(index_0, index_180, 'T')
+stitcher.process_and_save_range(index_0, index_180, 'T')
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
-                                                    loader, stitched=True)
+                                                    loader, stitched=True, suffix='cor_denoised')
 parallel_phase_integrator.integrate_parallel(max_index + 1, n_workers=n_workers)
 
 volume_builder = VolumeBuilder(
