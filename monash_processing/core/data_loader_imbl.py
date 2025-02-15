@@ -111,8 +111,13 @@ class IMBLDataLoader(DataLoader):
             raise ValueError(f"No valid {type_prefix} fields found")
 
         flat_fields_array = np.array(flat_fields)
-        if not dark:  # For flat fields, average across all files
-            flat_fields_array = np.average(flat_fields_array, axis=0)
+        if not dark:  # For flat fields
+            flat_fields_array = np.average(flat_fields_array, axis=0)  # This gives us (2160, 2560)
+            # Get the number of projections from the first HDF file
+            with h5py.File(self.h5_files[0], 'r') as f:
+                num_projections = f['/entry/data/data'].shape[0]
+            # Broadcast to match projection shape
+            flat_fields_array = np.broadcast_to(flat_fields_array, (num_projections, *flat_fields_array.shape))
 
         self._save_auxiliary_data(flat_fields_array, filename)
         return flat_fields_array
