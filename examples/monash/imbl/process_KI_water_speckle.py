@@ -28,6 +28,7 @@ print(f"Loading data from {scan_path}, scan name: {scan_name}")
 loader = IMBLDataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
+
 angles = np.mean(loader.load_angles(), axis=0)
 angle_step = np.diff(angles).mean()
 print('Angle step:', angle_step)

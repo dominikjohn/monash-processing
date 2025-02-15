@@ -153,3 +153,65 @@ class IMBLDataLoader(DataLoader):
 
         self.logger.info(f"Loaded projections with shape {projections_array.shape}")
         return projections_array
+
+    def load_angles(self) -> np.ndarray:
+        """Load projection angles from acquisition log file.
+        Only reads angles from the first acquisition sequence.
+
+        Returns:
+            np.ndarray: Array of projection angles in degrees
+        """
+        # Check if angles have already been saved
+        angles_file = self.results_dir / 'projection_angles.npy'
+        if angles_file.exists():
+            try:
+                angles = np.load(angles_file)
+                self.logger.info(f"Loaded angles from {angles_file}")
+                return angles
+            except Exception as e:
+                self.logger.error(f"Failed to load angles from {angles_file}: {str(e)}")
+                raise
+
+        self.logger.info("Processed angles file not found, loading angles from acquisition log")
+
+        # Look for acquisition log file
+        log_file = self.scan_path / self.scan_name / 'acquisition.1.log'
+        if not log_file.exists():
+            log_file = self.scan_path / self.scan_name / 'acquisition.0.log'
+            if not log_file.exists():
+                raise FileNotFoundError(f"Acquisition log file not found: {log_file}")
+
+        angles = []
+
+        try:
+            with open(log_file, 'r') as f:
+                for line in f:
+                    # Stop if we hit "Acquisition finished"
+                    if 'Acquisition finished' in line:
+                        break
+
+                    # Skip lines that don't match timestamp pattern or contain "Acquisition started"
+                    if not re.match(r'\d{4}-\d{2}-\d{2}_\d{2}:\d{2}:\d{2}\.\d+', line) or 'Acquisition started' in line:
+                        continue
+
+                    # Extract angle value (third column)
+                    parts = line.strip().split()
+                    if len(parts) >= 3:
+                        try:
+                            angle = float(parts[2])
+                            angles.append(angle)
+                        except ValueError:
+                            continue
+
+            # Convert to numpy array
+            angles_array = np.array(angles)
+
+            # Save the angles
+            self._save_auxiliary_data(angles_array, 'projection_angles.npy')
+
+            self.logger.info(f"Loaded angles array with shape {angles_array.shape}")
+            return angles_array
+
+        except Exception as e:
+            self.logger.error(f"Failed to load angles from log file {log_file}: {str(e)}")
+            raise
