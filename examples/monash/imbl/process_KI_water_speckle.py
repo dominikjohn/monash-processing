@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 # Set your parametersDominik_KI_water_speckle
 scan_path = Path("/data/imbl/23081/input/Day2/")
 scan_name = "Dominik_KI_water_speckle"
-pixel_size = 9e-6 # m
+pixel_size = 9.07e-6 # m
 energy = 25000 # eV
 prop_distance = 1.0 #
 max_angle = 364
