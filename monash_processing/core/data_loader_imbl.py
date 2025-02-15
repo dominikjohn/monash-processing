@@ -90,34 +90,25 @@ class IMBLDataLoader(DataLoader):
 
         for h5_file in tqdm(self.h5_files, desc=f"Loading {type_prefix} fields", unit="file"):
             try:
-                # Get corresponding background/dark field file
                 field_file = self._get_corresponding_file(h5_file, type_prefix)
-
-                # Load and process the data
                 with h5py.File(field_file, 'r') as f:
                     data = f['/entry/data/data'][:]
-                    if data.size > 0:  # Check if data is not empty
+                    if data.size > 0:
                         averaged_flat = self._average_fields(data)
                         flat_fields.append(averaged_flat)
                     else:
                         self.logger.warning(f"Empty dataset in {field_file}")
-
             except Exception as e:
                 self.logger.error(f"Failed to load {type_prefix} field from {field_file}: {str(e)}")
-                self.logger.error(f"Error details: {str(e)}")
                 raise
 
         if not flat_fields:
             raise ValueError(f"No valid {type_prefix} fields found")
 
         flat_fields_array = np.array(flat_fields)
-        if not dark:  # For flat fields
-            flat_fields_array = np.average(flat_fields_array, axis=0)  # This gives us (2160, 2560)
-            # Get the number of projections from the first HDF file
-            with h5py.File(self.h5_files[0], 'r') as f:
-                num_projections = f['/entry/data/data'].shape[0]
-            # Broadcast to match projection shape
-            flat_fields_array = np.broadcast_to(flat_fields_array, (num_projections, *flat_fields_array.shape))
+
+        if dark:  # For dark fields, average across all files
+            flat_fields_array = np.average(flat_fields_array, axis=0)
 
         self._save_auxiliary_data(flat_fields_array, filename)
         return flat_fields_array
