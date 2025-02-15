@@ -25,13 +25,13 @@ wavevec = 2 * np.pi * energy / (scipy.constants.physical_constants['Planck const
 
 loader = DataLoader(Path("/data/mct/22203/"), "P6_Manual")
 edensity_volume = loader.load_reconstruction('recon_phase', binning_factor=4)
-mu_volume = loader.load_reconstruction('recon_att', binning_factor=1)
+mu_volume = loader.load_reconstruction('recon_att', binning_factor=4)
 
 #edensity_volume = block_reduce(edensity_volume, (binning_factor, 1, 1), np.mean)
 #mu_volume = block_reduce(mu_volume, (binning_factor, 1, 1), np.mean)
 
-edensity_volume = block_reduce(edensity_volume, (binning_factor*2, 2, 2), np.mean)
-mu_volume = block_reduce(mu_volume, (binning_factor*2, 2, 2), np.mean)
+edensity_volume = block_reduce(edensity_volume, (binning_factor, 1, 1), np.mean)
+mu_volume = block_reduce(mu_volume, (binning_factor*1, 1, 1), np.mean)
 #filtered_mu_volume = cv2.medianBlur(mu_volume.astype(np.float32), 3)
 
 calibration = .8567
@@ -57,6 +57,14 @@ material1 = {
     'electrons': 25.2,
     'composition': {'C': 1.8996789727126806, 'H': 5.799357945425361, 'O': 1.0}
 }
+
+# Pure ethanol
+#material1 = {
+#    'density': 0.789,  # g/cm³
+#    'molecular_weight': 46.068,  # g/mol
+#    'electrons': 26,
+#    'composition': {'C': 2, 'H': 6, 'O': 1}
+#}
 
 # PMMA
 material2 = {
@@ -131,7 +139,8 @@ def plot_slice(data, slice_idx, pixel_size,
                vmin=None,
                vmax=None,
                figsize=(10, 8),
-               fontsize=16):
+               fontsize=16,
+               show_size=True):
     # Set the font size globally
     plt.rcParams.update({'font.size': fontsize})
 
@@ -147,26 +156,23 @@ def plot_slice(data, slice_idx, pixel_size,
                    vmin=vmin,
                    vmax=vmax)
 
-    # Add scalebar
-    scalebar = ScaleBar(pixel_size,  # meters per pixel
-                        "m",  # meter unit
-                        length_fraction=.2,
-                        color='white',
-                        box_alpha=0,
-                        location='lower right',
-                        font_properties={'size': fontsize})
-    ax.add_artist(scalebar)
+    if show_size:
+        # Add scalebar
+        scalebar = ScaleBar(pixel_size,  # meters per pixel
+                            "m",  # meter unit
+                            length_fraction=.2,
+                            color='white',
+                            box_alpha=0,
+                            location='lower right',
+                            font_properties={'size': fontsize})
+        ax.add_artist(scalebar)
 
     # Add colorbar with matching height and title
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.15)  # Increased pad from 0.05 to 0.15
     cbar = plt.colorbar(im, cax=cax)
-    cbar.set_label(r'Ethanol [v/v]', size=fontsize, labelpad=15)
+    cbar.set_label(f'{title} [v/v]', size=fontsize, labelpad=15)
     cbar.ax.tick_params(labelsize=fontsize)
-
-    # Set title if provided
-    if title:
-        ax.set_title(title, fontsize=fontsize)
 
     ax.set_xticks([])
     ax.set_yticks([])
@@ -177,26 +183,31 @@ def plot_slice(data, slice_idx, pixel_size,
     return fig, ax
 
 fig, ax = plot_slice(n2_volume.transpose(1, 0, 2),
-                     slice_idx=150,
+                     slice_idx=300,
                      pixel_size=psize,
                      vmin=0,
                      vmax=1.2,
-                     title="",
-                     cmap='grey')
+                     title="PVC",
+                     cmap='grey',
+                     fontsize=24,
+                     show_size=False,
+                     )
 home_dir = os.path.expanduser('~')
-plt.savefig(os.path.join(home_dir, f'mat_decomp_pvc_8binned.png'), dpi=1200, bbox_inches='tight')
+plt.savefig(os.path.join(home_dir, f'mat_decomp_pvc_4binned.png'), dpi=1200, bbox_inches='tight')
 plt.show()
+
 
 fig, ax = plot_slice(n1_volume.transpose(1, 0, 2),
-                     slice_idx=150,
+                     slice_idx=300,
                      pixel_size=psize,
                      vmin=0,
-                     vmax=1.8,
-                     title="",
-                     cmap='grey')
+                     vmax=2.6,
+                     title="Ethanol",
+                     cmap='grey',
+                     fontsize=24,
+                     show_size=False,
+                     )
+
 home_dir = os.path.expanduser('~')
-plt.savefig(os.path.join(home_dir, f'mat_decomp_ethanol_8binned.png'), dpi=1200, bbox_inches='tight')
+plt.savefig(os.path.join(home_dir, f'mat_decomp_ethanol_4binned.png'), dpi=1200, bbox_inches='tight')
 plt.show()
-
-
-

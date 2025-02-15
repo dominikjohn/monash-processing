@@ -65,9 +65,7 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
-# Print the maximum solubility point
 m_KI = 1.8  # g
-V_eth = 100  # ml
-m_eth = V_eth * rho_eth
-mass_percent = (m_KI / (m_KI + m_eth)) * 100
+m_ethanol = rho_eth * 100 # g (100 mL * 1.00 g/mL)
+mass_percent = (m_KI / (m_KI + m_ethanol)) * 100
 print(f"\nMaximum solubility: {mass_percent:.2f}%")

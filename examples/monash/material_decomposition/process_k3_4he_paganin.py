@@ -118,7 +118,8 @@ process_proj_partial = partial(
 )
 
 # Create index list
-indices = range(index_0, index_180+1)
+#indices = range(index_0, index_180+1)
+indices = range(index_180, index_180*2+1)
 
 # Create process pool and run parallel processing
 with Pool(num_cores) as pool:

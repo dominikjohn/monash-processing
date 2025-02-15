@@ -1,8 +1,8 @@
 from monash_processing.core.data_loader import DataLoader
-import h5py
+#import h5py
 from pathlib import Path
 import numpy as np
-#from monash_processing.core.volume_builder import VolumeBuilder
+from monash_processing.core.volume_builder import VolumeBuilder
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 
