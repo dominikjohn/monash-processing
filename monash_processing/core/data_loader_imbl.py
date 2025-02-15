@@ -4,7 +4,7 @@ import logging
 import numpy as np
 from tqdm import tqdm
 import h5py
-from typing import Union
+from typing import Union, Optional
 from monash_processing.core.data_loader import DataLoader
 
 class IMBLDataLoader(DataLoader):

@@ -1,6 +1,6 @@
+from monash_processing.core.data_loader_imbl import IMBLDataLoader
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
-from monash_processing.core.data_loader import DataLoader
 try:
     from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 except ImportError:
@@ -25,7 +25,7 @@ n_workers = 100
 
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
-loader = DataLoader(scan_path, scan_name)
+loader = IMBLDataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
 angles = np.mean(loader.load_angles(), axis=0)
