@@ -7,6 +7,7 @@ import h5py
 from typing import Union, Optional
 from monash_processing.core.data_loader import DataLoader
 
+
 class IMBLDataLoader(DataLoader):
     """Handles loading and organizing scan data from HDF files for IMBL beamline."""
 
@@ -34,12 +35,13 @@ class IMBLDataLoader(DataLoader):
             return numbers
 
         # Find all sample files matching the pattern SAMPLE_YI_ZJ.hdf
-        sample_pattern = f"{scan_name}_Y*_Z*.hdf"
         self.h5_files = sorted(
-            [f for f in self.scan_path.glob(sample_pattern)
-             if re.search(r'Y\d+_Z\d+\.hdf$', str(f))],
+            [f for f in self.scan_path.glob("SAMPLE*.hdf")],
             key=natural_sort_key
         )
+
+        if not self.h5_files:
+            self.logger.warning(f"No SAMPLE files found in {self.scan_path}")
 
         self.logger.info(f"Found {len(self.h5_files)} HDF files:")
         for h5_file in self.h5_files:
@@ -48,12 +50,15 @@ class IMBLDataLoader(DataLoader):
     def _get_corresponding_file(self, sample_file: Path, prefix: str) -> Path:
         """Get corresponding background or dark field file for a given sample file."""
         # Extract Y and Z values from sample filename
-        match = re.search(r'Y(\d+)_Z(\d+)\.hdf$', str(sample_file))
-        if not match:
-            raise ValueError(f"Invalid sample filename pattern: {sample_file}")
+        # Assuming filename format like "SAMPLE_Y1_Z1.hdf"
+        basename = sample_file.stem  # Gets filename without extension
+        parts = basename.split('_')
+        if len(parts) < 3:
+            raise ValueError(f"Invalid sample filename format: {sample_file}")
 
-        y_val, z_val = match.groups()
-        corresponding_file = sample_file.parent / f"{prefix}_Y{y_val}_Z{z_val}_AFTER.hdf"
+        # Keep the Y and Z parts, replace SAMPLE with BG/DF
+        new_name = f"{prefix}_{'_'.join(parts[1:])}_AFTER.hdf"
+        corresponding_file = sample_file.parent / new_name
 
         if not corresponding_file.exists():
             raise FileNotFoundError(f"Corresponding {prefix} file not found: {corresponding_file}")
@@ -88,13 +93,20 @@ class IMBLDataLoader(DataLoader):
 
                 # Load and process the data
                 with h5py.File(field_file, 'r') as f:
-                    data = f['/entry/data/data'][:]  # Image data path
-                    averaged_flat = self._average_fields(data)
-                    flat_fields.append(averaged_flat)
+                    data = f['/entry/data/data'][:]
+                    if data.size > 0:  # Check if data is not empty
+                        averaged_flat = self._average_fields(data)
+                        flat_fields.append(averaged_flat)
+                    else:
+                        self.logger.warning(f"Empty dataset in {field_file}")
 
             except Exception as e:
                 self.logger.error(f"Failed to load {type_prefix} field from {field_file}: {str(e)}")
+                self.logger.error(f"Error details: {str(e)}")
                 raise
+
+        if not flat_fields:
+            raise ValueError(f"No valid {type_prefix} fields found")
 
         flat_fields_array = np.array(flat_fields)
         if not dark:  # For flat fields, average across all files
