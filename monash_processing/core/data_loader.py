@@ -8,7 +8,7 @@ import tifffile
 from contourpy.util.data import simple
 from tqdm import tqdm
 import cv2
-from monash_processing.core.eigenflats import EigenflatManager
+#from monash_processing.core.eigenflats import EigenflatManager
 from PIL import Image
 
 class DataLoader:
@@ -105,37 +105,6 @@ class DataLoader:
             flat_fields_array = np.array(flat_fields)
             self._save_auxiliary_data(flat_fields_array, filename)
             return flat_fields_array
-
-        mean_flats = []
-
-        # PCA version
-        for h5_file in tqdm(self.h5_files, desc=f"Loading {type} fields", unit="file"):
-            prefix = 'FLAT_FIELD/BEFORE'
-            data = self.load_raw_dataset(h5_file, prefix)
-
-            data = data - dark # Subtract dark field
-
-            print('Median filtering flats of shape ', str(data.shape))
-            # Apply median blur to each image separately
-            med_im = np.zeros_like(data, dtype=np.float32)
-            for i in range(data.shape[0]):
-                med_im[i] = cv2.medianBlur(data[i].astype(np.float32), 5)
-
-            filter_im = (data / med_im)
-            mask = (filter_im < np.percentile(filter_im, 0.001 * 100)) | (data > 6000)
-            np.putmask(data, mask, med_im[mask])
-
-            eigenflat, meanflat = EigenflatManager.eigenflats_PCA(data)
-            flat_fields.append(eigenflat)
-            mean_flats.append(meanflat)
-
-        flat_fields_array = np.array(flat_fields)  # Shape: (N, ncomp, X, Y)
-        mean_flats_array = np.array(mean_flats)  # Shape: (N, X, Y)
-
-        self._save_auxiliary_data(flat_fields_array, filename)
-        self._save_auxiliary_data(mean_flats_array, 'mean_' + filename)
-
-        return flat_fields_array, mean_flats_array
 
     def load_projections(self, projection_i: Optional[int] = None, step_i: Optional[int] = None) -> np.ndarray:
         """
