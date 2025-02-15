@@ -7,7 +7,6 @@ import h5py
 from typing import Union, Optional
 from monash_processing.core.data_loader import DataLoader
 
-
 class IMBLDataLoader(DataLoader):
     """Handles loading and organizing scan data from HDF files for IMBL beamline."""
 
@@ -31,12 +30,15 @@ class IMBLDataLoader(DataLoader):
 
         def natural_sort_key(path):
             numbers = [int(text) if text.isdigit() else text.lower()
-                       for text in re.split('([0-9]+)', str(path))]
+                      for text in re.split('([0-9]+)', str(path))]
             return numbers
+
+        # Look in the subdirectory matching scan_name
+        scan_dir = self.scan_path / self.scan_name
 
         # Find all sample files matching the pattern SAMPLE_YI_ZJ.hdf
         self.h5_files = sorted(
-            [f for f in self.scan_path.glob("SAMPLE*.hdf")],
+            [f for f in scan_dir.glob("SAMPLE*.hdf")],
             key=natural_sort_key
         )
 
@@ -134,7 +136,7 @@ class IMBLDataLoader(DataLoader):
                     if projection_i is not None:
                         if projection_i >= dataset.shape[0]:
                             raise ValueError(f"Projection index {projection_i} out of range "
-                                             f"(max: {dataset.shape[0] - 1}) in file {h5_file}")
+                                          f"(max: {dataset.shape[0] - 1}) in file {h5_file}")
                         data = dataset[projection_i:projection_i + 1][0]
                     else:
                         data = dataset[:]
