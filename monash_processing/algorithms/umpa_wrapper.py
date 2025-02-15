@@ -43,7 +43,7 @@ class UMPAProcessor:
         self.channels = ['dx', 'dy', 'T', 'df', 'f']
 
         # Create results directories
-        self.results_dir = self.scan_path / 'results' / self.scan_name
+        self.results_dir = self.data_loader.results_dir
         for channel in self.channels:
             (self.results_dir / channel).mkdir(parents=True, exist_ok=True)
         self.logger.info(f'Created results directory at {self.results_dir}')

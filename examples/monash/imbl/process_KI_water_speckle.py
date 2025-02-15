@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 # Set your parametersDominik_KI_water_speckle
 scan_path = Path("/data/imbl/23081/input/Day2/")
 scan_name = "Dominik_KI_water_speckle"
-pixel_size = 1.444e-6 # m
+pixel_size = 9e-6 # m
 energy = 25000 # eV
 prop_distance = 1.0 #
 max_angle = 364
@@ -29,18 +29,14 @@ loader = IMBLDataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
 
-angles = np.mean(loader.load_angles(), axis=0)
+angles = loader.load_angles()
 angle_step = np.diff(angles).mean()
 print('Angle step:', angle_step)
 index_0 = np.argmin(np.abs(angles - 0))
-index_180 = np.argmin(np.abs(angles - 180))
+index_360 = np.argmin(np.abs(angles - 360))
 print('Index at 0°:', index_0)
-print('Index at 180°:', index_180)
-
-# Get number of projections (we need this for the loop)
-with h5py.File(loader.h5_files[0], 'r') as f:
-    num_angles = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA'].shape[0]
-    print(f"Number of projections: {num_angles}")
+print('Index at 360°:', index_360)
+num_angles = angles.shape[0]
 
 # 2. Initialize preprocessor and UMPA processor
 print("Initializing processors")
