@@ -62,7 +62,9 @@ area_left = np.s_[:-1500, :120]
 area_right = np.s_[:-1500, -35:]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
                                                     loader, stitched=False)
-parallel_phase_integrator.integrate_parallel(index_360+1, n_workers=n_workers)
+parallel_phase_integrator.integrate_parallel(2399+1, n_workers=n_workers)
+
+angles = np.arange(0, 360+0.15011, 0.15011)
 
 volume_builder = VolumeBuilder(
         data_loader=loader,
@@ -70,7 +72,7 @@ volume_builder = VolumeBuilder(
         energy=energy,
         prop_distance=prop_distance,
         pixel_size=pixel_size,
-        is_stitched=True,
+        is_stitched=False,
         channel='phase',
         detector_tilt_deg=0,
         show_geometry=False,
@@ -78,9 +80,40 @@ volume_builder = VolumeBuilder(
         is_360_deg=True,
     )
 
-volume_builder.sweep_centershift(np.linspace(-40, 40, 5))
+volume_builder.sweep_centershift(np.linspace(-12, -11, 5))
 
-volume_builder.reconstruct(center_shift=0, chunk_count=20)
+volume_builder.reconstruct(center_shift=-11.5, chunk_count=20)
+
+volume_builder = VolumeBuilder(
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=False,
+        channel='T',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=True,
+    )
+volume_builder.reconstruct(center_shift=-11.5, chunk_count=20)
+
+volume_builder = VolumeBuilder(
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=False,
+        channel='df',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=True,
+    )
+volume_builder.reconstruct(center_shift=-11.5, chunk_count=20)
+
 
 volume_builder = VolumeBuilder(
         data_loader=loader,

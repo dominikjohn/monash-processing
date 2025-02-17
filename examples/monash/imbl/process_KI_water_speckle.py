@@ -60,48 +60,12 @@ results = processor.process_projections(
 
 #center_shifts = np.linspace(307, 312, 10)
 #volume_builder.sweep_centershift(center_shifts)
-area_left = np.s_[:, 5:80]
-area_right = np.s_[:, -80:-5]
+area_left = np.s_[:-650, 5:150]
+area_right = np.s_[:-650, -150:-5]
 
-max_index = int(np.round(180 / angle_step))
-print('Uppermost projection index: ', max_index)
-
-center_shift_list = np.linspace(1300, 1320, 10)
-for center_shift in center_shift_list:
-    suffix = f'{(2 * center_shift):.2f}'
-    stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=center_shift / 2, slices=(1000, 1010), suffix=suffix)
-    stitcher.process_and_save_range(index_0, index_180, 'dx')
-    stitcher.process_and_save_range(index_0, index_180, 'dy')
-    parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
-                                                        loader, stitched=True, suffix=suffix)
-    parallel_phase_integrator.integrate_parallel(max_index+1, n_workers=n_workers)
-    volume_builder = VolumeBuilder(
-        data_loader=loader,
-        original_angles=angles,
-        energy=energy,
-        prop_distance=prop_distance,
-        pixel_size=pixel_size,
-        is_stitched=True,
-        channel='phase',
-        detector_tilt_deg=0,
-        show_geometry=False,
-        sparse_factor=1,
-        is_360_deg=False,
-        suffix=suffix
-    )
-    volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(2,8))
-
-
-best_value = 1307
-stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2, format='tif')
-stitcher.process_and_save_range(index_0, index_180, 'dx')
-stitcher.process_and_save_range(index_0, index_180, 'dy')
-stitcher.process_and_save_range(index_0, index_180, 'T_pb_st')
-area_left = np.s_[:, 5:80]
-area_right = np.s_[:, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
-                                                    loader, stitched=True)
-parallel_phase_integrator.integrate_parallel(max_index+1, n_workers=n_workers)
+                                                    loader, stitched=False)
+parallel_phase_integrator.integrate_parallel(2000, n_workers=n_workers)
 
 volume_builder = VolumeBuilder(
         data_loader=loader,
@@ -109,15 +73,82 @@ volume_builder = VolumeBuilder(
         energy=energy,
         prop_distance=prop_distance,
         pixel_size=pixel_size,
-        is_stitched=True,
+        is_stitched=False,
         channel='phase',
         detector_tilt_deg=0,
         show_geometry=False,
         sparse_factor=1,
-        is_360_deg=False,
+        is_360_deg=True,
     )
 
 volume_builder.reconstruct(center_shift=0, chunk_count=20)
+
+import re
+import numpy as np
+from typing import List, Dict, Tuple
+
+
+def extract_sample_angles(log_text: str) -> np.ndarray:
+    """
+    Extract angles from sample scans and return as 2D numpy array [n_scans, n_angles].
+    Handles gaps in indices by filling a fixed-size array.
+    """
+    scans: Dict[str, Dict[int, float]] = {}
+    current_scan: Dict[int, float] = {}
+    is_sample = False
+    scan_name = ""
+    max_index = 0
+
+    for line in log_text.split('\n'):
+        if 'filename prefix' in line and 'SAMPLE_' in line:
+            if current_scan and scan_name:
+                scans[scan_name] = current_scan
+            current_scan = {}
+            is_sample = True
+            scan_name = re.search(r'"([^"]+)"', line).group(1)
+        elif 'Acquisition finished' in line:
+            if is_sample and current_scan and scan_name:
+                scans[scan_name] = current_scan
+            current_scan = {}
+            is_sample = False
+        elif is_sample:
+            # Extract both index and angle
+            match = re.match(r'\d{4}-\d{2}-\d{2}.*?(\d+)\s+(\d+\.\d+)', line)
+            if match:
+                idx, angle = int(match.group(1)), float(match.group(2))
+                current_scan[idx] = angle
+                max_index = max(max_index, idx)
+
+    # Print diagnostic information
+    print(f"Found {len(scans)} sample scans:")
+    for name, measurements in scans.items():
+        indices = list(measurements.keys())
+        print(f"  {name}: {len(measurements)} measurements, indices: {min(indices)}-{max(indices)}")
+
+    # Create array and fill values
+    array_size = max_index + 1
+    angle_array = np.full((len(scans), array_size), np.nan)
+
+    for i, (name, measurements) in enumerate(sorted(scans.items())):
+        for idx, angle in measurements.items():
+            angle_array[i, idx] = angle
+
+    print(f"\nFinal array shape: {angle_array.shape}")
+    print("Used scans (in order):")
+    for name in sorted(scans.keys()):
+        print(f"  {name}")
+
+    # Print statistics about gaps
+    nan_counts = np.isnan(angle_array).sum(axis=1)
+    for i, (name, nan_count) in enumerate(zip(sorted(scans.keys()), nan_counts)):
+        gap_percent = (nan_count / array_size) * 100
+        print(f"  {name}: {nan_count} gaps ({gap_percent:.1f}%)")
+
+    return angle_array
+
+with open('/data/imbl/23081/input/Day3/Dominik_KI_salts_0p75m_30keV_0p16s/acquisition.0.log', 'r') as f:
+    angles = np.nanmean(extract_sample_angles(f.read()), axis=0)
+
 
 volume_builder = VolumeBuilder(
         data_loader=loader,
@@ -125,16 +156,14 @@ volume_builder = VolumeBuilder(
         energy=energy,
         prop_distance=prop_distance,
         pixel_size=pixel_size,
-        is_stitched=True,
-        channel='T_pb_st_stitched',
+        is_stitched=False,
+        channel='att',
         detector_tilt_deg=0,
         show_geometry=False,
         sparse_factor=1,
-        is_360_deg=False,
+        is_360_deg=True,
     )
 
-volume_builder.reconstruct(center_shift=0, chunk_count=20)
-
-volume_builder.sweep_centershift([-1, 0.5, 0, 0.5, 1])
+volume_builder.sweep_centershift(np.linspace(-2, 2, 5))
 
 volume_builder.reconstruct(center_shift=0, chunk_count=20)

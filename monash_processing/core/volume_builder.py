@@ -237,7 +237,8 @@ class VolumeBuilder:
                 volume = self.convert_to_mu(volume)
                 rwidth = 15  # Attenuation needs a larger ring filter width
 
-            volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth, geometry=volume.geometry)
+            print('no ring filter')
+            #volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth, geometry=volume.geometry)
             # Add binning info to folder name if binning was applied
             prefix = 'recon'
             if custom_folder is not None:
