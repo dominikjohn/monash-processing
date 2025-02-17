@@ -88,6 +88,7 @@ class UMPAProcessor:
                 return []
 
             print(f"Starting parallel processing for {len(to_process)} projections...")
+            print(f"Using window size: {self.w}")
 
             # Set memory limits and worker configuration
             cluster = LocalCluster(
@@ -106,7 +107,7 @@ class UMPAProcessor:
             flats_future = client.scatter(flats)
 
             # Create batched tasks
-            batch_size = 5  # Adjust based on your memory constraints
+            batch_size = 5
             results = []
 
             for i in range(0, len(to_process), batch_size):

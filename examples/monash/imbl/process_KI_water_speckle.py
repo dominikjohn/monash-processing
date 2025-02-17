@@ -20,7 +20,7 @@ pixel_size = 9.07e-6 # m
 energy = 30000 # eV
 prop_distance = .75 #
 max_angle = 364
-umpa_w = 1
+umpa_w = 3
 n_workers = 100
 
 # 1. Load reference data
@@ -82,11 +82,6 @@ volume_builder = VolumeBuilder(
     )
 
 volume_builder.reconstruct(center_shift=0, chunk_count=20)
-
-
-
-with open('/data/imbl/23081/input/Day3/Dominik_KI_salts_0p75m_30keV_0p16s/acquisition.0.log', 'r') as f:
-    angles = np.nanmean(extract_sample_angles(f.read()), axis=0)
 
 
 volume_builder = VolumeBuilder(
