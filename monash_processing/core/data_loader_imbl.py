@@ -183,7 +183,10 @@ class IMBLDataLoader(DataLoader):
             if not log_file.exists():
                 raise FileNotFoundError(f"Acquisition log file not found: {log_file}")
 
-        return IMBLDataLoader.extract_sample_angles(log_file.read_text())
+        # Extracts angles from the log file
+        # Sometimes scans skip angles for some reason, so we average over all scans
+        angles = IMBLDataLoader.extract_sample_angles(log_file.read_text())
+        return np.nanmean(angles, axis=0)
 
     @staticmethod
     def extract_sample_angles(log_text: str) -> np.ndarray:
