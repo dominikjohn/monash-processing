@@ -63,7 +63,10 @@ class IMBLDataLoader(DataLoader):
         corresponding_file = sample_file.parent / new_name
 
         if not corresponding_file.exists():
-            raise FileNotFoundError(f"Corresponding {prefix} file not found: {corresponding_file}")
+            new_name = f"{prefix}_{'_'.join(parts[1:])}_BEFORE.hdf"
+            corresponding_file = sample_file.parent / new_name
+            if not corresponding_file.exists():
+                raise FileNotFoundError(f"Corresponding {prefix} file not found: {corresponding_file}")
 
         return corresponding_file
 

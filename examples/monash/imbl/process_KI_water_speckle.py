@@ -14,11 +14,11 @@ matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
 import matplotlib.pyplot as plt
 
 # Set your parametersDominik_KI_water_speckle
-scan_path = Path("/data/imbl/23081/input/Day2/")
-scan_name = "Dominik_KI_water_speckle"
+scan_path = Path("/data/imbl/23081/input/Day3/")
+scan_name = "Dominik_KI_salts_0p75m_30keV_0p16s"
 pixel_size = 9.07e-6 # m
-energy = 25000 # eV
-prop_distance = 1.0 #
+energy = 30000 # eV
+prop_distance = .75 #
 max_angle = 364
 umpa_w = 1
 n_workers = 100
