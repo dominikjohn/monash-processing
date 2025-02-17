@@ -44,8 +44,8 @@ projections = loader.load_projections(projection_i=0)
 projections_meaned = np.mean(projections, axis=0)
 flats_meaned = np.mean(flat_fields, axis=0)
 
-gamma = 500
-devolver = DevolvingProcessor(gamma, 5e-5, prop_distance*1e6, pixel_size*1e6, loader)
+gamma = 14
+devolver = DevolvingProcessor(gamma, 5e-5, prop_distance*1e6, pixel_size*1e6, loader, '/data/mct/22203/Flatfields_340AM_Wed13Nov.h5')
 devolver.process_projections(index_180)
 
 for i in tqdm(range(len(angles))):
@@ -118,6 +118,7 @@ stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=bes
 stitcher.process_and_save_range(index_0, index_180, 'dx')
 stitcher.process_and_save_range(index_0, index_180, 'dy')
 stitcher.process_and_save_range(index_0, index_180, 'T_raw')
+stitcher.process_and_save_range(index_0, index_180, 'df')
 area_left = np.s_[:, 5:80]
 area_right = np.s_[:, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,

@@ -84,11 +84,18 @@ class VolumeBuilder:
     def get_valid_indices(self, file_count):
         print(f"File count: {file_count}")
         print(f"Original angles: {self.original_angles}")
+
         angle_180 = self.original_angles[file_count-1]
-        print(f"Actual angle 180: {angle_180}")
-        if angle_180 - 180 > 0.1:
-            print(str(angle_180-180))
-            print('"###### WARNING! The 180° projection is not within 0.1 of 180 degrees! This can lead to unexpected results.')
+        if self.is_360_deg:
+            print(f"Actual angle 360: {angle_180}")
+            if angle_180 - 360 > 0.1:
+                print(str(angle_180-360))
+                print('###### WARNING! The 360° projection is not within 0.1 of 360 degrees! This can lead to unexpected results.')
+        else:
+            print(f"Actual angle 180: {angle_180}")
+            if angle_180 - 180 > 0.1:
+                print(str(angle_180-180))
+                print('"###### WARNING! The 180° projection is not within 0.1 of 180 degrees! This can lead to unexpected results.')
         return self.original_angles[:file_count], np.arange(file_count)
 
     def get_acquisition_geometry(self, n_cols, n_rows, angles, center_shift):

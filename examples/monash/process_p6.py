@@ -80,7 +80,7 @@ volume_builder = VolumeBuilder(
         is_360_deg=False,
     )
 
-#volume_builder.sweep_centershift(np.linspace(17.5, 19, 5))
+volume_builder.sweep_centershift(np.linspace(17.5, 19, 5))
 volume_builder.reconstruct(center_shift=17.5, chunk_count=10)
 
 volume_builder = VolumeBuilder(
