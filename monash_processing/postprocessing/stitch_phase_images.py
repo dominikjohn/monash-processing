@@ -48,7 +48,7 @@ class ProjectionStitcher:
     def stitch_projection_pair(self, proj_index: int, channel: str) -> Tuple[np.ndarray, dict]:
 
         proj1_raw, proj2_raw = self.load_opposing_projections(proj_index, channel)
-        if channel.startswith('T'):
+        if channel.startswith('T') or channel.startswith('df'):
             proj1 = proj1_raw
             proj2_flipped = np.fliplr(proj2_raw)
         else:
