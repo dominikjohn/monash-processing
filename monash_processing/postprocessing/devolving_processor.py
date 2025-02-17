@@ -13,23 +13,43 @@ import scipy
 from scipy import ndimage
 from monash_processing.core.data_loader import DataLoader
 from tqdm import tqdm
+import h5py
+
 
 class DevolvingProcessor:
 
-    def __init__(self, gamma, wavelength, prop, pixel_size, data_loader: DataLoader):
+    def __init__(self, gamma, wavelength, prop, pixel_size, data_loader: DataLoader, flat_path):
         self.data_loader = data_loader
         self.save_dir = data_loader.get_save_path()
         self.gamma = gamma
         self.wavelength = wavelength
         self.prop = prop
         self.pixel_size = pixel_size
+        self.flat_path = flat_path
+
+    def load_pure_flat_field(self):
+        """
+        Loads and averages flat field images from H5 file.
+        Returns the averaged flat field image.
+        """
+        # Read the H5 file
+        with h5py.File(self.flat_path, 'r') as f:
+            # Navigate to the dataset
+            dataset = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA']
+
+            # Load all images and compute the mean
+            # Using [:] loads all data into memory
+            flat_field = np.mean(dataset[:], axis=0)
+
+            return flat_field
 
     def process_projections(self, num_projections: int):
-        Ir = self.data_loader.load_flat_fields()
+        pure_flat = self.load_pure_flat_field()
         dark_current = self.data_loader.load_flat_fields(dark=True)
+        Ir = (self.data_loader.load_flat_fields()) / (pure_flat - dark_current)
 
         for i in tqdm(range(num_projections)):
-            Is = self.data_loader.load_projections(projection_i=i) - dark_current
+            Is = (self.data_loader.load_projections(projection_i=i) - dark_current) / (pure_flat - dark_current)
             DF_atten, positive_D, negative_D, _ = self.Multiple_Devolving(Is, Ir, self.gamma, self.wavelength, self.prop, self.pixel_size)
             self.data_loader.save_tiff('DF_atten', i, DF_atten)
             self.data_loader.save_tiff('positive_D', i, positive_D)

@@ -44,7 +44,7 @@ projections = loader.load_projections(projection_i=0)
 projections_meaned = np.mean(projections, axis=0)
 flats_meaned = np.mean(flat_fields, axis=0)
 
-gamma = 13.5
+gamma = 500
 devolver = DevolvingProcessor(gamma, 5e-5, prop_distance*1e6, pixel_size*1e6, loader)
 devolver.process_projections(index_180)
 
