@@ -4,6 +4,8 @@ import logging
 from typing import Dict, Optional, Union, List
 import UMPA
 
+import gc
+
 from monash_processing.core.eigenflats import EigenflatManager
 from monash_processing.core.data_loader import DataLoader
 from dask import delayed, compute
@@ -48,26 +50,16 @@ class UMPAProcessor:
             (self.results_dir / channel).mkdir(parents=True, exist_ok=True)
         self.logger.info(f'Created results directory at {self.results_dir}')
 
-    def _process_single_projection(self, angle_i: int) -> Dict[str, Union[str, int, np.ndarray]]:
-        """
-        Process a single projection for a specific angle.
-
-        Args:
-            flats: Flat field images.
-            angle_i: Index of the projection angle.
-
-        Returns:
-            A dictionary containing the results for the angle.
-        """
+    def _process_single_projection(self, angle_i: int, dark_future, flats_future) -> Dict[
+        str, Union[str, int, np.ndarray]]:
         try:
-            # Load projection data
-            dark = self.data_loader.load_flat_fields(dark=True)
+            # Use the scattered data instead of reloading
+            dark = dark_future
+            flats = flats_future
             projection = self.data_loader.load_projections(projection_i=angle_i) - dark
-            flats = self.data_loader.load_flat_fields()
 
             print(f"Projection shape: {projection.shape}, Flats shape: {flats.shape}")
 
-            # Perform UMPA processing
             results = UMPA.match_unbiased(
                 projection.astype(np.float64),
                 flats.astype(np.float64),
@@ -88,41 +80,52 @@ class UMPAProcessor:
             return {'angle': angle_i, 'status': 'error', 'error': str(e)}
 
     def process_projections(self, num_angles: int) -> List[Dict]:
-        """
-        Process all projections in parallel using Dask.
+        try:
+            to_process = Utils.check_existing_files(self.results_dir, num_angles, min_size_kb=5, channel='dx')
 
-        Args:
-            flats: Flat field images.
-            num_angles: Number of projection angles.
+            if not to_process:
+                print("All files already processed successfully!")
+                return []
 
-        Returns:
-            List of dictionaries containing the results for each angle.
-        """
-        n_workers = self.n_workers
-
-        to_process = Utils.check_existing_files(self.results_dir, num_angles, min_size_kb=5, channel='dx')
-
-        if not to_process:
-            print("All files already processed successfully!")
-            return []
-        else:
             print(f"Starting parallel processing for {len(to_process)} projections...")
 
-        cluster = LocalCluster(n_workers=n_workers, threads_per_worker=1)
-        # No active client; create a new one
-        client = Client(cluster)
+            # Set memory limits and worker configuration
+            cluster = LocalCluster(
+                n_workers=self.n_workers,
+                threads_per_worker=1,
+                memory_limit='10GB'  # Adjust based on your system
+            )
+            client = Client(cluster)
 
-        self.logger.info(f"Created a new Dask client with {self.n_workers} workers")
+            # Load shared data once
+            dark = self.data_loader.load_flat_fields(dark=True)
+            flats = self.data_loader.load_flat_fields()
 
-        # Create delayed tasks
-        tasks = [
-            delayed(self._process_single_projection)(angle_i)
-            for angle_i in range(num_angles)
-        ]
+            # Scatter shared data to workers
+            dark_future = client.scatter(dark)
+            flats_future = client.scatter(flats)
 
-        # Compute tasks in parallel
-        self.logger.info(f"Starting parallel processing of {num_angles} projections")
-        with ProgressBar():
-            results = compute(*tasks)
+            # Create batched tasks
+            batch_size = 5  # Adjust based on your memory constraints
+            results = []
 
-        return results
+            for i in range(0, len(to_process), batch_size):
+                batch = to_process[i:i + batch_size]
+                tasks = [
+                    delayed(self._process_single_projection)(angle_i, dark_future, flats_future)
+                    for angle_i in batch
+                ]
+
+                with ProgressBar():
+                    batch_results = compute(*tasks)
+                    results.extend(batch_results)
+
+                # Force garbage collection
+                client.run(gc.collect)
+
+            return results
+
+        finally:
+            # Cleanup
+            client.close()
+            cluster.close()
