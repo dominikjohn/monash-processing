@@ -5,7 +5,6 @@ from typing import Union, Optional
 import logging
 import re
 import tifffile
-from contourpy.util.data import simple
 from tqdm import tqdm
 import cv2
 #from monash_processing.core.eigenflats import EigenflatManager

@@ -1,5 +1,3 @@
-from contourpy.util.data import simple
-
 from monash_processing.core.data_loader_desy import DataLoaderDesy
 from monash_processing.algorithms.phase_integration import PhaseIntegrator
 from pathlib import Path

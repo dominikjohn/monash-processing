@@ -18,6 +18,7 @@ setup(
         'joblib',
         'opencv-python',
         'PyQt5',
+        'dask'
     ],
     author="Dominik John",
     author_email="dominik.john@monash.edu",

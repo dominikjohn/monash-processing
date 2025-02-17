@@ -12,7 +12,7 @@ plt.rcParams.update({'font.size': 12})
 
 rho_KI = 3.13
 rho_w = 1.00
-E = 25
+E = 35
 
 # Molecular masses
 M_w = 18.01528  # C2H5OH
@@ -54,7 +54,7 @@ plt.axhline(y=mu_w, color='g', linestyle='--', label='Pure water')
 #plt.axvline(x=58.33, color='r', linestyle='--', label='Max. KI solubility at 25°C')
 plt.xlabel('KI content (wt%)')
 plt.ylabel('Linear attenuation coefficient µ [1/cm]')
-plt.title('Attenuation of KI-water mixture at 25 keV')
+plt.title(f'Attenuation of KI-water mixture at {E} keV')
 plt.legend()
 plt.grid(True)
 plt.show()
