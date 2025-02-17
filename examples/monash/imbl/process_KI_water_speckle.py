@@ -83,68 +83,7 @@ volume_builder = VolumeBuilder(
 
 volume_builder.reconstruct(center_shift=0, chunk_count=20)
 
-import re
-import numpy as np
-from typing import List, Dict, Tuple
 
-
-def extract_sample_angles(log_text: str) -> np.ndarray:
-    """
-    Extract angles from sample scans and return as 2D numpy array [n_scans, n_angles].
-    Handles gaps in indices by filling a fixed-size array.
-    """
-    scans: Dict[str, Dict[int, float]] = {}
-    current_scan: Dict[int, float] = {}
-    is_sample = False
-    scan_name = ""
-    max_index = 0
-
-    for line in log_text.split('\n'):
-        if 'filename prefix' in line and 'SAMPLE_' in line:
-            if current_scan and scan_name:
-                scans[scan_name] = current_scan
-            current_scan = {}
-            is_sample = True
-            scan_name = re.search(r'"([^"]+)"', line).group(1)
-        elif 'Acquisition finished' in line:
-            if is_sample and current_scan and scan_name:
-                scans[scan_name] = current_scan
-            current_scan = {}
-            is_sample = False
-        elif is_sample:
-            # Extract both index and angle
-            match = re.match(r'\d{4}-\d{2}-\d{2}.*?(\d+)\s+(\d+\.\d+)', line)
-            if match:
-                idx, angle = int(match.group(1)), float(match.group(2))
-                current_scan[idx] = angle
-                max_index = max(max_index, idx)
-
-    # Print diagnostic information
-    print(f"Found {len(scans)} sample scans:")
-    for name, measurements in scans.items():
-        indices = list(measurements.keys())
-        print(f"  {name}: {len(measurements)} measurements, indices: {min(indices)}-{max(indices)}")
-
-    # Create array and fill values
-    array_size = max_index + 1
-    angle_array = np.full((len(scans), array_size), np.nan)
-
-    for i, (name, measurements) in enumerate(sorted(scans.items())):
-        for idx, angle in measurements.items():
-            angle_array[i, idx] = angle
-
-    print(f"\nFinal array shape: {angle_array.shape}")
-    print("Used scans (in order):")
-    for name in sorted(scans.keys()):
-        print(f"  {name}")
-
-    # Print statistics about gaps
-    nan_counts = np.isnan(angle_array).sum(axis=1)
-    for i, (name, nan_count) in enumerate(zip(sorted(scans.keys()), nan_counts)):
-        gap_percent = (nan_count / array_size) * 100
-        print(f"  {name}: {nan_count} gaps ({gap_percent:.1f}%)")
-
-    return angle_array
 
 with open('/data/imbl/23081/input/Day3/Dominik_KI_salts_0p75m_30keV_0p16s/acquisition.0.log', 'r') as f:
     angles = np.nanmean(extract_sample_angles(f.read()), axis=0)
