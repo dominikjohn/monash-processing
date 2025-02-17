@@ -11,6 +11,9 @@ import numpy as np
 from tqdm import tqdm
 
 import matplotlib
+
+from monash_processing.postprocessing.devolving_processor import DevolvingProcessor
+
 matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
 import matplotlib.pyplot as plt
 
@@ -40,6 +43,10 @@ print('Index at 180°:', index_180)
 projections = loader.load_projections(projection_i=0)
 projections_meaned = np.mean(projections, axis=0)
 flats_meaned = np.mean(flat_fields, axis=0)
+
+gamma = 13.5
+devolver = DevolvingProcessor(gamma, 5e-5, prop_distance*1e6, pixel_size*1e6, loader)
+devolver.process_projections(index_180)
 
 for i in tqdm(range(len(angles))):
     meaned_proj = np.mean(loader.load_projections(projection_i=i), axis=0)

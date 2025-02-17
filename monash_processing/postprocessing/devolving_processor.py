@@ -30,7 +30,7 @@ class DevolvingProcessor:
 
         for i in tqdm(range(num_projections)):
             Is = self.data_loader.load_projections(projection_i=i) - dark_current
-            DF_atten, positive_D, negative_D, _ = self.Multiple_Devolving(num_projections, Is, Ir, self.gamma, self.wavelength, self.prop, self.pixel_size)
+            DF_atten, positive_D, negative_D, _ = self.Multiple_Devolving(Is, Ir, self.gamma, self.wavelength, self.prop, self.pixel_size)
             self.data_loader.save_tiff('DF_atten', i, DF_atten)
             self.data_loader.save_tiff('positive_D', i, positive_D)
             self.data_loader.save_tiff('negative_D', i, negative_D)
