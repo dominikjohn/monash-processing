@@ -21,7 +21,7 @@ class UMPAProcessor:
                  scan_path: Union[str, Path],
                  scan_name: str,
                  data_loader: DataLoader,
-                 w: int = 1,
+                 w: int,
                  n_workers: Optional[int] = None
                  ):
         """
@@ -39,6 +39,7 @@ class UMPAProcessor:
         self.scan_name = scan_name
         self.data_loader = data_loader
         self.w = w
+        print(f'Window parameter: {self.w}')
         self.n_workers = n_workers
 
         # Define output channels
