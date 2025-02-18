@@ -49,7 +49,7 @@ class VolumeBuilder:
 
         base_path = self.data_loader.results_dir
         if self.window_size is not None:
-            base_path = base_path / f'window_{self.window_size}'
+            base_path = base_path / f'umpa_window{self.window_size}'
 
         if self.is_stitched:
             if self.suffix is not None:
@@ -87,22 +87,42 @@ class VolumeBuilder:
 
         return np.array(projections), sparse_angles
 
-    def get_valid_indices(self, file_count):
+    def get_valid_indices(self, file_count, readjust=False):
         print(f"File count: {file_count}")
         print(f"Original angles: {self.original_angles}")
 
-        angle_180 = self.original_angles[file_count-1]
+        angles = self.original_angles[:file_count].copy()
+        indices = np.arange(file_count)
+
+        if readjust:
+            # Subtract first angle from all angles to start at 0
+            first_angle = angles[0]
+            angles = angles - first_angle
+            print(f"Readjusted angles to start at 0 (subtracted {first_angle})")
+
+            # Filter angles based on scan type
+            max_angle = 360.0 if self.is_360_deg else 180.0
+            valid_mask = angles <= max_angle
+            angles = angles[valid_mask]
+            indices = indices[valid_mask]
+            print(f"Filtered angles > {max_angle}°, {len(valid_mask) - np.sum(valid_mask)} angles removed")
+
+        # Check final angle for warning
+        final_angle = angles[-1]
         if self.is_360_deg:
-            print(f"Actual angle 360: {angle_180}")
-            if angle_180 - 360 > 0.1:
-                print(str(angle_180-360))
-                print('###### WARNING! The 360° projection is not within 0.1 of 360 degrees! This can lead to unexpected results.')
+            print(f"Actual angle 360: {final_angle}")
+            if final_angle - 360 > 0.1:
+                print(str(final_angle - 360))
+                print(
+                    '###### WARNING! The 360° projection is not within 0.1 of 360 degrees! This can lead to unexpected results.')
         else:
-            print(f"Actual angle 180: {angle_180}")
-            if angle_180 - 180 > 0.1:
-                print(str(angle_180-180))
-                print('"###### WARNING! The 180° projection is not within 0.1 of 180 degrees! This can lead to unexpected results.')
-        return self.original_angles[:file_count], np.arange(file_count)
+            print(f"Actual angle 180: {final_angle}")
+            if final_angle - 180 > 0.1:
+                print(str(final_angle - 180))
+                print(
+                    '###### WARNING! The 180° projection is not within 0.1 of 180 degrees! This can lead to unexpected results.')
+
+        return angles, indices
 
     def get_acquisition_geometry(self, n_cols, n_rows, angles, center_shift):
         # source_position = [0, -self.source_distance, 0] # Not required for parallel beam

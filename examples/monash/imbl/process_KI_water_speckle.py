@@ -26,10 +26,11 @@ n_workers = 100
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
 loader = IMBLDataLoader(scan_path, scan_name)
+angles = loader.load_angles()
+
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
 
-angles = loader.load_angles()
 angle_step = np.diff(angles).mean()
 print('Angle step:', angle_step)
 index_0 = np.argmin(np.abs(angles - 0))
