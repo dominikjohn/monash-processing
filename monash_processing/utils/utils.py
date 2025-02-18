@@ -22,7 +22,7 @@ class Utils:
         return area_left, area_right
 
     @staticmethod
-    def check_existing_files(dir, num_angles, min_size_kb=5, channel='phi', format='tif'):
+    def check_existing_files(dir, num_angles, min_size_kb=5, subfolder=None, channel='phi', format='tif'):
         """
         Check which projection files need to be processed.
 
@@ -34,7 +34,10 @@ class Utils:
             list: Indices of projections that need processing
         """
         to_process = []
-        results_dir = dir / channel
+        if subfolder is not None:
+            results_dir = dir / subfolder / channel
+        else:
+            results_dir = dir / channel
 
         print("Checking existing files...")
         print('using directory ', results_dir)

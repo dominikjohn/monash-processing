@@ -63,7 +63,7 @@ area_left = np.s_[:, 5:150]
 area_right = np.s_[:, -150:-5]
 
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
-                                                    loader, stitched=False, slicing=None)
+                                                    loader, window_size=15, stitched=False, slicing=None)
 parallel_phase_integrator.integrate_parallel(2000, n_workers=n_workers)
 
 volume_builder = VolumeBuilder(

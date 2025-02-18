@@ -201,9 +201,9 @@ class DataLoader:
         del simple_format  # Just for compatibility purposes
         # Load from TIFF files
         if subfolder is not None:
-            tiff_path = self.results_dir / channel / f'projection_{projection_i:04d}.{format}'
+            tiff_path = self.results_dir / subfolder/ channel / f'projection_{projection_i:04d}.{format}'
         else:
-            tiff_path = self.results_dir / subfolder /  channel / f'projection_{projection_i:04d}.{format}'
+            tiff_path = self.results_dir /  channel / f'projection_{projection_i:04d}.{format}'
         data = np.array(tifffile.imread(tiff_path))
 
         return data
