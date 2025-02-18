@@ -60,7 +60,7 @@ class UMPAProcessor:
             # Use the scattered data instead of reloading
             dark = dark_future
             flats = flats_future
-            projection = (self.data_loader.load_projections(projection_i=angle_i) - dark)[self.slicing]
+            projection = (self.data_loader.load_projections(projection_i=angle_i)[self.slicing] - dark)
 
             print(f"Projection shape: {projection.shape}, Flats shape: {flats.shape}")
 
