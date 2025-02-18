@@ -75,7 +75,7 @@ class UMPAProcessor:
             # Save results for each channel
             for channel, data in results.items():
                 if channel in ['T', 'dx', 'dy', 'df', 'f']:
-                    self.data_loader.save_tiff(channel, angle_i, data)
+                    self.data_loader.save_tiff(channel, angle_i, data, subfolder=f'umpa_window{self.w}')
 
             return {'angle': angle_i, 'status': 'success'}
 

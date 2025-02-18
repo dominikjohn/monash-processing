@@ -217,9 +217,13 @@ class DataLoader:
                   channel: str,
                   angle_i: int,
                   data: np.ndarray,
-                  prefix='projection'):
+                  prefix='projection',
+                  subfolder=None):
         """Save results as separate TIFF files."""
-        channel_dir = self.results_dir / channel
+        if subfolder is not None:
+            channel_dir = self.results_dir / subfolder / channel
+        else:
+            channel_dir = self.results_dir / channel
         channel_dir.mkdir(parents=True, exist_ok=True)
 
         try:
