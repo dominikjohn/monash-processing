@@ -81,7 +81,7 @@ volume_builder = VolumeBuilder(
         window_size=umpa_w
     )
 
-volume_builder.reconstruct(center_shift=0, chunk_count=20)
+volume_builder.reconstruct(center_shift=0, chunk_count=2)
 
 
 volume_builder = VolumeBuilder(

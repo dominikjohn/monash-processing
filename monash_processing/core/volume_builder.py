@@ -33,9 +33,9 @@ class VolumeBuilder:
         self.show_geometry = show_geometry
         self.is_360_deg = is_360_deg
         self.suffix = suffix
-        self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor)
         self.window_size = window_size
         print('Window size:', self.window_size)
+        self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor)
 
     def load_projections(self, sparse_factor=1, format='tif'):
         """
