@@ -6,9 +6,10 @@ import logging
 import re
 import tifffile
 from tqdm import tqdm
-import cv2
-#from monash_processing.core.eigenflats import EigenflatManager
 from PIL import Image
+from dask.distributed import LocalCluster, Client
+from dask.diagnostics import ProgressBar
+
 
 class DataLoader:
     """Handles loading and organizing scan data from H5 files."""
@@ -39,16 +40,6 @@ class DataLoader:
 
     def get_save_path(self):
         return self.results_dir
-
-    def export_raw_transmission_projections(self, min_i, max_i):
-        flat_fields = self.load_flat_fields()
-        dark_current = self.load_flat_fields(dark=True)
-        flats_meaned = np.mean(flat_fields, axis=0)
-
-        for i in tqdm(range(min_i, max_i)):
-            meaned_proj = np.mean(self.load_projections(projection_i=i), axis=0)
-            T = -np.log((meaned_proj - dark_current) / (flats_meaned - dark_current))
-            self.save_tiff('T_raw', i, T)
 
     def load_flat_fields(self, dark=False, pca=False):
         """Load flat field data from all files and combine, averaging multiple fields per file."""
@@ -204,7 +195,8 @@ class DataLoader:
         self.logger.info(f"Loaded angles array with shape {angles_array.shape}")
         return angles_array
 
-    def load_processed_projection(self, projection_i: int, channel: str, format='tif', simple_format=False, vault_format=False) -> np.ndarray:
+    def load_processed_projection(self, projection_i: int, channel: str, format='tif', simple_format=False,
+                                  vault_format=False) -> np.ndarray:
         """Load a single processed projection from a specific channel."""
         del simple_format  # Just for compatibility purposes
         # Load from TIFF files
@@ -240,6 +232,40 @@ class DataLoader:
         """
         corrected_data = (data - dark_current) / (flat_fields - dark_current)
         return corrected_data
+
+    def export_raw_transmission_projections(self, angles):
+
+        # Set up Dask client
+        cluster = LocalCluster()
+        client = Client(cluster)
+
+        try:
+            # Load shared data once and scatter to workers
+            dark_current = client.scatter(self.load_flat_fields(dark=True))
+            flats_meaned = client.scatter(np.mean(self.load_flat_fields(), axis=0))
+
+            def process_single_projection(angle_i):
+                try:
+                    meaned_proj = np.mean(self.load_projections(projection_i=angle_i), axis=0)
+                    T = -np.log((meaned_proj - dark_current) / (flats_meaned - dark_current))
+                    self.save_tiff('T_raw', angle_i, T)
+                    return {'angle': angle_i, 'status': 'success'}
+                except Exception as e:
+                    return {'angle': angle_i, 'status': 'error', 'error': str(e)}
+
+            # Use client.map to submit tasks
+            futures = client.map(process_single_projection, range(len(angles)))
+
+            # Gather results with progress bar
+            with ProgressBar():
+                results = client.gather(futures)
+
+            return results
+
+        finally:
+            # Cleanup
+            client.close()
+            cluster.close()
 
     def load_raw_dataset(self, h5_file: Path, dataset_path: str) -> np.ndarray:
         """Load a specific dataset from an H5 file."""

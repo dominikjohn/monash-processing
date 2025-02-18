@@ -1,10 +1,8 @@
-import os
-
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
-#from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
-from monash_processing.core.volume_builder import VolumeBuilder
+from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
+#from monash_processing.core.volume_builder import VolumeBuilder
 import h5py
 from pathlib import Path
 import numpy as np
@@ -24,7 +22,7 @@ pixel_size = 1.444e-6 # m
 energy = 25000 # eV
 prop_distance = 0.155 #
 max_angle = 364
-umpa_w = 1
+umpa_w = 3
 n_workers = 100
 
 # 1. Load reference data
@@ -44,23 +42,14 @@ projections = loader.load_projections(projection_i=0)
 projections_meaned = np.mean(projections, axis=0)
 flats_meaned = np.mean(flat_fields, axis=0)
 
-gamma = 14
-devolver = DevolvingProcessor(gamma, 5e-5, prop_distance*1e6, pixel_size*1e6, loader, '/data/mct/22203/Flatfields_340AM_Wed13Nov.h5')
-devolver.process_projections(index_180)
-
-for i in tqdm(range(len(angles))):
-    meaned_proj = np.mean(loader.load_projections(projection_i=i), axis=0)
-    T = -np.log((meaned_proj - dark_current) / (flats_meaned - dark_current))
-    loader.save_tiff('T_raw', i, T)
+#gamma = 14
+#devolver = DevolvingProcessor(gamma, 5e-5, prop_distance*1e6, pixel_size*1e6, loader, '/data/mct/22203/Flatfields_340AM_Wed13Nov.h5')
+#devolver.process_projections(index_180)
 
 # Get number of projections (we need this for the loop)
 with h5py.File(loader.h5_files[0], 'r') as f:
     num_angles = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA'].shape[0]
     print(f"Number of projections: {num_angles}")
-
-# 2. Initialize preprocessor and UMPA processor
-print("Initializing processors")
-umpa_processor = UMPAProcessor(scan_path, scan_name, loader, umpa_w)
 
 # 3. Process each projection
 print("Processing projections")
@@ -70,7 +59,9 @@ processor = UMPAProcessor(
     scan_path,
     scan_name,
     loader,
-    n_workers=50
+    umpa_w,
+    n_workers=50,
+    slicing=np.s_[:, 800:-500, :]
 )
 
 # Process projections

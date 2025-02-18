@@ -20,7 +20,7 @@ pixel_size = 9.07e-6 # m
 energy = 30000 # eV
 prop_distance = .75 #
 max_angle = 364
-umpa_w = 10
+umpa_w = 15
 n_workers = 100
 
 # 1. Load reference data
@@ -38,7 +38,7 @@ print('Index at 0°:', index_0)
 print('Index at 360°:', index_360)
 num_angles = angles.shape[0]
 
-slicing = np.s_[..., 300:1200]
+slicing = np.s_[..., 300:370, :]
 
 # 2. Initialize UMPA processor
 processor = UMPAProcessor(

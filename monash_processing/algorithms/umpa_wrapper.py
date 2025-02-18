@@ -94,41 +94,27 @@ class UMPAProcessor:
             print(f"Starting parallel processing for {len(to_process)} projections...")
             print(f"Using window size: {self.w}")
 
-            # Set memory limits and worker configuration
-            cluster = LocalCluster(
-                n_workers=self.n_workers,
-            )
+            cluster = LocalCluster(n_workers=self.n_workers)
             client = Client(cluster)
 
             # Load shared data once
-            dark = self.data_loader.load_flat_fields(dark=True)[self.slicing]
-            flats = self.data_loader.load_flat_fields()[self.slicing]
+            dark = client.scatter(self.data_loader.load_flat_fields(dark=True)[self.slicing])
+            flats = client.scatter(self.data_loader.load_flat_fields()[self.slicing])
 
-            # Scatter shared data to workers
-            dark_future = client.scatter(dark)
-            flats_future = client.scatter(flats)
+            # Map each projection to a worker
+            futures = client.map(
+                self._process_single_projection,
+                to_process,
+                [dark] * len(to_process),  # Broadcast dark to each task
+                [flats] * len(to_process)  # Broadcast flats to each task
+            )
 
-            # Create batched tasks
-            batch_size = 5
-            results = []
-
-            for i in range(0, len(to_process), batch_size):
-                batch = to_process[i:i + batch_size]
-                tasks = [
-                    delayed(self._process_single_projection)(angle_i, dark_future, flats_future)
-                    for angle_i in batch
-                ]
-
-                with ProgressBar():
-                    batch_results = compute(*tasks)
-                    results.extend(batch_results)
-
-                # Force garbage collection
-                client.run(gc.collect)
+            # Gather results with progress bar
+            with ProgressBar():
+                results = client.gather(futures)
 
             return results
 
         finally:
-            # Cleanup
             client.close()
             cluster.close()
