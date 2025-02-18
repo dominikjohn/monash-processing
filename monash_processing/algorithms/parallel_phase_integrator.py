@@ -37,7 +37,7 @@ class ParallelPhaseIntegrator:
             else:
                 channel_name = f'phi'
 
-        to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, channel_name)
+        to_process = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb=min_size_kb, subfolder=f'umpa_window{self.integrator.window_size}', channel=channel_name)
 
         if not to_process:
             print("All files already processed successfully!")
@@ -68,7 +68,9 @@ class ParallelPhaseIntegrator:
                 pass
 
             # Verify all files were processed correctly
-            remaining = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb, channel_name)
+            remaining = Utils.check_existing_files(self.data_loader.results_dir, num_angles, min_size_kb=min_size_kb,
+                                                    subfolder=f'umpa_window{self.integrator.window_size}',
+                                                    channel=channel_name)
             if remaining:
                 print(f"\nWarning: {len(remaining)} files still need processing after completion.")
                 print("These might have failed during processing:")
