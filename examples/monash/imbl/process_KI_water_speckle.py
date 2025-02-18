@@ -57,8 +57,10 @@ results = processor.process_projections(
 
 #center_shifts = np.linspace(307, 312, 10)
 #volume_builder.sweep_centershift(center_shifts)
-area_left = np.s_[:-650, 5:150]
-area_right = np.s_[:-650, -150:-5]
+#area_left = np.s_[:-650, 5:150]
+area_left = np.s_[:, 5:150]
+#area_right = np.s_[:-650, -150:-5]
+area_right = np.s_[:, -150:-5]
 
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
                                                     loader, stitched=False, slicing=None)

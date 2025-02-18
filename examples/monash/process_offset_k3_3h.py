@@ -61,7 +61,7 @@ processor = UMPAProcessor(
     loader,
     umpa_w,
     n_workers=50,
-    slicing=np.s_[:, 800:-500, :]
+    slicing=np.s_[..., 800:-500, :]
 )
 
 # Process projections

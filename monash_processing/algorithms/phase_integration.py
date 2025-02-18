@@ -7,7 +7,7 @@ from monash_processing.postprocessing.bad_pixel_cor import BadPixelMask
 
 class PhaseIntegrator:
 
-    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader: DataLoader, stitched=False, suffix=None, simple_format=True, slicing=None):
+    def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader: DataLoader, window_size=1, stitched=False, suffix=None, simple_format=True, slicing=None):
         self.energy = energy
         self.prop_distance = prop_distance
         self.pixel_size = pixel_size
@@ -20,20 +20,22 @@ class PhaseIntegrator:
         self.suffix = suffix
         self.simple_format = simple_format
         self.slicing = slicing
+        self.window_size = window_size
+        print('Using window size:', self.window_size)
 
     def integrate_single(self, projection_i):
 
         # Load dx, dy, f
         if self.stitched:
             if self.suffix is not None:
-                dx = self.data_loader.load_processed_projection(projection_i, f'dx_stitched_{self.suffix}', simple_format=True)
-                dy = self.data_loader.load_processed_projection(projection_i, f'dy_stitched_{self.suffix}', simple_format=True)
+                dx = self.data_loader.load_processed_projection(projection_i, f'dx_stitched_{self.suffix}', subfolder=f'umpa_window{self.window_size}', simple_format=True)
+                dy = self.data_loader.load_processed_projection(projection_i, f'dy_stitched_{self.suffix}', subfolder=f'umpa_window{self.window_size}', simple_format=True)
             else:
-                dx = self.data_loader.load_processed_projection(projection_i, 'dx_stitched', simple_format=True)
-                dy = self.data_loader.load_processed_projection(projection_i, 'dy_stitched', simple_format=True)
+                dx = self.data_loader.load_processed_projection(projection_i, 'dx_stitched', subfolder=f'umpa_window{self.window_size}', simple_format=True)
+                dy = self.data_loader.load_processed_projection(projection_i, 'dy_stitched', subfolder=f'umpa_window{self.window_size}', simple_format=True)
         else:
-            dx = self.data_loader.load_processed_projection(projection_i, 'dx', simple_format=self.simple_format)
-            dy = self.data_loader.load_processed_projection(projection_i, 'dy', simple_format=self.simple_format)
+            dx = self.data_loader.load_processed_projection(projection_i, 'dx', subfolder=f'umpa_window{self.window_size}', simple_format=self.simple_format)
+            dy = self.data_loader.load_processed_projection(projection_i, 'dy', subfolder=f'umpa_window{self.window_size}', simple_format=self.simple_format)
 
         if self.slicing is not None:
             dx = dx[self.slicing]
@@ -75,14 +77,14 @@ class PhaseIntegrator:
         if self.stitched:
             if self.suffix is not None:
                 print('saving to ', f'phi_stitched_{self.suffix}')
-                self.data_loader.save_tiff(f'phi_stitched_{self.suffix}', projection_i, phi_corr)
+                self.data_loader.save_tiff(f'phi_stitched_{self.suffix}', projection_i, phi_corr, subfolder=f'umpa_window{self.window_size}')
             else:
-                self.data_loader.save_tiff('phi_stitched', projection_i, phi_corr)
+                self.data_loader.save_tiff('phi_stitched', projection_i, phi_corr, subfolder=f'umpa_window{self.window_size}')
         else:
             if self.suffix is not None:
-                self.data_loader.save_tiff(f'phi_{self.suffix}', projection_i, phi_corr)
+                self.data_loader.save_tiff(f'phi_{self.suffix}', projection_i, phi_corr, subfolder=f'umpa_window{self.window_size}')
             else:
-                self.data_loader.save_tiff('phi', projection_i, phi_corr)
+                self.data_loader.save_tiff('phi', projection_i, phi_corr, subfolder=f'umpa_window{self.window_size}')
 
     @staticmethod
     def antisym_mirror_im(im, diffaxis, mode='reflect'):

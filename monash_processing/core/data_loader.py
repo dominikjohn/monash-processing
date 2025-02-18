@@ -195,12 +195,15 @@ class DataLoader:
         self.logger.info(f"Loaded angles array with shape {angles_array.shape}")
         return angles_array
 
-    def load_processed_projection(self, projection_i: int, channel: str, format='tif', simple_format=False,
+    def load_processed_projection(self, projection_i: int, channel: str, format='tif', subfolder=None, simple_format=False,
                                   vault_format=False) -> np.ndarray:
         """Load a single processed projection from a specific channel."""
         del simple_format  # Just for compatibility purposes
         # Load from TIFF files
-        tiff_path = self.results_dir / channel / f'projection_{projection_i:04d}.{format}'
+        if subfolder is not None:
+            tiff_path = self.results_dir / channel / f'projection_{projection_i:04d}.{format}'
+        else:
+            tiff_path = self.results_dir / subfolder /  channel / f'projection_{projection_i:04d}.{format}'
         data = np.array(tifffile.imread(tiff_path))
 
         return data
