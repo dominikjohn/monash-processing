@@ -15,7 +15,7 @@ from monash_processing.postprocessing.binner import Binner
 
 class VolumeBuilder:
     def __init__(self, data_loader, original_angles, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
-                 detector_tilt_deg=0, show_geometry=False, sparse_factor=1, is_360_deg=False, suffix=None):
+                 detector_tilt_deg=0, show_geometry=False, sparse_factor=1, is_360_deg=False, suffix=None, window_size=None):
         self.data_loader = data_loader
         self.channel = channel
         self.pixel_size = pixel_size
@@ -34,6 +34,8 @@ class VolumeBuilder:
         self.is_360_deg = is_360_deg
         self.suffix = suffix
         self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor)
+        self.window_size = window_size
+        print('Window size:', self.window_size)
 
     def load_projections(self, sparse_factor=1, format='tif'):
         """
@@ -45,19 +47,23 @@ class VolumeBuilder:
         :return: np.ndarray, np.ndarray of projections and corresponding angles
         """
 
+        base_path = self.data_loader.results_dir
+        if self.window_size is not None:
+            base_path = base_path / f'window_{self.window_size}'
+
         if self.is_stitched:
             if self.suffix is not None:
-                input_dir = self.data_loader.results_dir / (f'phi_stitched_{self.suffix}' if self.channel == 'phase' else 'T_stitched')
+                input_dir = base_path / (f'phi_stitched_{self.suffix}' if self.channel == 'phase' else 'T_stitched')
             else:
-                input_dir = self.data_loader.results_dir / ('phi_stitched' if self.channel == 'phase' else 'T_stitched')
+                input_dir = base_path / ('phi_stitched' if self.channel == 'phase' else 'T_stitched')
         else:
             if self.suffix is not None:
-                input_dir = self.data_loader.results_dir / (f'phi_{self.suffix}' if self.channel == 'phase' else 'T')
+                input_dir = base_path/ (f'phi_{self.suffix}' if self.channel == 'phase' else 'T')
             else:
-                input_dir = self.data_loader.results_dir / ('phi' if self.channel == 'phase' else 'T')
+                input_dir = base_path / ('phi' if self.channel == 'phase' else 'T')
 
         if self.channel != 'phase' and self.channel != 'att':
-            input_dir = self.data_loader.results_dir / self.channel
+            input_dir = base_path / self.channel
             print('Using custom input dir for channel:', self.channel)
 
         tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))

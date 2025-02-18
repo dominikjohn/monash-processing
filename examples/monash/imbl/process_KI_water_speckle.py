@@ -78,6 +78,7 @@ volume_builder = VolumeBuilder(
         show_geometry=False,
         sparse_factor=1,
         is_360_deg=True,
+        window_size=umpa_w
     )
 
 volume_builder.reconstruct(center_shift=0, chunk_count=20)
