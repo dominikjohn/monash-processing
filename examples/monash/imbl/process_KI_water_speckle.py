@@ -20,7 +20,7 @@ pixel_size = 9.07e-6 # m
 energy = 30000 # eV
 prop_distance = .75 #
 max_angle = 364
-umpa_w = 3
+umpa_w = 10
 n_workers = 100
 
 # 1. Load reference data
@@ -38,7 +38,7 @@ print('Index at 0°:', index_0)
 print('Index at 360°:', index_360)
 num_angles = angles.shape[0]
 
-slicing = np.s_[:, 300:1200]
+slicing = np.s_[..., 300:1200]
 
 # 2. Initialize UMPA processor
 processor = UMPAProcessor(
@@ -59,8 +59,6 @@ results = processor.process_projections(
 #volume_builder.sweep_centershift(center_shifts)
 area_left = np.s_[:-650, 5:150]
 area_right = np.s_[:-650, -150:-5]
-
-#slicing = np.s_[:, 5:150]
 
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
                                                     loader, stitched=False, slicing=None)
