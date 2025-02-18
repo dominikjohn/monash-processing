@@ -38,13 +38,16 @@ print('Index at 0°:', index_0)
 print('Index at 360°:', index_360)
 num_angles = angles.shape[0]
 
+slicing = np.s_[:, 300:1200]
+
 # 2. Initialize UMPA processor
 processor = UMPAProcessor(
     scan_path,
     scan_name,
     loader,
     umpa_w,
-    n_workers=50
+    n_workers=50,
+    slicing=slicing
 )
 
 # Process projections

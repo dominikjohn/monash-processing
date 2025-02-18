@@ -97,8 +97,6 @@ class UMPAProcessor:
             # Set memory limits and worker configuration
             cluster = LocalCluster(
                 n_workers=self.n_workers,
-                threads_per_worker=1,
-                memory_limit='10GB'  # Adjust based on your system
             )
             client = Client(cluster)
 
