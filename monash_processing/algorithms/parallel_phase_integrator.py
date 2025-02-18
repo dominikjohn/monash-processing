@@ -8,7 +8,7 @@ class ParallelPhaseIntegrator:
     def __init__(self, energy, prop_distance, pixel_size, area_left, area_right, data_loader, window_size=1, stitched=False, suffix=None, simple_format=True, slicing=None):
         self.integrator = PhaseIntegrator(
             energy, prop_distance, pixel_size,
-            area_left, area_right, data_loader, window_size=window_size, stitched, suffix, simple_format=simple_format,
+            area_left, area_right, data_loader, window_size=window_size, stitched=stitched, suffix=suffix, simple_format=simple_format,
             slicing=slicing
         )
         self.data_loader = data_loader
