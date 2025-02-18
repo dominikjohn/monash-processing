@@ -15,7 +15,7 @@ from monash_processing.postprocessing.binner import Binner
 
 class VolumeBuilder:
     def __init__(self, data_loader, original_angles, energy, prop_distance, pixel_size, is_stitched=False, channel='phase',
-                 detector_tilt_deg=0, show_geometry=False, sparse_factor=1, is_360_deg=False, suffix=None, window_size=None):
+                 detector_tilt_deg=0, show_geometry=False, sparse_factor=1, is_360_deg=False, suffix=None, window_size=None, readjust_angles=False):
         self.data_loader = data_loader
         self.channel = channel
         self.pixel_size = pixel_size
@@ -34,6 +34,7 @@ class VolumeBuilder:
         self.is_360_deg = is_360_deg
         self.suffix = suffix
         self.window_size = window_size
+        self.readjust_angles = readjust_angles
         print('Window size:', self.window_size)
         self.projections, self.angles = self.load_projections(sparse_factor=sparse_factor)
 
@@ -87,14 +88,14 @@ class VolumeBuilder:
 
         return np.array(projections), sparse_angles
 
-    def get_valid_indices(self, file_count, readjust=False):
+    def get_valid_indices(self, file_count):
         print(f"File count: {file_count}")
         print(f"Original angles: {self.original_angles}")
 
         angles = self.original_angles[:file_count].copy()
         indices = np.arange(file_count)
 
-        if readjust:
+        if self.readjust_angles:
             # Subtract first angle from all angles to start at 0
             first_angle = angles[0]
             angles = angles - first_angle
