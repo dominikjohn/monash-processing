@@ -113,9 +113,15 @@ class ProjectionStitcher:
                 else:
                     folder_name = f'{channel}_stitched'
 
-                output_path = (self.data_loader.results_dir /
-                               folder_name /
-                               f'projection_{idx:04d}.tif')
+                if self.window_size is not None:
+                    output_path = (self.data_loader.results_dir /
+                                   f'umpa_window{self.window_size}' /
+                                   folder_name /
+                                   f'projection_{idx:04d}.tif')
+                else:
+                    output_path = (self.data_loader.results_dir /
+                                   folder_name /
+                                   f'projection_{idx:04d}.tif')
 
                 if output_path.exists():
                     return None

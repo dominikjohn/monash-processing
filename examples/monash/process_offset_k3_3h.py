@@ -100,7 +100,7 @@ for center_shift in center_shift_list:
 
 best_value = 1311
 
-stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2, format='tif')
+stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2, format='tif', window_size=umpa_w)
 stitcher.process_and_save_range(index_0, index_180, 'dx')
 stitcher.process_and_save_range(index_0, index_180, 'dy')
 stitcher.process_and_save_range(index_0, index_180, 'T_raw')
