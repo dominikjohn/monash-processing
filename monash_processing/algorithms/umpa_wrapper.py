@@ -22,7 +22,8 @@ class UMPAProcessor:
                  scan_name: str,
                  data_loader: DataLoader,
                  w: int,
-                 n_workers: Optional[int] = None
+                 n_workers: Optional[int] = None,
+                 slicing = None,
                  ):
         """
         Initialize the UMPA processor with Dask support.
@@ -38,17 +39,19 @@ class UMPAProcessor:
         self.scan_path = Path(scan_path)
         self.scan_name = scan_name
         self.data_loader = data_loader
+        self.slicing = slicing
+        print(f"Using slicing: {self.slicing}")
         self.w = w
         print(f'Window parameter: {self.w}')
         self.n_workers = n_workers
-
         # Define output channels
         self.channels = ['dx', 'dy', 'T', 'df', 'f']
 
         # Create results directories
-        self.results_dir = self.data_loader.results_dir
+        self.results_dir = self.data_loader.results_dir / f'umpa_window{self.w}'
         for channel in self.channels:
             (self.results_dir / channel).mkdir(parents=True, exist_ok=True)
+
         self.logger.info(f'Created results directory at {self.results_dir}')
 
     def _process_single_projection(self, angle_i: int, dark_future, flats_future) -> Dict[
@@ -57,7 +60,7 @@ class UMPAProcessor:
             # Use the scattered data instead of reloading
             dark = dark_future
             flats = flats_future
-            projection = self.data_loader.load_projections(projection_i=angle_i) - dark
+            projection = (self.data_loader.load_projections(projection_i=angle_i) - dark)[self.slicing]
 
             print(f"Projection shape: {projection.shape}, Flats shape: {flats.shape}")
 
@@ -100,8 +103,8 @@ class UMPAProcessor:
             client = Client(cluster)
 
             # Load shared data once
-            dark = self.data_loader.load_flat_fields(dark=True)
-            flats = self.data_loader.load_flat_fields()
+            dark = self.data_loader.load_flat_fields(dark=True)[self.slicing]
+            flats = self.data_loader.load_flat_fields()[self.slicing]
 
             # Scatter shared data to workers
             dark_future = client.scatter(dark)

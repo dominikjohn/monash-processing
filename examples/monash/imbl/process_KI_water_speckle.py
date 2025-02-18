@@ -38,18 +38,12 @@ print('Index at 0°:', index_0)
 print('Index at 360°:', index_360)
 num_angles = angles.shape[0]
 
-# 2. Initialize preprocessor and UMPA processor
-print("Initializing processors")
-umpa_processor = UMPAProcessor(scan_path, scan_name, loader, umpa_w)
-
-# 3. Process each projection
-print("Processing projections")
-
-# Initialize the processor
+# 2. Initialize UMPA processor
 processor = UMPAProcessor(
     scan_path,
     scan_name,
     loader,
+    umpa_w,
     n_workers=50
 )
 
@@ -63,8 +57,10 @@ results = processor.process_projections(
 area_left = np.s_[:-650, 5:150]
 area_right = np.s_[:-650, -150:-5]
 
+#slicing = np.s_[:, 5:150]
+
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
-                                                    loader, stitched=False)
+                                                    loader, stitched=False, slicing=None)
 parallel_phase_integrator.integrate_parallel(2000, n_workers=n_workers)
 
 volume_builder = VolumeBuilder(
