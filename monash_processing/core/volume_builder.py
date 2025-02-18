@@ -259,12 +259,13 @@ class VolumeBuilder:
 
             if self.channel == 'phase':
                 volume = self.convert_to_edensity(volume)
+                rwidth = 15
+
             elif self.channel == 'att' or self.channel == 'T_raw_stitched':
                 volume = self.convert_to_mu(volume)
                 rwidth = 15  # Attenuation needs a larger ring filter width
 
-            print('no ring filter')
-            #volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth, geometry=volume.geometry)
+            volume = self.apply_reconstruction_ring_filter(volume, rwidth=rwidth, geometry=volume.geometry)
             # Add binning info to folder name if binning was applied
             prefix = 'recon'
             if custom_folder is not None:
