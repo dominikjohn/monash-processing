@@ -17,6 +17,7 @@ import h5py
 from monash_processing.utils.utils import Utils
 from pathlib import Path
 import dask.bag as db
+from dask.diagnostics import ProgressBar
 
 class DevolvingProcessor:
 
@@ -58,7 +59,7 @@ class DevolvingProcessor:
 
         return i  # Return the processed index for tracking
 
-    def process_projections(self, num_projections: int, min_size_kb: int = 5, num_workers: int = 4):
+    def process_projections(self, num_projections: int, min_size_kb: int = 5, num_workers: int = None):
         """
         Process projections using Dask bag map for parallel computation.
         Only processes files that haven't been processed yet or are incomplete.
@@ -66,7 +67,7 @@ class DevolvingProcessor:
         Args:
             num_projections: Total number of projections to process
             min_size_kb: Minimum file size in KB to consider a file as properly processed
-            num_workers: Number of worker processes to use
+            num_workers: Number of worker processes to use. If None, uses all available CPU cores.
         """
         # Check which files need processing
         to_process = Utils.check_existing_files(
@@ -87,8 +88,7 @@ class DevolvingProcessor:
         dark_current = self.data_loader.load_flat_fields(dark=True)
         Ir = (self.data_loader.load_flat_fields()) / (pure_flat - dark_current)
 
-        # Create a Dask bag from the indices to process
-        bag = db.from_sequence(to_process, npartitions=num_workers)
+        print(f"Using {num_workers} workers for parallel processing")
 
         # Define a wrapper function that includes the constant parameters
         def process_wrapper(idx):
@@ -99,21 +99,15 @@ class DevolvingProcessor:
                 Ir=Ir
             )
 
-        # Process using map
-        print(f"Starting parallel processing with {num_workers} workers...")
+        # Create a Dask bag from the indices to process
+        bag = db.from_sequence(to_process, npartitions=num_workers)
 
-        # Create progress bar
-        pbar = tqdm(total=len(to_process), desc="Processing projections")
+        # Process using map with explicit multiprocessing scheduler
+        print("Starting parallel processing...")
+        with ProgressBar():
+            results = bag.map(process_wrapper).compute(scheduler='processes')
 
-        # Process and update progress bar
-        results = []
-        for result in bag.map(process_wrapper).compute():
-            results.append(result)
-            pbar.update(1)
-
-        pbar.close()
         print("Processing complete!")
-
         return results
 
     # ---------------------------------------------------------------------------------
