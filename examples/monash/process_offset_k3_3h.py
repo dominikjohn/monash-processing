@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
 import matplotlib.pyplot as plt
+from monash_processing.postprocessing.devolving_processor import DevolvingProcessor
 
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
@@ -37,9 +38,9 @@ projections = loader.load_projections(projection_i=0)
 projections_meaned = np.mean(projections, axis=0)
 flats_meaned = np.mean(flat_fields, axis=0)
 
-#gamma = 14
-#devolver = DevolvingProcessor(gamma, 5e-5, prop_distance*1e6, pixel_size*1e6, loader, '/data/mct/22203/Flatfields_340AM_Wed13Nov.h5')
-#devolver.process_projections(index_180)
+gamma = 1000
+devolver = DevolvingProcessor(gamma, 5e-5, prop_distance*1e6, pixel_size*1e6, loader, '/data/mct/22203/Flatfields_340AM_Wed13Nov.h5')
+devolver.process_projections(len(angles))
 
 # Get number of projections (we need this for the loop)
 with h5py.File(loader.h5_files[0], 'r') as f:

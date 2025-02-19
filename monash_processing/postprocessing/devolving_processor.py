@@ -14,7 +14,9 @@ from scipy import ndimage
 from monash_processing.core.data_loader import DataLoader
 from tqdm import tqdm
 import h5py
-
+from monash_processing.utils.utils import Utils
+from pathlib import Path
+import dask.bag as db
 
 class DevolvingProcessor:
 
@@ -43,17 +45,76 @@ class DevolvingProcessor:
 
             return flat_field
 
-    def process_projections(self, num_projections: int):
+    def process_single_projection(self, i: int, pure_flat: np.ndarray, dark_current: np.ndarray, Ir: np.ndarray):
+        """Process a single projection with the given parameters."""
+        Is = (self.data_loader.load_projections(projection_i=i) - dark_current) / (pure_flat - dark_current)
+        DF_atten, positive_D, negative_D, _ = self.Multiple_Devolving(Is, Ir, self.gamma, self.wavelength, self.prop,
+                                                                      self.pixel_size)
+
+        # Save results
+        self.data_loader.save_tiff('DF_atten', i, DF_atten)
+        self.data_loader.save_tiff('positive_D', i, positive_D)
+        self.data_loader.save_tiff('negative_D', i, negative_D)
+
+        return i  # Return the processed index for tracking
+
+    def process_projections(self, num_projections: int, min_size_kb: int = 5, num_workers: int = 4):
+        """
+        Process projections using Dask bag map for parallel computation.
+        Only processes files that haven't been processed yet or are incomplete.
+
+        Args:
+            num_projections: Total number of projections to process
+            min_size_kb: Minimum file size in KB to consider a file as properly processed
+            num_workers: Number of worker processes to use
+        """
+        # Check which files need processing
+        to_process = Utils.check_existing_files(
+            dir=Path(self.save_dir),
+            num_angles=num_projections,
+            min_size_kb=min_size_kb,
+            channel='DF_atten'  # Using DF_atten as the reference channel
+        )
+
+        if not to_process:
+            print("All projections have been processed already!")
+            return
+
+        print(f"Processing {len(to_process)} projections...")
+
+        # Load common data needed for all projections
         pure_flat = self.load_pure_flat_field()
         dark_current = self.data_loader.load_flat_fields(dark=True)
         Ir = (self.data_loader.load_flat_fields()) / (pure_flat - dark_current)
 
-        for i in tqdm(range(num_projections)):
-            Is = (self.data_loader.load_projections(projection_i=i) - dark_current) / (pure_flat - dark_current)
-            DF_atten, positive_D, negative_D, _ = self.Multiple_Devolving(Is, Ir, self.gamma, self.wavelength, self.prop, self.pixel_size)
-            self.data_loader.save_tiff('DF_atten', i, DF_atten)
-            self.data_loader.save_tiff('positive_D', i, positive_D)
-            self.data_loader.save_tiff('negative_D', i, negative_D)
+        # Create a Dask bag from the indices to process
+        bag = db.from_sequence(to_process, npartitions=num_workers)
+
+        # Define a wrapper function that includes the constant parameters
+        def process_wrapper(idx):
+            return self.process_single_projection(
+                i=idx,
+                pure_flat=pure_flat,
+                dark_current=dark_current,
+                Ir=Ir
+            )
+
+        # Process using map
+        print(f"Starting parallel processing with {num_workers} workers...")
+
+        # Create progress bar
+        pbar = tqdm(total=len(to_process), desc="Processing projections")
+
+        # Process and update progress bar
+        results = []
+        for result in bag.map(process_wrapper).compute():
+            results.append(result)
+            pbar.update(1)
+
+        pbar.close()
+        print("Processing complete!")
+
+        return results
 
     # ---------------------------------------------------------------------------------
     # Defining additional functions
@@ -62,30 +123,31 @@ class DevolvingProcessor:
         # Multiply by 2pi for correct values, since DFT has 2pi in exponent
         rows = image_shape[0]
         columns = image_shape[1]
-        ky = 2*math.pi*scipy.fft.fftfreq(rows, d=pixel_size) # spatial frequencies relating to "rows" in real space
-        kx = 2*math.pi*scipy.fft.fftfreq(columns, d=pixel_size) # spatial frequencies relating to "columns" in real space
+        ky = 2 * math.pi * scipy.fft.fftfreq(rows, d=pixel_size)  # spatial frequencies relating to "rows" in real space
+        kx = 2 * math.pi * scipy.fft.fftfreq(columns,
+                                             d=pixel_size)  # spatial frequencies relating to "columns" in real space
         return ky, kx
 
     @staticmethod
-    def invLaplacian(image,pixel_size):
+    def invLaplacian(image, pixel_size):
         # Need to mirror the image to enforce periodicity
         flip = np.concatenate((image, np.flipud(image)), axis=0)
         flip = np.concatenate((flip, np.fliplr(flip)), axis=1)
 
-        ky, kx = DevolvingProcessor.kspace_kykx(flip.shape,pixel_size)
-        ky2 = ky**2
-        kx2 = kx**2
+        ky, kx = DevolvingProcessor.kspace_kykx(flip.shape, pixel_size)
+        ky2 = ky ** 2
+        kx2 = kx ** 2
 
         kr2 = np.add.outer(ky2, kx2)
         regkr2 = 0.0001
         ftimage = np.fft.fft2(flip)
-        regdiv = 1/(kr2+regkr2)
-        invlapimageflip = -1*np.fft.ifft2(regdiv*ftimage)
+        regdiv = 1 / (kr2 + regkr2)
+        invlapimageflip = -1 * np.fft.ifft2(regdiv * ftimage)
 
         row = int(image.shape[0])
         column = int(image.shape[1])
 
-        invlap = np.real(invlapimageflip[0:row,0:column])
+        invlap = np.real(invlapimageflip[0:row, 0:column])
         return invlap, regkr2
 
     @staticmethod
@@ -113,6 +175,7 @@ class DevolvingProcessor:
         lowpass_2d = np.exp(-r * (kr ** 2))
 
         return lowpass_2d
+
     @staticmethod
     def highpass_2D(image, r, pixel_size):
         # -------------------------------------------------------------------
@@ -143,6 +206,7 @@ class DevolvingProcessor:
         # plt.show()
 
         return highpass_2d
+
     @staticmethod
     def midpass_2D(image, r, pixel_size):
         # -------------------------------------------------------------------
@@ -209,7 +273,8 @@ class DevolvingProcessor:
         for i in range(num_masks):
             rhs = (1 / prop) * (Is[i, :, :] - Ir[i, :, :])  # Compute RHS for the system of equations
             lap = Is[i, :, :]  # Compute the Laplacian term (placeholder)
-            deff = np.divide(ndimage.laplace(Is[i, :, :]), pixel_size ** 2)  # Compute the Laplacian of the speckle field
+            deff = np.divide(ndimage.laplace(Is[i, :, :]),
+                             pixel_size ** 2)  # Compute the Laplacian of the speckle field
             dy, dx = np.gradient(Is[i, :, :], pixel_size)  # Compute the x and y gradients of the speckle field
             dy_r = 2 * dy  # Adjust y-gradient term
             dx_r = 2 * dx  # Adjust x-gradient term
@@ -223,7 +288,8 @@ class DevolvingProcessor:
 
         # Assemble the system of linear equations: Ax = b
         for n in range(len(coeff_dx)):
-            coefficient_A[n, :, :, :] = np.array([lapacaian[n], coeff_D[n], coeff_dx[n], coeff_dy[n]])  # Coefficient matrix
+            coefficient_A[n, :, :, :] = np.array(
+                [lapacaian[n], coeff_D[n], coeff_dx[n], coeff_dy[n]])  # Coefficient matrix
             coefficient_b[n, :, :, :] = RHS[n]  # RHS vector
 
         identity = np.identity(4)  # 4x4 identity matrix for Tikhonov Regularization
@@ -277,7 +343,7 @@ class DevolvingProcessor:
         ref = Ir[0, :, :]
         sam = Is[0, :, :]
         lapphi = (ref - sam + prop ** 2 * np.divide(ndimage.laplace(DF_filtered * ref), pixel_size ** 2)) * (
-                    (2 * math.pi) / (wavelength * prop * ref))
+                (2 * math.pi) / (wavelength * prop * ref))
 
         # Invert Laplacian to retrieve phase
         phi, reg = self.invLaplacian(lapphi, pixel_size)
