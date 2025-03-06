@@ -46,11 +46,14 @@ class DevolvingProcessor:
 
             return flat_field
 
-    def process_single_projection(self, i: int, pure_flat: np.ndarray, dark_current: np.ndarray, Ir: np.ndarray, tikhonov=10000, cutoff=10):
+    def process_single_projection(self, i: int, pure_flat: np.ndarray, dark_current: np.ndarray, Ir: np.ndarray, tikhonov=10000, cutoff=10, return_images=False):
         """Process a single projection with the given parameters."""
         Is = (self.data_loader.load_projections(projection_i=i) - dark_current) / (pure_flat - dark_current)
         DF_atten, positive_D, negative_D, _ = self.Multiple_Devolving(Is, Ir, self.gamma, self.wavelength, self.prop,
                                                                       self.pixel_size, tikhonov=tikhonov, cutoff=cutoff)
+
+        if return_images:
+            return positive_D, negative_D, DF_atten
 
         # Save results
         self.data_loader.save_tiff('DF_atten', i, DF_atten)
