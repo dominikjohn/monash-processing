@@ -40,7 +40,7 @@ flats_meaned = np.mean(flat_fields, axis=0)
 
 gamma = 1000
 devolver = DevolvingProcessor(gamma, 5e-5, prop_distance*1e6, pixel_size*1e6, loader, '/data/mct/22203/Flatfields_340AM_Wed13Nov.h5')
-devolver.process_projections(len(angles), num_workers=50)
+devolver.process_projections(len(angles), num_workers=10)
 
 # Get number of projections (we need this for the loop)
 with h5py.File(loader.h5_files[0], 'r') as f:
@@ -106,11 +106,16 @@ stitcher.process_and_save_range(index_0, index_180, 'dx')
 stitcher.process_and_save_range(index_0, index_180, 'dy')
 stitcher.process_and_save_range(index_0, index_180, 'T_raw')
 stitcher.process_and_save_range(index_0, index_180, 'df')
+
+stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2, format='tif', window_size=umpa_w)
+stitcher.process_and_save_range(index_0, index_180, 'df_positive')
 area_left = np.s_[:, 5:80]
 area_right = np.s_[:, -80:-5]
 parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
                                                     loader, window_size=umpa_w, stitched=True)
 parallel_phase_integrator.integrate_parallel(max_index+1, n_workers=n_workers)
+
+
 
 volume_builder = VolumeBuilder(
         data_loader=loader,
@@ -124,6 +129,7 @@ volume_builder = VolumeBuilder(
         show_geometry=False,
         sparse_factor=1,
         is_360_deg=False,
+        window_size=umpa_w,
     )
 
 volume_builder.reconstruct(center_shift=0, chunk_count=20)
@@ -151,11 +157,12 @@ volume_builder = VolumeBuilder(
         prop_distance=prop_distance,
         pixel_size=pixel_size,
         is_stitched=True,
-        channel='T_raw_stitched',
+        channel='df_positive_stitched_processed',
         detector_tilt_deg=0,
         show_geometry=False,
         sparse_factor=1,
         is_360_deg=False,
+        window_size=umpa_w
     )
 
 volume_builder.reconstruct(center_shift=0, chunk_count=20)

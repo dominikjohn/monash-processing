@@ -181,8 +181,11 @@ class VolumeBuilder:
             data = tomopy.misc.corr.remove_ring(data)
         return ImageData(data, geometry=geometry)
 
-    def save_reconstruction(self, data, counter_offset, center_shift, prefix='recon'):
-        save_folder = self.data_loader.get_save_path() / (prefix + '_' + self.channel)
+    def save_reconstruction(self, data, counter_offset, center_shift, prefix='recon', subfolder=None):
+        if subfolder is not None:
+            save_folder = self.data_loader.get_save_path() / subfolder / (prefix + '_' + self.channel)
+        else:
+            save_folder = self.data_loader.get_save_path() / (prefix + '_' + self.channel)
         os.makedirs(save_folder, exist_ok=True)
         cs_formatted = self.get_shift_filename(center_shift)  # Center shift formatted to non-negative integer
         if self.suffix is not None:
@@ -274,7 +277,11 @@ class VolumeBuilder:
             if binning_factor > 1:
                 prefix = f"{prefix}_bin{binning_factor}"
 
-            self.save_reconstruction(volume, center_shift=center_shift,
+            if self.window_size is not None:
+                self.save_reconstruction(volume, center_shift=center_shift,
+                                         counter_offset=i * chunk_size, prefix=prefix, subfolder=f'umpa_window{self.window_size}')
+            else:
+                self.save_reconstruction(volume, center_shift=center_shift,
                                      counter_offset=i * chunk_size, prefix=prefix)
 
     def sweep_centershift(self, center_shift_range, chunk_count=1):

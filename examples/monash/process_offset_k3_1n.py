@@ -10,6 +10,9 @@ from monash_processing.utils.ImageViewer import ImageViewer as imshow
 import cv2
 
 import matplotlib
+
+from monash_processing.postprocessing.devolving_processor import DevolvingProcessor
+
 matplotlib.use('TkAgg', force=True)  # Must come BEFORE importing pyplot
 import matplotlib.pyplot as plt
 
@@ -40,6 +43,11 @@ print('Index at 180°:', index_180)
 with h5py.File(loader.h5_files[0], 'r') as f:
     num_angles = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA'].shape[0]
     print(f"Number of projections: {num_angles}")
+
+gamma = 1000
+devolver = DevolvingProcessor(gamma, 5e-5, prop_distance * 1e6, pixel_size * 1e6, loader,
+                              '/data/mct/22203/Flatfields_340AM_Wed13Nov.h5')
+devolver.process_projections(len(angles), num_workers=10)
 
 # 2. Initialize preprocessor and UMPA processor
 print("Initializing processors")

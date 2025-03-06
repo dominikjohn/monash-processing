@@ -46,11 +46,11 @@ class DevolvingProcessor:
 
             return flat_field
 
-    def process_single_projection(self, i: int, pure_flat: np.ndarray, dark_current: np.ndarray, Ir: np.ndarray):
+    def process_single_projection(self, i: int, pure_flat: np.ndarray, dark_current: np.ndarray, Ir: np.ndarray, tikhonov=10000, cutoff=10):
         """Process a single projection with the given parameters."""
         Is = (self.data_loader.load_projections(projection_i=i) - dark_current) / (pure_flat - dark_current)
         DF_atten, positive_D, negative_D, _ = self.Multiple_Devolving(Is, Ir, self.gamma, self.wavelength, self.prop,
-                                                                      self.pixel_size)
+                                                                      self.pixel_size, tikhonov=tikhonov, cutoff=cutoff)
 
         # Save results
         self.data_loader.save_tiff('DF_atten', i, DF_atten)
@@ -241,7 +241,9 @@ class DevolvingProcessor:
         return midpass_2d
 
     # 5) Multiple-exposure devolving speckle-based X-ray imaging Fokker--Planck perspective
-    def Multiple_Devolving(self, Is, Ir, gamma, wavelength, prop, pixel_size):
+    # cutoff: Cutoff parameter for filtering (optimize this for best SNR or NIQE)
+    # tikhonov: adjust value if system unstable
+    def Multiple_Devolving(self, Is, Ir, gamma, wavelength, prop, pixel_size, tikhonov=10000, cutoff=10):
         # ----------------------------------------------------------------
         # Is: list of sample-reference speckle fields (X-ray beam + mask + sample + detector) [array]
         # Ir: list of reference speckle fields (X-ray beam + mask + detector) [array]
@@ -287,7 +289,7 @@ class DevolvingProcessor:
             coefficient_b[n, :, :, :] = RHS[n]  # RHS vector
 
         identity = np.identity(4)  # 4x4 identity matrix for Tikhonov Regularization
-        alpha = np.std(coefficient_A) / 10000  # Optimal Tikhonov regularization parameter (tweak if system is unstable)
+        alpha = np.std(coefficient_A) / tikhonov  # Optimal Tikhonov regularization parameter (tweak if system is unstable)
         reg = np.multiply(alpha, identity)  # Regularization matrix
         reg_repeat = np.repeat(reg, rows * columns).reshape(4, 4, rows,
                                                             columns)  # Repeat regularization for all pixel positions
@@ -309,9 +311,6 @@ class DevolvingProcessor:
         DFqr = reg_x[:, :, 1, 0] / prop  # Dark-field (DF) term
         dxDF = reg_x[:, :, 2, 0] / prop  # Derivative of DF along x
         dyDF = reg_x[:, :, 3, 0] / prop  # Derivative of DF along y
-
-        # Apply filtering to determine the true dark-field signal
-        cutoff = 10  # Cutoff parameter for filtering (optimize this for best SNR or NIQE)
 
         # Compute Fourier transform of gradient terms
         i_dyDF = dyDF * (np.zeros((DFqr.shape), dtype=np.complex128) + 0 + 1j)
