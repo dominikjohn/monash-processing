@@ -20,7 +20,7 @@ pixel_size = 9.07e-6 # m
 energy = 30000 # eV
 prop_distance = .75 #
 max_angle = 364
-umpa_w = 15
+umpa_w = 1
 n_workers = 100
 
 # 1. Load reference data
@@ -98,8 +98,11 @@ volume_builder = VolumeBuilder(
         show_geometry=False,
         sparse_factor=1,
         is_360_deg=True,
+        window_size=umpa_w,
     )
+
+volume_builder.reconstruct(center_shift=0, chunk_count=20)
+
 
 volume_builder.sweep_centershift(np.linspace(-2, 2, 5))
 
-volume_builder.reconstruct(center_shift=0, chunk_count=20)

@@ -66,7 +66,7 @@ class VolumeBuilder:
         if self.channel != 'phase' and self.channel != 'att':
             input_dir = base_path / self.channel
             print('Using custom input dir for channel:', self.channel)
-
+        print('Input dir:', input_dir)
         tiff_files = sorted(input_dir.glob(f'projection_*.{format}*'))
         print(tiff_files)
         angles, valid_indices = self.get_valid_indices(len(tiff_files))
