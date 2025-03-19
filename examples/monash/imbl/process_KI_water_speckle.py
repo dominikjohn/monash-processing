@@ -26,6 +26,7 @@ n_workers = 100
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
 loader = IMBLDataLoader(scan_path, scan_name)
+loader.results_dir = Path('/data/imbl/23081/output-during-beamtime/Day3/Dominik_KI_salts_0p75m_30keV_0p16s')
 angles = loader.load_angles()
 
 flat_fields = loader.load_flat_fields()
@@ -93,7 +94,7 @@ volume_builder = VolumeBuilder(
         prop_distance=prop_distance,
         pixel_size=pixel_size,
         is_stitched=False,
-        channel='att',
+        channel='T',
         detector_tilt_deg=0,
         show_geometry=False,
         sparse_factor=1,

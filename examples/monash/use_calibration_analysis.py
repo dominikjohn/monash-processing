@@ -1,6 +1,5 @@
 import matplotlib
 
-matplotlib.use('TkAgg', force=True)
 from monash_processing.postprocessing.calibration_analysis import CalibrationAnalysis
 import matplotlib.pyplot as plt
 
@@ -36,26 +35,25 @@ materials = {
         'electrons': 54,
         'composition': {'C': 5, 'H': 8, 'O': 2}
     },
-    'Lead': {
-        'density': 11.35,
-        'molecular_weight': 207.2,
-        'electrons': 82,
-        'composition': {'Pb': 1}
-    }
+    #'Lead': {
+    #    'density': 11.35,
+    #    'molecular_weight': 207.2,
+    #    'electrons': 82,
+    #    'composition': {'Pb': 1}
+    #}
 }
 
 # Initialize the calibration analysis
 calibration = CalibrationAnalysis(materials, energy_keV=25)
+# Load the reconstruction stacks
+phase_stack, att_stack = calibration.load_reconstruction_stacks(base_path, max_slices=2050, bin_factor=4)
 
 # Set up analysis parameters
 # base_path = "/data/mct/22203/results/P6_Manual"
-# base_path = "/data/mct/22203/results/P6_ReverseOrder"
-base_path = "/data/mct/22203/results/P5_Manual"
-# material_slices = [0, 250, 1070, 1505, 1850]
-material_slices = [250, 250, 1070, 1300, 1900]
-
-# Load the reconstruction stacks
-phase_stack, att_stack = calibration.load_reconstruction_stacks(base_path, max_slices=2050, bin_factor=4)
+base_path = "/data/mct/22203/results/P6_ReverseOrder"
+#base_path = "/data/mct/22203/results/P5_Manual"
+material_slices = [1000, 250, 1070, 1505, 1850]
+#material_slices = [250, 250, 1070, 1300, 1900]
 
 def bin_z_direction(stack, z_bin_factor):
     # Get the new z dimension size
