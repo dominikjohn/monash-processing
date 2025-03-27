@@ -1,0 +1,178 @@
+from core.filters import ProcessingFilter
+from examples.monash.material_decomposition.process_k3_4he_paganin import prop_distance
+from examples.monash.noise2noise.data_prep import pixel_size
+from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
+from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
+from monash_processing.core.data_loader import DataLoader
+#from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
+from monash_processing.core.volume_builder import VolumeBuilder
+import h5py
+from pathlib import Path
+import numpy as np
+from monash_processing.postprocessing.devolving_processor import DevolvingProcessor
+
+# Set your parameters
+scan_path = Path("/data/mct/22203/")
+scan_name = "K3_3H_ReverseOrder"
+pixel_size = 1.444e-6 # m
+energy = 25000 # eV
+prop_distance = 0.158 #
+max_angle = 364
+umpa_w = 1
+n_workers = 100
+
+# 1. Load reference data
+print(f"Loading data from {scan_path}, scan name: {scan_name}")
+loader = DataLoader(scan_path, scan_name)
+flat_fields = loader.load_flat_fields()
+dark_current = loader.load_flat_fields(dark=True)
+angles = np.mean(loader.load_angles(), axis=0)
+angle_step = np.diff(angles).mean()
+print('Angle step:', angle_step)
+index_0 = np.argmin(np.abs(angles - 0))
+index_180 = np.argmin(np.abs(angles - 180))
+print('Index at 0°:', index_0)
+print('Index at 180°:', index_180)
+
+projections = loader.load_projections(projection_i=0)
+projections_meaned = np.mean(projections, axis=0)
+flats_meaned = np.mean(flat_fields, axis=0)
+
+#gamma = 1000
+#devolver = DevolvingProcessor(gamma, 5e-5, prop_distance*1e6, pixel_size*1e6, loader, '/data/mct/22203/Flatfields_340AM_Wed13Nov.h5')
+#devolver.process_projections(len(angles), num_workers=10)
+
+# Get number of projections (we need this for the loop)
+with h5py.File(loader.h5_files[0], 'r') as f:
+    num_angles = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA'].shape[0]
+    print(f"Number of projections: {num_angles}")
+
+# 3. Process each projection
+print("Processing projections")
+
+# Initialize the processor
+processor = UMPAProcessor(
+    scan_path,
+    scan_name,
+    loader,
+    umpa_w,
+    n_workers=50,
+    slicing=np.s_[..., :, :]
+    #slicing=np.s_[..., 800:-500, :]
+)
+
+# Process projections
+results = processor.process_projections(
+    num_angles=num_angles
+)
+
+#center_shifts = np.linspace(307, 312, 10)
+#volume_builder.sweep_centershift(center_shifts)
+area_left = np.s_[:, 5:80]
+area_right = np.s_[:, -80:-5]
+
+max_index = int(np.round(180 / angle_step))
+print('Uppermost projection index: ', max_index)
+
+center_shift_list = np.linspace(805, 810, 5)
+for center_shift in center_shift_list:
+    suffix = f'{(2 * center_shift):.2f}'
+    stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=center_shift / 2, slices=(300, 310), suffix=suffix, window_size=umpa_w)
+    stitcher.process_and_save_range(index_0, index_180, 'dx')
+    stitcher.process_and_save_range(index_0, index_180, 'dy')
+    #stitcher.process_and_save_range(index_0, index_180, 'T_raw')
+    parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
+                                                        loader, stitched=True, suffix=suffix, window_size=umpa_w)
+    parallel_phase_integrator.integrate_parallel(max_index+1, n_workers=n_workers)
+    volume_builder = VolumeBuilder(
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=True,
+        channel='phase',
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=False,
+        suffix=suffix,
+        window_size=umpa_w,
+    )
+    volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(2,4))
+
+best_value = 805
+
+stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2, format='tif', window_size=umpa_w)
+stitcher.process_and_save_range(index_0, index_180, 'dx')
+stitcher.process_and_save_range(index_0, index_180, 'dy')
+stitcher.process_and_save_range(index_0, index_180, 'T')
+#stitcher.process_and_save_range(index_0, index_180, 'df')
+
+#stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2, format='tif', window_size=umpa_w)
+#stitcher.process_and_save_range(index_0, index_180, 'df_positive')
+area_left = np.s_[:, 5:80]
+area_right = np.s_[:, -80:-5]
+parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right,
+                                                    loader, window_size=umpa_w, stitched=True)
+parallel_phase_integrator.integrate_parallel(max_index+1, n_workers=n_workers)
+
+for i in range(1796):
+    T_stitched = loader.load_processed_projection(i, 'T_stitched', subfolder=f'umpa_window{umpa_w}', format='tif')
+    mu_enc = 0.567
+    mu_2 = 8.4
+    delta_enc = 2.96e-6
+    delta_2 = 0.377e-6
+    filtered_t_stiched = ProcessingFilter.croton_two_material_filter_umpa(T_stitched, mu_enc, mu_2, delta_enc, delta_2, pixel_size, prop_distance)
+    loader.save_tiff('T_stitched_filtered', i, filtered_t_stiched)
+
+
+volume_builder = VolumeBuilder(
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=True,
+        channel='phase',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=False,
+        window_size=umpa_w,
+    )
+
+volume_builder.reconstruct(center_shift=0, chunk_count=20)
+
+volume_builder = VolumeBuilder(
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=True,
+        channel='att',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=False,
+        window_size=umpa_w,
+    )
+
+volume_builder.reconstruct(center_shift=0, chunk_count=20)
+
+volume_builder = VolumeBuilder(
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=True,
+        channel='df_positive_stitched_processed',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=False,
+        window_size=umpa_w
+    )
+
+volume_builder.reconstruct(center_shift=0, chunk_count=20)

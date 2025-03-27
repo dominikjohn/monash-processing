@@ -46,6 +46,83 @@ class ProcessingFilter:
         return thickness
 
     @staticmethod
+    def croton_two_material_filter(I, I_ref, mu_enc, mu_2, delta_enc, delta_2, p_size, distance):
+        '''
+        Beltran et al. 2D and 3D X-ray phase retrieval of multi-material objects using a single defocus distance (2010)
+        :param I: intensity projection with sample
+        :param I_ref: reference projection
+        :param mu_enc: mu of enclosing material (e.g. soft tissue)
+        :param mu_2: mu of enclosed material (e.g. contrast agent)
+        :param delta_enc: delta of enclosing material (e.g. soft tissue)
+        :param delta_2: delta of enclosed material (e.g. contrast agent)
+        :param p_size: pixel size
+        :param distance: propagation distance
+        :return: Thickness map
+        '''
+
+        # Get image dimensions
+        ny, nx = I.shape
+
+        # Calculate frequencies using fftfreq
+        delta_x = p_size / (2 * np.pi)
+        kx = np.fft.fftfreq(nx, d=delta_x)
+        ky = np.fft.fftfreq(ny, d=delta_x)
+
+        # Create 2D frequency grid
+        kx_grid, ky_grid = np.meshgrid(kx, ky)
+        k_squared = kx_grid ** 2 + ky_grid ** 2
+
+        image_fft = np.fft.fft2(I / I_ref)
+
+        denom = (distance * (delta_2 - delta_enc) / (mu_2 - mu_enc)) * k_squared + 1
+        filter = 1 / denom
+
+        filtered_fft = image_fft * filter
+        log_image = np.log(np.real(np.fft.ifft2(filtered_fft)))
+        thickness = -log_image / (mu_2 - mu_enc)
+
+        return thickness
+
+    @staticmethod
+    def croton_two_material_filter_umpa(T, mu_enc, mu_2, delta_enc, delta_2, p_size, distance):
+        '''
+        Beltran et al. 2D and 3D X-ray phase retrieval of multi-material objects using a single defocus distance (2010)
+        :param I: intensity projection with sample
+        :param I_ref: reference projection
+        :param mu_enc: mu of enclosing material (e.g. soft tissue)
+        :param mu_2: mu of enclosed material (e.g. contrast agent)
+        :param delta_enc: delta of enclosing material (e.g. soft tissue)
+        :param delta_2: delta of enclosed material (e.g. contrast agent)
+        :param p_size: pixel size
+        :param distance: propagation distance
+        :return: Thickness map
+        '''
+
+        # Get image dimensions
+        ny, nx = T.shape
+
+        # Calculate frequencies using fftfreq
+        delta_x = p_size / (2 * np.pi)
+        kx = np.fft.fftfreq(nx, d=delta_x)
+        ky = np.fft.fftfreq(ny, d=delta_x)
+
+        # Create 2D frequency grid
+        kx_grid, ky_grid = np.meshgrid(kx, ky)
+        k_squared = kx_grid ** 2 + ky_grid ** 2
+
+        image_fft = np.fft.fft2(T)
+
+        print((delta_2-delta_enc)/(mu_2-mu_enc))
+        denom = (distance * (delta_2 - delta_enc) / (mu_2 - mu_enc)) * k_squared + 1
+        filter = 1 / denom
+
+        filtered_fft = image_fft * filter
+        log_image = np.log(np.real(np.fft.ifft2(filtered_fft)))
+        thickness = -log_image / (mu_2 - mu_enc)
+
+        return thickness
+
+    @staticmethod
     def beltran_two_material_filter_modified(I, I_ref, mu_enc, mu_2, delta_enc, delta_2, p_size, distance):
         '''
         Beltran et al. 2D and 3D X-ray phase retrieval of multi-material objects using a single defocus distance (2010)

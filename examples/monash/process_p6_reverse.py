@@ -12,7 +12,7 @@ import numpy as np
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
 scan_name = "P6_ReverseOrder"
-pixel_size = 1.434e-6 # m
+pixel_size = 1.444e-6 # m
 energy = 25000 # keV
 prop_distance = 0.158 #
 max_angle = 182
@@ -24,6 +24,14 @@ print(f"Loading data from {scan_path}, scan name: {scan_name}")
 loader = DataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
+
+angles = np.mean(loader.load_angles(), axis=0)
+angle_step = np.diff(angles).mean()
+print('Angle step:', angle_step)
+index_0 = np.argmin(np.abs(angles - 0))
+index_180 = np.argmin(np.abs(angles - 180))
+print('Index at 0°:', index_0)
+print('Index at 180°:', index_180)
 
 # Get number of projections (we need this for the loop)
 with h5py.File(loader.h5_files[0], 'r') as f:
@@ -49,7 +57,7 @@ processor = UMPAProcessor(
 with processor:
     results = processor.process_projections(
         flats=flat_fields,
-        num_angles=180  # Or however many angles you have
+        num_angles=180
     )
 
 # 4. Phase integrate
@@ -61,16 +69,21 @@ parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel
 parallel_phase_integrator.integrate_parallel(num_angles, n_workers=n_workers)
 
 volume_builder = VolumeBuilder(
-    data_loader=loader,
-    max_angle=max_angle,
-    energy=energy,
-    prop_distance=prop_distance,
-    pixel_size=pixel_size,
-    is_stitched=False,
-    channel='phase',
-    detector_tilt_deg=0,
-    show_geometry=False,
-)
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=False,
+        channel='phase',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=False,
+        readjust_angles=True,
+    )
+
+volume_builder.sweep_centershift(np.linspace(38, 45, 5))
 
 sparse_factor = 1 # Only use every n-th projection
 #center_shifts = np.linspace(30, 70, 5)
@@ -78,3 +91,19 @@ sparse_factor = 1 # Only use every n-th projection
 
 center_shift = 38.8
 volume_builder.reconstruct(center_shift=center_shift, chunk_count=30)
+
+volume_builder = VolumeBuilder(
+        data_loader=loader,
+        original_angles=angles,
+        energy=energy,
+        prop_distance=prop_distance,
+        pixel_size=pixel_size,
+        is_stitched=False,
+        channel='att',
+        detector_tilt_deg=0,
+        show_geometry=False,
+        sparse_factor=1,
+        is_360_deg=False,
+        readjust_angles=True,
+    )
+volume_builder.reconstruct(center_shift=center_shift, chunk_count=10)

@@ -46,13 +46,15 @@ materials = {
 # Initialize the calibration analysis
 calibration = CalibrationAnalysis(materials, energy_keV=25)
 # Load the reconstruction stacks
+#base_path = "/data/mct/22203/results/P6_ReverseOrder"
+base_path = "/data/mct/22203/results/P6_Manual"
+
 phase_stack, att_stack = calibration.load_reconstruction_stacks(base_path, max_slices=2050, bin_factor=4)
 
 # Set up analysis parameters
 # base_path = "/data/mct/22203/results/P6_Manual"
-base_path = "/data/mct/22203/results/P6_ReverseOrder"
 #base_path = "/data/mct/22203/results/P5_Manual"
-material_slices = [1000, 250, 1070, 1505, 1850]
+material_slices = [1200, 550, 1070, 1505, 1850]
 #material_slices = [250, 250, 1070, 1300, 1900]
 
 def bin_z_direction(stack, z_bin_factor):
@@ -65,7 +67,6 @@ def bin_z_direction(stack, z_bin_factor):
     binned = reshaped.reshape(new_z, z_bin_factor, *stack.shape[1:]).mean(axis=1)
 
     return binned
-
 
 # Apply to both stacks
 z_bin_factor = 4  # Or whatever factor you want to use
@@ -80,10 +81,10 @@ print(f"\nInitial correction factor: {initial_correction:.4f}")
 # Perform analysis
 phase_results, att_results = calibration.analyze_materials(
     material_slices,
-    n_slices=50,
-    use_att=False,
+    n_slices=70,
+    use_att=True,
     phase_correction_factor=initial_correction,
-    overwrite=True
+    overwrite=False
 )
 
 font_params = {
@@ -116,10 +117,92 @@ print(f"New correction factor: {new_correction:.4f}")
 # Run analysis with new correction
 phase_results_corrected, att_results_corrected = calibration.analyze_materials(
     material_slices,
-    n_slices=50,
-    use_att=False,
+    n_slices=70,
+    use_att=True,
     phase_correction_factor=new_correction
 )
 
 # Plot corrected results
 calibration.plot_phase_vs_attenuation(phase_results_corrected, att_results_corrected, font_params=font_params)
+import numpy as np
+import os
+
+# Create a dictionary to store all the important values
+export_data = {
+    # Material properties
+    'materials': list(materials.keys()),
+
+    # Theoretical values
+    'theoretical_electron_densities': [],
+    'theoretical_attenuations': [],
+
+    # Original measurement results
+    'phase_means': [res[0] for res in phase_results if res is not None],
+    'phase_stds': [res[1] for res in phase_results if res is not None],
+    'att_means': [res[0] for res in att_results if res is not None],
+    'att_stds': [res[1] for res in att_results if res is not None],
+
+    # Corrected measurement results
+    'phase_means_corrected': [res[0] for res in phase_results_corrected if res is not None],
+    'phase_stds_corrected': [res[1] for res in phase_results_corrected if res is not None],
+    'att_means_corrected': [res[0] for res in att_results_corrected if res is not None],
+    'att_stds_corrected': [res[1] for res in att_results_corrected if res is not None],
+
+    # Correction factors
+    'initial_correction_factor': initial_correction,
+    'new_correction_factor': new_correction
+}
+
+# Get theoretical values to add to the dictionary
+electron_densities, attenuations = calibration.calculate_theoretical_values()
+for material in materials:
+    export_data['theoretical_electron_densities'].append(electron_densities[material])
+    export_data['theoretical_attenuations'].append(attenuations[material])
+
+# Define the output path
+output_path = os.path.join('/user/home/Desktop', 'calibration_results_p6manual.npz')
+
+# Save the data using numpy's compressed format
+np.savez(output_path, **export_data)
+
+print("\nData exported successfully to: {}".format(output_path))
+
+# If you want to also save a plain text summary file
+summary_path = os.path.join('/user/home/Desktop', 'calibration_summary_p6manual.txt')
+with open(summary_path, 'w') as f:
+    f.write("Calibration Analysis Summary\n")
+    f.write("===========================\n\n")
+
+    f.write("Material Properties:\n")
+    f.write("-----------------\n")
+    for mat, props in materials.items():
+        f.write("{}: density={} g/cm^3, MW={} g/mol, electrons={}\n".format(
+            mat, props['density'], props['molecular_weight'], props['electrons']))
+
+    f.write("\nTheoretical Values:\n")
+    f.write("-----------------\n")
+    for i, mat in enumerate(materials.keys()):
+        f.write("{}: electron density={:.2f} e-/nm^-3, attenuation={:.4f} cm^-1\n".format(
+            mat, electron_densities[mat], attenuations[mat]))
+
+    f.write("\nMeasured Values (Initial):\n")
+    f.write("------------------------\n")
+    for i, mat in enumerate(materials.keys()):
+        if i < len(export_data['phase_means']):
+            f.write("{}: phase={:.2f}±{:.2f}, attenuation={:.4f}±{:.4f}\n".format(
+                mat, export_data['phase_means'][i], export_data['phase_stds'][i],
+                export_data['att_means'][i], export_data['att_stds'][i]))
+
+    f.write("\nMeasured Values (Corrected):\n")
+    f.write("---------------------------\n")
+    for i, mat in enumerate(materials.keys()):
+        if i < len(export_data['phase_means_corrected']):
+            f.write("{}: phase={:.2f}±{:.2f}, attenuation={:.4f}±{:.4f}\n".format(
+                mat, export_data['phase_means_corrected'][i], export_data['phase_stds_corrected'][i],
+                export_data['att_means_corrected'][i], export_data['att_stds_corrected'][i]))
+
+    f.write("\nCorrection Factors:\n")
+    f.write("Initial: {:.4f}\n".format(initial_correction))
+    f.write("Final: {:.4f}\n".format(new_correction))
+
+print("Summary text exported to: {}".format(summary_path))

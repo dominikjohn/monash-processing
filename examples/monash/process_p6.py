@@ -78,6 +78,7 @@ volume_builder = VolumeBuilder(
         show_geometry=False,
         sparse_factor=1,
         is_360_deg=False,
+        readjust_angles=True
     )
 
 volume_builder.sweep_centershift(np.linspace(17.5, 19, 5))
@@ -95,6 +96,7 @@ volume_builder = VolumeBuilder(
         show_geometry=False,
         sparse_factor=1,
         is_360_deg=False,
+        readjust_angles=True,
     )
 
 #volume_builder.sweep_centershift(np.linspace(17.5, 19, 5))
