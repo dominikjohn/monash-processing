@@ -98,10 +98,10 @@ for center_shift in center_shift_list:
     volume_builder.reconstruct(center_shift=0, chunk_count=1, custom_folder='offset_sweep', slice_range=(2,4))
 
 best_value = 805
-
+blending = True # whether to blend linearly
 stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2, format='tif', window_size=umpa_w)
-stitcher.process_and_save_range(index_0, index_180, 'dx')
-stitcher.process_and_save_range(index_0, index_180, 'dy')
+stitcher.process_and_save_range(index_0, index_180, 'dx', blending=True)
+stitcher.process_and_save_range(index_0, index_180, 'dy', blending=True)
 stitcher.process_and_save_range(index_0, index_180, 'T')
 stitcher.process_and_save_range(index_0, index_180, 'df')
 

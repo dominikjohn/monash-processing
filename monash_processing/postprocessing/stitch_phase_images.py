@@ -129,8 +129,6 @@ class ProjectionStitcher:
         )
         client = Client(cluster)
 
-        print("Linear blending mode is ", blending)
-
         try:
             # Create processing function that returns None if file exists
             def process_single_projection(idx):
@@ -154,7 +152,8 @@ class ProjectionStitcher:
                     return None
 
                 try:
-                    stitched = self.stitch_projection_pair(idx, channel)
+                    print("Linear blending mode is ", blending)
+                    stitched = self.stitch_projection_pair(idx, channel, blending=blending)
                     if self.suffix is not None:
                         save_channel = channel + f'_stitched_{self.suffix}'
                     else:
