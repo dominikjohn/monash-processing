@@ -5,7 +5,6 @@ from scipy.ndimage import rotate
 
 class ProcessingFilter:
 
-
     @staticmethod
     def beltran_two_material_filter(I, I_ref, A, mu_enc, mu_2, delta_enc, delta_2, p_size, distance):
         '''

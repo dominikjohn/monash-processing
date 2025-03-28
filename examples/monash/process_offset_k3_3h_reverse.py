@@ -1,6 +1,4 @@
-from core.filters import ProcessingFilter
-from examples.monash.material_decomposition.process_k3_4he_paganin import prop_distance
-from examples.monash.noise2noise.data_prep import pixel_size
+from monash_processing.core.filters import ProcessingFilter
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.core.data_loader import DataLoader
@@ -9,7 +7,6 @@ from monash_processing.core.volume_builder import VolumeBuilder
 import h5py
 from pathlib import Path
 import numpy as np
-from monash_processing.postprocessing.devolving_processor import DevolvingProcessor
 
 # Set your parameters
 scan_path = Path("/data/mct/22203/")
@@ -34,9 +31,9 @@ index_180 = np.argmin(np.abs(angles - 180))
 print('Index at 0°:', index_0)
 print('Index at 180°:', index_180)
 
-projections = loader.load_projections(projection_i=0)
-projections_meaned = np.mean(projections, axis=0)
-flats_meaned = np.mean(flat_fields, axis=0)
+#projections = loader.load_projections(projection_i=0)
+#projections_meaned = np.mean(projections, axis=0)
+#flats_meaned = np.mean(flat_fields, axis=0)
 
 #gamma = 1000
 #devolver = DevolvingProcessor(gamma, 5e-5, prop_distance*1e6, pixel_size*1e6, loader, '/data/mct/22203/Flatfields_340AM_Wed13Nov.h5')
@@ -106,7 +103,7 @@ stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=bes
 stitcher.process_and_save_range(index_0, index_180, 'dx')
 stitcher.process_and_save_range(index_0, index_180, 'dy')
 stitcher.process_and_save_range(index_0, index_180, 'T')
-#stitcher.process_and_save_range(index_0, index_180, 'df')
+stitcher.process_and_save_range(index_0, index_180, 'df')
 
 #stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=best_value / 2, format='tif', window_size=umpa_w)
 #stitcher.process_and_save_range(index_0, index_180, 'df_positive')
@@ -116,14 +113,40 @@ parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel
                                                     loader, window_size=umpa_w, stitched=True)
 parallel_phase_integrator.integrate_parallel(max_index+1, n_workers=n_workers)
 
+import scipy
 for i in range(1796):
     T_stitched = loader.load_processed_projection(i, 'T_stitched', subfolder=f'umpa_window{umpa_w}', format='tif')
-    mu_enc = 0.567
-    mu_2 = 8.4
-    delta_enc = 2.96e-6
-    delta_2 = 0.377e-6
-    filtered_t_stiched = ProcessingFilter.croton_two_material_filter_umpa(T_stitched, mu_enc, mu_2, delta_enc, delta_2, pixel_size, prop_distance)
-    loader.save_tiff('T_stitched_filtered', i, filtered_t_stiched)
+    wavevec = 2 * np.pi * energy / (scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
+
+    mu_st = 0.567 * 100 # measurement
+    delta_st = 0.377e-6 # measurement
+
+    mu_lead = 550.28 * 100 # 1 / m, source NIST
+    delta_lead = 2.9625e-06 # confirmed via NIST
+
+    ny, nx = T_stitched.shape
+
+    # Calculate frequencies using fftfreq
+    delta_x = pixel_size / (2 * np.pi)
+    kx = np.fft.fftfreq(nx, d=delta_x)
+    ky = np.fft.fftfreq(ny, d=delta_x)
+
+    # Create 2D frequency grid
+    kx_grid, ky_grid = np.meshgrid(kx, ky)
+    k_squared = kx_grid ** 2 + ky_grid ** 2
+
+    image_fft = np.fft.fft2(T_stitched)
+
+    denom = (prop_distance * (delta_st - delta_lead) / (mu_st - mu_lead)) * k_squared + 1
+    filter = 1 / denom
+
+    filtered_fft = image_fft * filter
+    absorption = np.real(np.fft.ifft2(filtered_fft))
+    #log_image = np.log(np.real(np.fft.ifft2(filtered_fft)))
+    #thickness = -log_image / (mu_2 - mu_enc)
+    #thickness = -log_image / (mu_st - mu_lead)
+
+    loader.save_tiff('absorption', i, absorption, subfolder=f'umpa_window{umpa_w}')
 
 
 volume_builder = VolumeBuilder(

@@ -46,8 +46,7 @@ class ProjectionStitcher:
 
         return projection - mean
 
-    def stitch_projection_pair(self, proj_index: int, channel: str) -> Tuple[np.ndarray, dict]:
-
+    def stitch_projection_pair(self, proj_index: int, channel: str, blending: bool = False) -> np.ndarray:
         proj1_raw, proj2_raw = self.load_opposing_projections(proj_index, channel)
         if channel.startswith('T') or channel.startswith('df'):
             proj1 = proj1_raw
@@ -74,15 +73,40 @@ class ProjectionStitcher:
         # Initialize composite with p1 values
         composite = p1.copy()
 
-        # In overlap region, take the average
-        composite[overlap] = (p1[overlap] + p2[overlap]) / 2
+        if blending:
+            # Use gradual linear blending in the overlap region
+            if np.any(overlap):
+                # Create weights based on horizontal position in the overlap region
+                x_indices = np.where(np.any(overlap, axis=0))[0]
+                start_x, end_x = x_indices[0], x_indices[-1]
+                blend_width = end_x - start_x + 1
+
+                # Create a weight template that goes from 0 to 1 across the blend width
+                weight_template = np.linspace(0, 1, blend_width)
+
+                # Create a full weight map matching the composite dimensions
+                weight_map = np.zeros_like(p1)
+                weight_map[:, start_x:end_x + 1] = weight_template[np.newaxis, :]
+
+                # Apply the weight map only in the overlap region
+                # Weight for p1 increases from left to right
+                p1_weight = weight_map.copy()
+                # Weight for p2 decreases from left to right
+                p2_weight = 1 - p1_weight
+
+                # In overlap region, apply weighted average
+                composite[overlap] = (p1[overlap] * p1_weight[overlap] +
+                                      p2[overlap] * p2_weight[overlap])
+        else:
+            # Use the original approach: simple averaging in the overlap region
+            composite[overlap] = (p1[overlap] + p2[overlap]) / 2
 
         # Fill remaining areas from p2
         composite = np.where(np.isnan(composite), p2, composite)
 
         return composite
 
-    def process_and_save_range(self, start_idx: int, end_idx: int, channel: str) -> list:
+    def process_and_save_range(self, start_idx: int, end_idx: int, channel: str, blending = False) -> list:
         """
         Process and save a range of projection pairs using Dask for parallel processing.
 
@@ -90,6 +114,7 @@ class ProjectionStitcher:
             start_idx: Starting projection index
             end_idx: Ending projection index (inclusive)
             channel: Name of the input channel directory
+            blending: if True, uses linear blending between images
 
         Returns:
             list: List of stitching statistics for each processed pair
@@ -103,6 +128,8 @@ class ProjectionStitcher:
             lifetime_restart=True,
         )
         client = Client(cluster)
+
+        print("Linear blending mode is ", blending)
 
         try:
             # Create processing function that returns None if file exists
