@@ -1,7 +1,7 @@
 from monash_processing.core.data_loader_p10 import DataLoaderP10
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
-#from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
-from monash_processing.core.volume_builder import VolumeBuilder
+from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
+#from monash_processing.core.volume_builder import VolumeBuilder
 from pathlib import Path
 import numpy as np
 import hdf5plugin
@@ -22,7 +22,7 @@ cropping = np.s_[...]
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
 loader = DataLoaderP10(scan_path, scan_name, '20250405/detectors/eiger', flat_count=flat_count, projection_count=projection_count)
-flat_fields = loader.load_flat_fields(dark=False)
+flat_fields = loader.load_flat_fields()
 angles = np.linspace(0, 360, projection_count)
 
 # 2. Initialize preprocessor and UMPA processor
@@ -37,7 +37,9 @@ processor = UMPAProcessor(
     scan_path,
     scan_name,
     loader,
-    n_workers=50
+    umpa_w,
+    n_workers=50,
+    slicing=np.s_[..., 1100:1500, 300:800]
 )
 
 # Process projections
