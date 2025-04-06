@@ -1,9 +1,7 @@
 from monash_processing.core.data_loader_p10 import DataLoaderP10
-from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.core.volume_builder import VolumeBuilder
-import h5py
 from pathlib import Path
 import numpy as np
 
@@ -22,7 +20,7 @@ cropping = np.s_[...]
 
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
-loader = DataLoaderP10(scan_path, scan_name, '20250406/detectors/eiger', flat_count=flat_count, cropping=cropping)
+loader = DataLoaderP10(scan_path, scan_name, '20250406/detectors/eiger', flat_count=flat_count)
 flat_fields = loader.load_flat_fields()
 angles = np.linspace(0, 360, projection_count)
 print(angles)

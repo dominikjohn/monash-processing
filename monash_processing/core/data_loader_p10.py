@@ -30,7 +30,7 @@ class DataLoaderP10(DataLoader):
 
         self.filtered_groups = []
 
-        file_list = sorted(glob.glob(self.base_path + '*_data_*.h5'))
+        file_list = sorted(glob.glob(str(self.base_path) + '*_data_*.h5'))
         # Group files based on the pattern before "_data_"
         grouped_files = defaultdict(list)
         for file_path in file_list:
