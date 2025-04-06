@@ -96,22 +96,3 @@ class DataLoaderP10(DataLoader):
         h5_data_path = 'entry/data/data'
         f = h5py.File(file_path, 'r')
         return np.squeeze(np.array(f[h5_data_path][()], dtype=np.float64))
-
-    def load_projections(self, projection_i, step_i = None) -> np.ndarray:
-        projection = []
-        for i, group in enumerate(self.filtered_groups):
-            projection.append(self.load_raw_dataset(group[self.flat_count + projection_i]))
-
-        projection = np.array(projection)
-        return projection
-
-    def load_processed_projection(self, projection_i: int, channel: str, format='tif', simple_format=False) -> np.ndarray:
-        """Load a single processed projection from a specific channel."""
-        # Load from TIFF files
-        if simple_format:
-            tiff_path = self.results_dir / channel / f'projection_{projection_i:04d}.{format}'
-        else:
-            tiff_path = self.results_dir / channel / f'{channel}_{projection_i:04d}.{format}'
-        data = np.array(tifffile.imread(tiff_path))
-
-        return data

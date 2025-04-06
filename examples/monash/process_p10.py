@@ -47,10 +47,10 @@ results = processor.process_projections(
     num_angles=projection_count,
 )
 
-area_left = np.s_[: 5:80]
-area_right = np.s_[:, -80:-5]
+area_left = np.s_[: 50:100]
+area_right = np.s_[:, -50:-100]
 
-parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader, stitched=True)
+parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel_size, area_left, area_right, loader)
 parallel_phase_integrator.integrate_parallel(projection_count+1, n_workers=n_workers)
 
 volume_builder = VolumeBuilder(
