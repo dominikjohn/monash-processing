@@ -54,7 +54,8 @@ processor = UMPAProcessor(
     loader,
     umpa_w,
     n_workers=50,
-    slicing=np.s_[..., :, :]
+    #slicing=np.s_[..., :, :]
+    slicing=np.s_[..., 800:, :]
     #slicing=np.s_[..., 800:-500, :]
 )
 
@@ -114,15 +115,22 @@ parallel_phase_integrator = ParallelPhaseIntegrator(energy, prop_distance, pixel
 parallel_phase_integrator.integrate_parallel(max_index+1, n_workers=n_workers)
 
 import scipy
+
+mu_st = 0.567 * 100  # measurement
+#delta_st = 0.377e-6  # measurement
+delta_st = 0.3305e-6
+mu_lead = 550.28 * 100  # 1 / m, source NIST
+delta_lead = 2.9625e-06  # confirmed via NIST
+
+wavevec = 2 * np.pi * energy / (scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
+beta_st = mu_st / (2 * wavevec)
+beta_lead = mu_lead / (2 * wavevec)
+
+print((delta_st-delta_lead)/(beta_st-beta_lead))
+
 for i in range(1796):
     T_stitched = loader.load_processed_projection(i, 'T_stitched', subfolder=f'umpa_window{umpa_w}', format='tif')
     wavevec = 2 * np.pi * energy / (scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
-
-    mu_st = 0.567 * 100 # measurement
-    delta_st = 0.377e-6 # measurement
-
-    mu_lead = 550.28 * 100 # 1 / m, source NIST
-    delta_lead = 2.9625e-06 # confirmed via NIST
 
     ny, nx = T_stitched.shape
 
@@ -148,7 +156,6 @@ for i in range(1796):
 
     loader.save_tiff('absorption', i, absorption, subfolder=f'umpa_window{umpa_w}')
 
-
 volume_builder = VolumeBuilder(
         data_loader=loader,
         original_angles=angles,
@@ -164,7 +171,7 @@ volume_builder = VolumeBuilder(
         window_size=umpa_w,
     )
 
-volume_builder.reconstruct(center_shift=0, chunk_count=20)
+volume_builder.reconstruct(center_shift=0, chunk_count=5)
 
 volume_builder = VolumeBuilder(
         data_loader=loader,
@@ -181,7 +188,7 @@ volume_builder = VolumeBuilder(
         window_size=umpa_w,
     )
 
-volume_builder.reconstruct(center_shift=0, chunk_count=20)
+volume_builder.reconstruct(center_shift=0, chunk_count=5)
 
 volume_builder = VolumeBuilder(
         data_loader=loader,
