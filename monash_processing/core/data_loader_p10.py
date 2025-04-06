@@ -97,7 +97,7 @@ class DataLoaderP10(DataLoader):
         f = h5py.File(file_path, 'r')
         return np.squeeze(np.array(f[h5_data_path][()], dtype=np.float64))
 
-    def load_projections(self, projection_i, step_i) -> np.ndarray:
+    def load_projections(self, projection_i, step_i = None) -> np.ndarray:
         projection = []
         for i, group in enumerate(self.filtered_groups):
             projection.append(self.load_raw_dataset(group[self.flat_count + projection_i]))
