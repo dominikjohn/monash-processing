@@ -56,8 +56,9 @@ class DataLoaderP10(DataLoader):
         flatfield_file = self.results_dir / filename
         if flatfield_file.exists():
             try:
+                print('Flatfield file exists:', flatfield_file)
                 flat_fields_array = np.load(flatfield_file)
-                self.logger.info(f"Loaded {type}field from {flatfield_file}")
+                self.logger.info(f"Loaded from {flatfield_file}")
                 return flat_fields_array
             except Exception as e:
                 self.logger.error(f"Failed to load averaged flatfield from {flatfield_file}: {str(e)}")

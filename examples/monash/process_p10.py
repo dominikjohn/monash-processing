@@ -4,6 +4,7 @@ from monash_processing.algorithms.parallel_phase_integrator import ParallelPhase
 from monash_processing.core.volume_builder import VolumeBuilder
 from pathlib import Path
 import numpy as np
+import hdf5plugin
 
 # Set your parameters
 scan_path = Path('/asap3/petra3/gpfs/p10/2025/data/11021161/')
@@ -21,9 +22,8 @@ cropping = np.s_[...]
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
 loader = DataLoaderP10(scan_path, scan_name, '20250405/detectors/eiger', flat_count=flat_count)
-flat_fields = loader.load_flat_fields()
+flat_fields = loader.load_flat_fields(dark=False)
 angles = np.linspace(0, 360, projection_count)
-
 
 # 2. Initialize preprocessor and UMPA processor
 print("Initializing processors")
