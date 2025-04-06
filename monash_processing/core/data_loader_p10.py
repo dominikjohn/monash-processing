@@ -115,19 +115,3 @@ class DataLoaderP10(DataLoader):
         data = np.array(tifffile.imread(tiff_path))
 
         return data
-
-    def save_tiff(self,
-                  channel: str,
-                  angle_i: int,
-                  data: np.ndarray,
-                  prefix='projection'):
-        """Save results as separate TIFF files."""
-        channel_dir = self.results_dir / channel
-        channel_dir.mkdir(parents=True, exist_ok=True)
-
-        try:
-            tif_path = channel_dir / f'{prefix}_{angle_i:04d}.tif'
-            im = Image.fromarray(data.astype(np.float32))
-            im.save(tif_path)
-        except Exception as e:
-            self.logger.error(f"Failed to save tiff {angle_i} to {tif_path}: {str(e)}")
