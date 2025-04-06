@@ -1,13 +1,13 @@
 from monash_processing.core.data_loader_p10 import DataLoaderP10
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
-from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
+#from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.core.volume_builder import VolumeBuilder
 from pathlib import Path
 import numpy as np
 
 # Set your parameters
 scan_path = Path('/asap3/petra3/gpfs/p10/2025/data/11021161/')
-scan_name = "placenta_04_tomo_08"
+scan_name = "placenta_04_tomo08"
 pixel_size = 1.444e-6 # m
 energy = 8000 # eV
 prop_distance = 0.155
@@ -20,10 +20,10 @@ cropping = np.s_[...]
 
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
-loader = DataLoaderP10(scan_path, scan_name, '20250406/detectors/eiger', flat_count=flat_count)
+loader = DataLoaderP10(scan_path, scan_name, '20250405/detectors/eiger', flat_count=flat_count)
 flat_fields = loader.load_flat_fields()
 angles = np.linspace(0, 360, projection_count)
-print(angles)
+
 
 # 2. Initialize preprocessor and UMPA processor
 print("Initializing processors")
