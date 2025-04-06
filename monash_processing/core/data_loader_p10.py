@@ -6,6 +6,8 @@ import logging
 import tifffile
 from tqdm import tqdm
 import glob
+
+from examples.monash.process_p10 import projection_count
 from monash_processing.core.data_loader import DataLoader
 from PIL import Image
 from collections import defaultdict
@@ -15,7 +17,7 @@ import re
 class DataLoaderP10(DataLoader):
     """Handles loading and organizing scan data from H5 files."""
 
-    def __init__(self, scan_path: Union[str, Path], scan_name: str, middle_string: str = '', flat_count=25):
+    def __init__(self, scan_path: Union[str, Path], scan_name: str, middle_string: str = '', flat_count=25, projection_count=501):
         self.scan_path = Path(scan_path)
         self.scan_name = scan_name
         self.middle_string = middle_string
@@ -23,6 +25,7 @@ class DataLoaderP10(DataLoader):
         self.results_dir = self.scan_path / 'processed' / self.middle_string / self.scan_name
         self.base_path = self.scan_path / 'raw' / self.middle_string / self.scan_name
         self.flat_count = flat_count
+        self.projection_count = projection_count
 
         print('Base path:', self.base_path)
         print('Results path:', self.results_dir)
@@ -77,10 +80,10 @@ class DataLoaderP10(DataLoader):
                 return
             print('Processing group:', i)
             flats_before_list = group[:self.flat_count]
-            flats_after_list = group[self.flat_count+1:]
-            flats_before = [self.load_raw_dataset(file) for file in flats_before_list]
-            flats_after = [self.load_raw_dataset(file) for file in flats_after_list]
+            flats_after_list = group[self.flat_count+projection_count:]
+            flats_before = [self.load_raw_dataset(file) for file in tqdm(flats_before_list)]
             print('Flats before:', len(flats_before_list))
+            flats_after = [self.load_raw_dataset(file) for file in tqdm(flats_after_list)]
             print('Flats after:', len(flats_before_list))
             flats = np.mean(np.array(flats_before + flats_after), axis=0)
             all_flats.append(flats)
