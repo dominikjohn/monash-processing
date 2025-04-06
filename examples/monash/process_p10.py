@@ -21,7 +21,7 @@ cropping = np.s_[...]
 
 # 1. Load reference data
 print(f"Loading data from {scan_path}, scan name: {scan_name}")
-loader = DataLoaderP10(scan_path, scan_name, '20250405/detectors/eiger', flat_count=flat_count)
+loader = DataLoaderP10(scan_path, scan_name, '20250405/detectors/eiger', flat_count=flat_count, projection_count=projection_count)
 flat_fields = loader.load_flat_fields(dark=False)
 angles = np.linspace(0, 360, projection_count)
 
