@@ -7,11 +7,9 @@ import tifffile
 from tqdm import tqdm
 import glob
 
-from examples.monash.process_p10 import projection_count
 from monash_processing.core.data_loader import DataLoader
 from PIL import Image
 from collections import defaultdict
-import os
 import re
 
 class DataLoaderP10(DataLoader):
