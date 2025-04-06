@@ -74,7 +74,7 @@ class DataLoaderP10(DataLoader):
                 print('Created fake dark field filled with zeros:', dark.shape)
                 self._save_auxiliary_data(dark, 'averaged_darkfields.npy')
                 return
-
+            print('Processing group:', i)
             flats_before_list = group[:self.flat_count]
             flats_after_list = group[self.flat_count+1:]
             flats_before = [self.load_raw_dataset(file) for file in flats_before_list]
