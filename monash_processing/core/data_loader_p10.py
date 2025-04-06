@@ -6,7 +6,6 @@ import logging
 import tifffile
 from tqdm import tqdm
 import glob
-
 from monash_processing.core.data_loader import DataLoader
 from PIL import Image
 from collections import defaultdict
@@ -93,6 +92,7 @@ class DataLoaderP10(DataLoader):
         return all_flats
 
     def load_raw_dataset(self, file_path):
+        import hdf5plugin
         h5_data_path = 'entry/data/data'
         f = h5py.File(file_path, 'r')
         return np.squeeze(np.array(f[h5_data_path][()], dtype=np.float64))

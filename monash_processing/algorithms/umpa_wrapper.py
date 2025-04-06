@@ -5,7 +5,7 @@ from typing import Dict, Optional, Union, List
 import UMPA
 
 import gc
-
+import hdf5plugin
 from monash_processing.core.eigenflats import EigenflatManager
 from monash_processing.core.data_loader import DataLoader
 from dask import delayed, compute
