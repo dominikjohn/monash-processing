@@ -78,7 +78,7 @@ class DataLoaderP10(DataLoader):
                 return
             print('Processing group:', i)
             flats_before_list = group[:self.flat_count]
-            flats_after_list = group[self.flat_count+self.projection_count:]
+            flats_after_list = group[self.flat_count+self.projection_count:self.flat_count*2+self.projection_count]
             flats_before = [self.load_raw_dataset(file) for file in tqdm(flats_before_list)]
             print('Flats before:', len(flats_before_list))
             flats_after = [self.load_raw_dataset(file) for file in tqdm(flats_after_list)]
