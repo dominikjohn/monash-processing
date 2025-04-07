@@ -91,6 +91,14 @@ class DataLoaderP10(DataLoader):
 
         return all_flats
 
+    def load_projections(self, projection_i, step_i=None) -> np.ndarray:
+        projection = []
+        for i, group in enumerate(self.filtered_groups):
+            projection.append(self.load_raw_dataset(group[self.flat_count + projection_i]))
+
+        projection = np.array(projection)
+        return projection
+
     def load_raw_dataset(self, file_path):
         import hdf5plugin
         h5_data_path = 'entry/data/data'

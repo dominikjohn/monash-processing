@@ -126,7 +126,7 @@ matrix = np.array([[rho_1, rho_2],
 inverse = np.linalg.inv(matrix)
 
 plot_slice(edensity_slice, slice_idx=0, pixel_size=psize, title="Electron density [1/nm$^3$]", vmin=230, vmax=350, fontsize=16*1.75, colorbar_position='left')
-plt.savefig(os.path.join(home_dir, f'k3_3h_reverse_edensity.png'), dpi=900, bbox_inches='tight')
+#plt.savefig(os.path.join(home_dir, f'k3_3h_reverse_edensity.png'), dpi=900, bbox_inches='tight')
 plt.show()
 
 plot_slice(mu_slice, slice_idx=0, pixel_size=psize, title="Attenuation coefficient [1/m]", vmin=0, vmax=12, fontsize=16*1.75)
