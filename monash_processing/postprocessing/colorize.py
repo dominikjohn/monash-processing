@@ -80,7 +80,7 @@ class Colorizer:
             'haematoxylin': h_interpolated,
         }
 
-    def concentration_to_color(self, wavelengths, extinction_coefficients, concentration, thickness_um):
+    def concentration_to_color(self, wavelengths, extinction_coefficients, concentration, thickness_um, light_color=6500):
         # Load color matching functions
         cmf_data = np.loadtxt(os.path.join(self.base_path, 'cie-cmf.txt'))
 
@@ -95,7 +95,7 @@ class Colorizer:
 
         result = self.calculate_transmitted_spectrum(
             wavelengths, extinction_coefficients,
-            thickness_um=thickness_um, concentration=concentration
+            thickness_um=thickness_um, concentration=concentration, light_color=light_color
         )
 
         trans = result['transmitted_spectrum']
@@ -198,7 +198,7 @@ class Colorizer:
         plt.tight_layout()
         return fig
 
-    def plot_transmittance_curve(self, wavelengths, extinction_coefficients, concentration=500e-4):
+    def plot_transmittance_curve(self, wavelengths, extinction_coefficients, concentration):
         """Plot the transmittance curve for different thicknesses."""
         thicknesses = np.linspace(0, 500, 100)
         avg_transmittances = []
@@ -248,7 +248,7 @@ class Colorizer:
         plt.show()
 
     def calculate_transmitted_spectrum(self, wavelengths, extinction_coefficients,
-                                       thickness_um=100, concentration=50e-4):
+                                       thickness_um, concentration, light_color):
         """Vectorized version of transmitted spectrum using Beer-Lambert law."""
 
         # Ensure arrays
@@ -271,8 +271,8 @@ class Colorizer:
         # Transmittance: T = 10^(-A)
         transmittance = 10 ** (-absorbance)
 
-        # Source spectrum: Planck at 5500K
-        source_spectrum = self.planck(wavelengths, 5500)  # shape: (λ,)
+        # Source spectrum: Planck at light_color K
+        source_spectrum = self.planck(wavelengths, light_color)  # shape: (λ,)
 
         # Transmitted spectrum: (N, λ)
         transmitted_spectrum = transmittance * source_spectrum
