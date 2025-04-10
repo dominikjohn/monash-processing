@@ -7,11 +7,11 @@ import numpy as np
 
 # Set your parameters
 scan_path = Path("/data/mct/22878/")
-scan_name = "carotidartery_E2N_SBI"
+scan_name = "agarose_NP_10mgml_SBI_z20p5_4p5x_23keV_360CT"
 pixel_size = 1.444e-6  # m
 energy = 25000
 prop_distance = 0.155  # 17 cm sample-grid,
-max_angle = 365
+max_angle = 364
 angle_count = 3640
 umpa_w = 1
 n_workers = 50
@@ -44,6 +44,7 @@ processor = UMPAProcessor(
     loader,
     n_workers=50,
     w=umpa_w,
+    slicing=np.s_[..., :, :]
 )
 
 # Process projections
