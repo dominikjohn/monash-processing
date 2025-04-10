@@ -4,8 +4,13 @@ from scipy import interpolate
 import os
 from matplotlib.patches import Circle
 from scipy.constants import h, c, k
+import matplotlib.pyplot as plt
 
 class Colorizer:
+
+    def __init__(self, base_path):
+        self.base_path = base_path
+
     @staticmethod
     def planck(lam, T):
         """ Returns the spectral radiance of a black body at temperature T.
@@ -47,8 +52,8 @@ class Colorizer:
         interpolated_values = f(target_wavelengths)
         return interpolated_values, target_wavelengths
 
-    def importer(self, base_path, show_plots=False):
-        h_wavelengths, h_absorptions = self.load_csv_to_numpy(os.path.join(base_path, 'figure17curve2.csv'))
+    def importer(self, show_plots=False):
+        h_wavelengths, h_absorptions = self.load_csv_to_numpy(os.path.join(self.base_path, 'figure17curve2.csv'))
         min_wavelength = 380
         max_wavelength = 780
         h_interpolated, target_wavelengths = self.interpolate_to_target_wavelengths(h_wavelengths, h_absorptions,
@@ -67,7 +72,7 @@ class Colorizer:
             plt.legend()
 
             plt.tight_layout()
-            output_png_path = os.path.join(base_path, 'spectra_visualization.png')
+            output_png_path = os.path.join(self.base_path, 'spectra_visualization.png')
             plt.savefig(output_png_path)
 
         return {
@@ -86,7 +91,7 @@ class Colorizer:
             str or np.ndarray: hex color or array of hex colors
         """
         # Load color matching functions
-        cmf_data = np.loadtxt(os.path.join(base_path, 'cie-cmf.txt'))
+        cmf_data = np.loadtxt(os.path.join(self.base_path, 'cie-cmf.txt'))
 
         illuminant_D65 = np.array([0.3127, 0.3291, 0.3582])
         cs_srgb = ColourSystem(
@@ -123,12 +128,12 @@ class Colorizer:
             colors = np.array([_single_concentration_to_hex(c) for c in flat])
             return colors.reshape(concentration.shape)
 
-    def visualize_absorption_simple(self, wavelengths, extinction_coefficients, base_path, max_thickness=500,
+    def visualize_absorption_simple(self, wavelengths, extinction_coefficients, max_thickness=500,
                                     num_samples=25,
                                     concentration=10e-4):
         """Visualize haematoxylin color at different thickness levels using simple scaling."""
         # Load color matching functions
-        cmf_data = np.loadtxt(os.path.join(base_path, 'cie-cmf.txt'))
+        cmf_data = np.loadtxt(os.path.join(self.base_path, 'cie-cmf.txt'))
 
         # Set up color system for sRGB
         illuminant_D65 = np.array([0.3127, 0.3291, 0.3582])  # D65 white point
@@ -249,7 +254,7 @@ class Colorizer:
         plt.grid(True)
         plt.show()
 
-        fig1 = self.visualize_absorption_simple(wavelengths, extinction_coefficients, base_path, concentration=concentration)
+        fig1 = self.visualize_absorption_simple(wavelengths, extinction_coefficients, self.base_path, concentration=concentration)
         plt.show()
 
         # Plot transmittance vs. thickness curve
