@@ -1,12 +1,7 @@
 from monash_processing.core.new_multi_position_data_loader import NewMultiPositionDataLoader
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
-from monash_processing.core.data_loader import DataLoader
-# from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
-from monash_processing.core.volume_builder import VolumeBuilder
-from tqdm import tqdm
+from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
 import h5py
-from monash_processing.utils.utils import Utils
-import pyqtgraph as pg
 from pathlib import Path
 import numpy as np
 
@@ -36,7 +31,7 @@ print('Index at 180°:', index_180)
 
 # Get number of projections (we need this for the loop)
 with h5py.File(loader.h5_files[0], 'r') as f:
-    num_angles = f['EXPERIMENT/SCANS/00_00/SAMPLE/DATA'].shape[0]
+    num_angles = f['EXPERIMENT/SCANS/00_00_00/SAMPLE/DATA'].shape[0]
     print(f"Number of projections: {num_angles}")
 
 # 2. Initialize preprocessor and UMPA processor

@@ -9,7 +9,6 @@ from dask.distributed import LocalCluster, Client
 from dask.diagnostics import ProgressBar
 from monash_processing.utils.utils import Utils
 
-
 class UMPAProcessor:
     """Wrapper for UMPA phase retrieval with parallel processing using Dask."""
 
