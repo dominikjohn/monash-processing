@@ -4,13 +4,15 @@ import logging
 from typing import Dict, Optional, Union, List
 import UMPA
 import hdf5plugin
+
+from algorithms.umpa_wrapper import UMPAProcessor
 from monash_processing.core.data_loader import DataLoader
 from dask.distributed import LocalCluster, Client
 from dask.diagnostics import ProgressBar
 from monash_processing.utils.utils import Utils
 
 
-class UMPAProcessor:
+class UMPAProcessorP10(UMPAProcessor):
     """Wrapper for UMPA phase retrieval with parallel processing using Dask."""
 
     def __init__(self,
@@ -20,6 +22,7 @@ class UMPAProcessor:
                  w: int,
                  n_workers: Optional[int] = None,
                  slicing = None,
+                 use_eiger = True,
                  ):
         """
         Initialize the UMPA processor with Dask support.
@@ -31,24 +34,8 @@ class UMPAProcessor:
             w: UMPA weight parameter.
             n_workers: Number of Dask workers (None for automatic detection).
         """
-        self.logger = logging.getLogger(__name__)
-        self.scan_path = Path(scan_path)
-        self.scan_name = scan_name
-        self.data_loader = data_loader
-        self.slicing = slicing
-        print(f"Using slicing: {self.slicing}")
-        self.w = w
-        print(f'Window parameter: {self.w}')
-        self.n_workers = n_workers
-        # Define output channels
-        self.channels = ['dx', 'dy', 'T', 'df', 'f']
-
-        # Create results directories
-        self.results_dir = self.data_loader.results_dir / f'umpa_window{self.w}'
-        for channel in self.channels:
-            (self.results_dir / channel).mkdir(parents=True, exist_ok=True)
-
-        self.logger.info(f'Created results directory at {self.results_dir}')
+        super().__init__(scan_path, scan_name, data_loader, w, n_workers, slicing)
+        self.user_eiger = use_eiger
 
     def _process_single_projection(self, angle_i: int, dark_future, flats_future) -> Dict[
         str, Union[str, int, np.ndarray]]:
