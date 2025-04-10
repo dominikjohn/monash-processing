@@ -1,6 +1,10 @@
 from monash_processing.core.new_multi_position_data_loader import NewMultiPositionDataLoader
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
-from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
+try:
+    from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
+except ImportError:
+    UMPAProcessor = None
+    print("Warning: UMPA not available.")
 from monash_processing.postprocessing.stitch_phase_images import ProjectionStitcher
 from pathlib import Path
 import numpy as np
@@ -61,7 +65,7 @@ max_index = int(np.round(180 / angle_step))
 print('Uppermost projection index: ', max_index)
 
 blending = True
-center_shift_list = np.linspace(1200, 1600, 4)
+center_shift_list = np.linspace(1200, 2000, 5)
 for center_shift in center_shift_list:
     suffix = f'{(2 * center_shift):.2f}'
     stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=center_shift / 2, slices=(300, 310), suffix=suffix, window_size=umpa_w)

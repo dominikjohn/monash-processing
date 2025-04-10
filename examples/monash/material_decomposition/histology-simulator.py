@@ -156,7 +156,8 @@ wavelengths = result_dict['wavelengths']
 hematin = result_dict['haematoxylin']
 
 #colorizer.display_data(wavelengths, hematin, concentration=10e-4)
-color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[800:-800, 800:-800], thickness_um=100)
+#color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[800:-800, 800:-800], thickness_um=100)
+color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[1500:-1500, 1500:-1500], thickness_um=100)
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors

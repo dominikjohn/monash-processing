@@ -81,15 +81,6 @@ class Colorizer:
         }
 
     def concentration_to_color(self, wavelengths, extinction_coefficients, concentration, thickness_um):
-        """
-        Visualize haematoxylin color at different thickness levels.
-
-        Args:
-            concentration: float or np.ndarray of concentrations
-
-        Returns:
-            str or np.ndarray: hex color or array of hex colors
-        """
         # Load color matching functions
         cmf_data = np.loadtxt(os.path.join(self.base_path, 'cie-cmf.txt'))
 
@@ -102,31 +93,27 @@ class Colorizer:
             cmf_data=cmf_data
         )
 
-        def _single_concentration_to_hex(c):
-            result = self.calculate_transmitted_spectrum(
-                wavelengths,
-                extinction_coefficients,
-                thickness_um=thickness_um,
-                concentration=c
-            )
-            avg_transmittance = result['avg_transmittance']
-            if avg_transmittance > 0.01:
-                return self.get_color_with_transmittance(
-                    wavelengths,
-                    result['transmitted_spectrum'],
-                    avg_transmittance,
-                    cs_srgb
+        result = self.calculate_transmitted_spectrum(
+            wavelengths, extinction_coefficients,
+            thickness_um=thickness_um, concentration=concentration
+        )
+
+        trans = result['transmitted_spectrum']
+        avg_T = result['avg_transmittance']
+        shape = result['shape']
+
+        # Build color array
+        hex_colors = []
+        for i in range(len(avg_T)):
+            if avg_T[i] > 0.01:
+                color = self.get_color_with_transmittance(
+                    wavelengths, trans[i], avg_T[i], cs_srgb
                 )
             else:
-                return '#000000'
+                color = '#000000'
+            hex_colors.append(color)
 
-        if np.isscalar(concentration):
-            return _single_concentration_to_hex(concentration)
-        else:
-            concentration = np.asarray(concentration)
-            flat = concentration.flatten()
-            colors = np.array([_single_concentration_to_hex(c) for c in flat])
-            return colors.reshape(concentration.shape)
+        return np.array(hex_colors).reshape(shape)
 
     def visualize_absorption_simple(self, wavelengths, extinction_coefficients, max_thickness=500,
                                     num_samples=25,
@@ -262,28 +249,42 @@ class Colorizer:
 
     def calculate_transmitted_spectrum(self, wavelengths, extinction_coefficients,
                                        thickness_um=100, concentration=50e-4):
-        """Calculate transmitted light spectrum using Beer-Lambert law."""
-        # Convert thickness from µm to cm for Beer-Lambert law
+        """Vectorized version of transmitted spectrum using Beer-Lambert law."""
+
+        # Ensure arrays
+        concentration = np.atleast_1d(concentration)
+        thickness_um = np.atleast_1d(thickness_um)
+
+        # Broadcast to same shape
+        concentration, thickness_um = np.broadcast_arrays(concentration, thickness_um)
+        shape = concentration.shape
+
+        # Convert to cm
         thickness_cm = thickness_um * 1e-4
 
-        # Calculate absorbance using Beer-Lambert law: A = ε * c * l
-        absorbance = extinction_coefficients * concentration * thickness_cm
+        # ε shape: (λ,)
+        # concentration/thickness shape: (N,)
+        # absorbance shape: (N, λ)
+        absorbance = np.outer(concentration * thickness_cm, extinction_coefficients)
 
-        # Calculate transmittance: T = 10^(-A)
+        # Transmittance: T = 10^(-A)
         transmittance = 10 ** (-absorbance)
 
-        source_spectrum = np.ones_like(transmittance)
-        for i, lam in enumerate(wavelengths):
-            source_spectrum[i] = self.planck(lam, 5500)
+        # Source spectrum: Planck at 5500K
+        source_spectrum = self.planck(wavelengths, 5500)  # shape: (λ,)
 
-        # Calculate transmitted light
-        transmitted_spectrum = source_spectrum * transmittance
+        # Transmitted spectrum: (N, λ)
+        transmitted_spectrum = transmittance * source_spectrum
+
+        # Average transmittance per spectrum
+        avg_transmittance = transmittance.mean(axis=1)
 
         return {
             'wavelengths': wavelengths,
             'transmittance': transmittance,
             'transmitted_spectrum': transmitted_spectrum,
-            'avg_transmittance': np.mean(transmittance)
+            'avg_transmittance': avg_transmittance,
+            'shape': shape  # for reshaping later if needed
         }
 
     def get_color_with_transmittance(self, wavelengths, spectrum, avg_transmittance, cs):
