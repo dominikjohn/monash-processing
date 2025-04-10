@@ -253,6 +253,7 @@ class Colorizer:
 
         # Ensure arrays
         concentration = np.atleast_1d(concentration)
+        concentration = np.maximum(concentration, 0.0)
         thickness_um = np.atleast_1d(thickness_um)
 
         # Broadcast to same shape
