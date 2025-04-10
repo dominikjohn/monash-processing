@@ -22,18 +22,13 @@ loader = NewMultiPositionDataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
 
-angles = np.mean(loader.load_angles(max_angle=max_angle, angle_count=3640), axis=0)
+angles = loader.load_angles(max_angle=max_angle, angle_count=3640)
 angle_step = np.diff(angles).mean()
 print('Angle step:', angle_step)
 index_0 = np.argmin(np.abs(angles - 0))
 index_180 = np.argmin(np.abs(angles - 180))
 print('Index at 0°:', index_0)
 print('Index at 180°:', index_180)
-
-# Get number of projections (we need this for the loop)
-with h5py.File(loader.h5_files[0], 'r') as f:
-    num_angles = f['EXPERIMENT/SCANS/00_00_00/SAMPLE/DATA'].shape[0]
-    print(f"Number of projections: {num_angles}")
 
 # 2. Initialize preprocessor and UMPA processor
 print("Initializing processors")
@@ -47,12 +42,13 @@ processor = UMPAProcessor(
     scan_path,
     scan_name,
     loader,
-    n_workers=50
+    n_workers=50,
+    w=umpa_w,
 )
 
 # Process projections
 results = processor.process_projections(
-    num_angles=max_angle,
+    num_angles=angle_count,
 )
 
 # 4. Phase integrate
