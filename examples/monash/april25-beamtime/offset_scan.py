@@ -62,7 +62,7 @@ max_index = int(np.round(180 / angle_step))
 print('Uppermost projection index: ', max_index)
 
 blending = True
-center_shift_list = np.linspace(300, 1200, 8)
+center_shift_list = np.linspace(1200, 1600, 4)
 for center_shift in center_shift_list:
     suffix = f'{(2 * center_shift):.2f}'
     stitcher = ProjectionStitcher(loader, angle_spacing=angle_step, center_shift=center_shift / 2, slices=(300, 310), suffix=suffix, window_size=umpa_w)
