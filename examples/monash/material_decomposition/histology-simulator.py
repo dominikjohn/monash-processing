@@ -146,7 +146,6 @@ plot_slice(c_m, slice_idx=0, pixel_size=psize, title="Lead concentration [mol/l]
 plt.show()
 
 
-
 from monash_processing.postprocessing.colorize import Colorizer
 #base_path = '/Users/dominikjohn/Library/Mobile Documents/com~apple~CloudDocs/Documents/1_Projects/Paper Material Decomposition/visiblelight'
 base_path = '/user/home'
@@ -156,10 +155,8 @@ result_dict = colorizer.importer(base_path)
 wavelengths = result_dict['wavelengths']
 hematin = result_dict['haematoxylin']
 
-colorizer.display_data(wavelengths, hematin, concentration=10e-4)
-raise Exception()
-
-color_hex = colorizer.concentration_to_color(new_wavelengths, new_hematin, concentration=1e-3, thickness_um=200)
+#colorizer.display_data(wavelengths, hematin, concentration=10e-4)
+color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[800:-800, 800:-800], thickness_um=100)
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors

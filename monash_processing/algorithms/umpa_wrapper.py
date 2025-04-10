@@ -51,6 +51,7 @@ class UMPAProcessor:
 
     def _process_single_projection(self, angle_i: int, dark_future, flats_future) -> Dict[
         str, Union[str, int, np.ndarray]]:
+
         try:
             # Use the scattered data instead of reloading
             dark = dark_future
@@ -79,6 +80,9 @@ class UMPAProcessor:
             return {'angle': angle_i, 'status': 'error', 'error': str(e)}
 
     def process_projections(self, num_angles: int) -> List[Dict]:
+        client = None
+        cluster = None
+
         try:
             to_process = Utils.check_existing_files(self.results_dir, num_angles, min_size_kb=5, channel='dx')
 
@@ -111,5 +115,7 @@ class UMPAProcessor:
             return results
 
         finally:
-            client.close()
-            cluster.close()
+            if client is not None:
+                client.close()
+            if cluster is not None:
+                cluster.close()

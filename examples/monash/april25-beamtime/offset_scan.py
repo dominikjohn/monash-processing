@@ -1,4 +1,3 @@
-from examples.monash.process_offset_marie import blending
 from monash_processing.core.new_multi_position_data_loader import NewMultiPositionDataLoader
 from monash_processing.algorithms.parallel_phase_integrator import ParallelPhaseIntegrator
 from monash_processing.algorithms.umpa_wrapper import UMPAProcessor
@@ -8,13 +7,13 @@ import numpy as np
 
 # Set your parameters
 scan_path = Path("/data/mct/22878/")
-scan_name = "agarose_NP_10mgml_SBI_z20p5_4p5x_23keV_360CT"
+scan_name = "tumour_1_25_SBI_z20p5_4p5x_23keV_360CT"
 pixel_size = 1.444e-6  # m
-energy = 25000
-prop_distance = 0.155  # 17 cm sample-grid,
+energy = 23000
+prop_distance = 0.25
 max_angle = 364
 angle_count = 3640
-umpa_w = 1
+umpa_w = 2
 n_workers = 50
 
 # 1. Load reference data
@@ -45,7 +44,7 @@ processor = UMPAProcessor(
     loader,
     n_workers=50,
     w=umpa_w,
-    slicing=np.s_[..., 300:800, :]
+    slicing=np.s_[..., :, :]
 )
 
 # Process projections
