@@ -254,10 +254,9 @@ class Colorizer:
         plt.grid(True)
         plt.show()
 
-        fig1 = self.visualize_absorption_simple(wavelengths, extinction_coefficients, self.base_path, concentration=concentration)
+        fig1 = self.visualize_absorption_simple(wavelengths, extinction_coefficients, concentration=concentration)
         plt.show()
 
-        # Plot transmittance vs. thickness curve
         fig2 = self.plot_transmittance_curve(wavelengths, extinction_coefficients, concentration=concentration)
         plt.show()
 

@@ -150,7 +150,7 @@ plt.show()
 from monash_processing.postprocessing.colorize import Colorizer
 #base_path = '/Users/dominikjohn/Library/Mobile Documents/com~apple~CloudDocs/Documents/1_Projects/Paper Material Decomposition/visiblelight'
 base_path = '/user/home'
-colorizer = Colorizer()
+colorizer = Colorizer(base_path)
 result_dict = colorizer.importer(base_path)
 
 wavelengths = result_dict['wavelengths']
