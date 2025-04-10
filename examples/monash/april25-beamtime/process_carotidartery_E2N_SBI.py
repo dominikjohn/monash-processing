@@ -11,7 +11,8 @@ scan_name = "carotidartery_E2N_SBI"
 pixel_size = 1.444e-6  # m
 energy = 25000
 prop_distance = 0.155  # 17 cm sample-grid,
-max_angle = 182
+max_angle = 365
+angle_count = 3640
 umpa_w = 1
 n_workers = 50
 
@@ -21,7 +22,7 @@ loader = NewMultiPositionDataLoader(scan_path, scan_name)
 flat_fields = loader.load_flat_fields()
 dark_current = loader.load_flat_fields(dark=True)
 
-angles = np.mean(loader.load_angles(), axis=0)
+angles = np.mean(loader.load_angles(max_angle=max_angle, angle_count=3640), axis=0)
 angle_step = np.diff(angles).mean()
 print('Angle step:', angle_step)
 index_0 = np.argmin(np.abs(angles - 0))

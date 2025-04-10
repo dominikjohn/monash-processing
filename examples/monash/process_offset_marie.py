@@ -12,7 +12,7 @@ scan_name = "K3_3H_ReverseOrder"
 pixel_size = 1.444e-6 # m
 energy = 25000 # eV
 prop_distance = 0.158 #
-max_angle = 364
+max_angle = 365
 umpa_w = 1
 n_workers = 100
 

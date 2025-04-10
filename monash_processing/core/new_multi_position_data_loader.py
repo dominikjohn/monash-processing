@@ -226,7 +226,7 @@ class NewMultiPositionDataLoader(DataLoader):
         self.logger.info(f"Loaded projections with shape {projections_array.shape}")
         return projections_array
 
-    def load_angles(self) -> np.ndarray:
+    def load_angles(self, max_angle=180, angle_count=1800) -> np.ndarray:
         """Load projection angles from all files and combine them.
 
         Returns:
@@ -244,24 +244,9 @@ class NewMultiPositionDataLoader(DataLoader):
                 self.logger.error(f"Failed to load angles from {angles_file}: {str(e)}")
                 raise
 
-        self.logger.info("Processed angles file not found, loading angles from raw data")
-        angles = []
-
-        # Load angles from each file
-        for h5_file in tqdm(self.h5_files, desc="Loading angles", unit="file"):
-            try:
-                with h5py.File(h5_file, 'r') as f:
-                    file_angles = f['EXPERIMENT/SCANS/00_00_00/SAMPLE/ANGLES'][:]
-                    angles.append(file_angles)
-            except Exception as e:
-                self.logger.error(f"Failed to load angles from {h5_file}: {str(e)}")
-                raise
-
-        # Stack angles from all files into 2D array
-        angles_array = np.stack(angles)
+        angles_array = np.linspace(0, max_angle, num=angle_count, endpoint=False)
 
         # Save the combined angles
         self._save_auxiliary_data(angles_array, 'projection_angles.npy')
-
-        self.logger.info(f"Loaded angles array with shape {angles_array.shape}")
+        self.logger.info(f"Created angles array with shape {angles_array.shape}")
         return angles_array
