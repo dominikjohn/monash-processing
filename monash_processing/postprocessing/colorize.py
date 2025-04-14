@@ -55,7 +55,6 @@ class Colorizer:
         thickness_um = np.atleast_1d(thickness_um)
 
         # Concentration is in M, which is mol/L
-
         concentration, thickness_um = np.broadcast_arrays(concentration, thickness_um)
         shape = concentration.shape
 
@@ -208,8 +207,9 @@ class ColourSystem:
         else:
             interpolated_spec = spec
 
-        # Calculate XYZ using the color matching functions
-        XYZ = np.sum(interpolated_spec[:, np.newaxis] * self.cmf, axis=0)
+        dlambda = self.cmf_wavelengths[1] - self.cmf_wavelengths[0]
+        print('dlambda', dlambda)
+        XYZ = np.sum(interpolated_spec[:, np.newaxis] * self.cmf, axis=0) * dlambda
 
         # Normalize if requested (for color quality only)
         if normalize:
