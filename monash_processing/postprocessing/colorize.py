@@ -3,7 +3,6 @@ import pandas as pd
 from scipy import interpolate
 import os
 from scipy.constants import h, c, k
-import matplotlib.pyplot as plt
 
 class Colorizer:
 
@@ -34,8 +33,7 @@ class Colorizer:
         trans = result['transmitted_spectrum']
         shape = result['shape']
 
-        # Build color array
-        hex_colors = []
+        rgb_colors = []
         for i in range(len(trans)):
             rgb = cs_srgb.spec_to_rgb(
                 wavelengths,
@@ -43,10 +41,9 @@ class Colorizer:
                 clip_negative=True,
                 gamma_correct=True,
             )
-            hex_color = cs_srgb.rgb_to_hex(rgb)
-            hex_colors.append(hex_color)
+            rgb_colors.append(rgb)
 
-        return np.array(hex_colors).reshape(shape)
+        return np.array(rgb_colors).reshape(shape)
 
     def calculate_transmitted_spectrum(self, wavelengths, epsilon,
                                        thickness_um, concentration, light_color):
@@ -78,11 +75,6 @@ class Colorizer:
 
         # Transmitted spectrum: (N, λ)
         transmitted_spectrum = transmittance * source_spectrum
-
-        print(f"epsilon range: {epsilon.min()} to {epsilon.max()}")
-        print(f"concentration: {concentration}")
-        print(f"thickness_cm: {thickness_cm}")
-        print(f"absorbance range: {absorbance.min()} to {absorbance.max()}")
 
         return {
             'wavelengths': wavelengths,

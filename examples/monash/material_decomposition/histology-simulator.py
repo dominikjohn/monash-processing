@@ -78,13 +78,12 @@ plt.plot(wavelengths, hematin_epsilon)
 plt.ylabel('$\epsilon$ [1/(cm * M)]')
 plt.show()
 
-color_hex_test = colorizer.concentration_to_color(wavelengths, hematin_absorbance, concentration=10e-4, thickness_um=100)
-test_concentration = np.array(0.1) # M
-
-test = colorizer.calculate_transmitted_spectrum(wavelengths, hematin_absorbance, thickness_um=20, concentration=test_concentration, light_color=6500)
-spectrum_changes = np.squeeze(test['transmitted_spectrum'] / test['source_spectrum'])
-plt.plot(test['wavelengths'], spectrum_changes, label='Source Spectrum')
-#plt.plot(test['wavelengths'], test['transmitted_spectrum'].flatten(), label='Transmitted Spectrum')
+test_concentration = 1e-3 # M
+test = colorizer.calculate_transmitted_spectrum(wavelengths, hematin_epsilon, thickness_um=5, concentration=test_concentration, light_color=6500)
+#spectrum_changes = np.squeeze(test['transmitted_spectrum'] / test['source_spectrum'])
+#plt.plot(test['wavelengths'], spectrum_changes, label='Spectrum change')
+plt.plot(test['wavelengths'], test['source_spectrum'], label='Source Spectrum')
+plt.plot(test['wavelengths'], test['transmitted_spectrum'].flatten(), label='Transmitted Spectrum')
 
 plt.xlabel('Wavelength (nm)')
 plt.ylabel('Intensity')
@@ -94,7 +93,7 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-print(colorizer.concentration_to_color(wavelengths, hematin_absorbance, concentration=test_concentration, thickness_um=5))
+color_hex = colorizer.concentration_to_color(wavelengths, hematin_epsilon, concentration=test_concentration, thickness_um=20, light_color=6500)
 
 #colorizer.display_data(wavelengths, hematin, concentration=10e-4)
 #color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[800:-800, 800:-800], thickness_um=100)
