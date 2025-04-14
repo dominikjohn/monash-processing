@@ -43,7 +43,8 @@ class Colorizer:
                 clip_negative=True,
                 gamma_correct=True,
             )
-            hex_colors.append(rgb)
+            hex_color = cs_srgb.rgb_to_hex(rgb)
+            hex_colors.append(hex_color)
 
         return np.array(hex_colors).reshape(shape)
 

@@ -84,6 +84,9 @@ color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
+plt.clf()  # Clear current figure
+plt.figure()
+
 if isinstance(color_hex, str):
     rgb = mcolors.to_rgb(color_hex)  # Converts to (r, g, b) in [0, 1]
     img = np.ones((100, 100, 3)) * rgb
@@ -98,7 +101,7 @@ elif isinstance(color_hex, np.ndarray) and color_hex.ndim == 2:
         for j in range(w):
             img[i, j] = mcolors.to_rgb(color_hex[i, j])
     plt.imshow(img)
-    plt.axis('off')
+    plt.tight_layout()
     plt.title("RGB image from hex array")
 
 plt.show()
