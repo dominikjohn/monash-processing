@@ -301,7 +301,7 @@ class Colorizer:
         )
 
         # Scale RGB by the average transmittance to account for brightness
-        rgb_scaled = rgb_normalized * avg_transmittance
+        rgb_scaled = rgb_normalized# * avg_transmittance
 
         # Convert to hex
         return cs.rgb_to_hex(rgb_scaled)
