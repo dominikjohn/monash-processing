@@ -49,13 +49,6 @@ matrix = np.array([[rho_1, rho_2],
                    [mu_1, mu_2]])
 inverse = np.linalg.inv(matrix)
 
-#plot_slice(edensity_slice, slice_idx=0, pixel_size=psize, title="Electron density [1/nm$^3$]", vmin=230, vmax=350, fontsize=16*1.75, colorbar_position='left')
-#plt.savefig(os.path.join(home_dir, f'k3_3h_reverse_edensity.png'), dpi=900, bbox_inches='tight')
-#plt.show()
-
-#plot_slice(mu_slice, slice_idx=0, pixel_size=psize, title="Attenuation coefficient [1/m]", vmin=0, vmax=12, fontsize=16*1.75)
-#plt.savefig(os.path.join(home_dir, f'k3_3h_reverse_attenuation.png'), dpi=900, bbox_inches='tight')
-#plt.show()
 n1_slice = inverse[0, 0] * edensity_slice + inverse[0, 1] * mu_slice
 n2_slice = inverse[1, 0] * edensity_slice + inverse[1, 1] * mu_slice
 #plot_slice(n2_slice, slice_idx=0, pixel_size=psize, title="Lead [v/v], %", vmin=0, vmax=2, percent=True)
@@ -69,6 +62,9 @@ c_m = v_m * rho_m / M_m
 #plt.show()
 
 from monash_processing.postprocessing.colorize import Colorizer
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+
 #base_path = '/Users/dominikjohn/Library/Mobile Documents/com~apple~CloudDocs/Documents/1_Projects/Paper Material Decomposition/visiblelight'
 base_path = '/user/home'
 colorizer = Colorizer(base_path)
@@ -77,12 +73,14 @@ result_dict = colorizer.importer(base_path)
 wavelengths = result_dict['wavelengths']
 hematin = result_dict['haematoxylin']
 
+plt.plot(wavelengths, hematin)
+plt.ylabel('$\epsilon$ [1/(cm * M)]')
+plt.show()
+
 #colorizer.display_data(wavelengths, hematin, concentration=10e-4)
 #color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[800:-800, 800:-800], thickness_um=100)
-color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[850:1200, 600:700], thickness_um=3, light_color=6500)
+color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[850:1200, 600:900], thickness_um=3, light_color=5500)
 
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 
 plt.clf()  # Clear current figure
 plt.figure()

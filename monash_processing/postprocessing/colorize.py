@@ -57,7 +57,8 @@ class Colorizer:
         concentration = np.maximum(concentration, 0.0)
         thickness_um = np.atleast_1d(thickness_um)
 
-        # Broadcast to same shape
+        # Concentration is in M, which is mol/L
+
         concentration, thickness_um = np.broadcast_arrays(concentration, thickness_um)
         shape = concentration.shape
 
@@ -67,8 +68,7 @@ class Colorizer:
         # ε shape: (λ,)
         # concentration/thickness shape: (N,)
         # absorbance shape: (N, λ)
-        concentration_per_cm_cubed = concentration * 1000  # Convert to mol/cm^3 from mol/L
-        absorbance = np.outer(concentration_per_cm_cubed * thickness_cm, extinction_coefficients)
+        absorbance = np.outer(concentration * thickness_cm, extinction_coefficients)
 
         # Transmittance: T = 10^(-A)
         transmittance = 10 ** (-absorbance)
@@ -109,32 +109,16 @@ class Colorizer:
         interpolated_values = f(target_wavelengths)
         return interpolated_values, target_wavelengths
 
-    def importer(self, show_plots=False):
+    def import_absorbances(self):
         h_wavelengths, h_absorptions = self.load_csv_to_numpy(os.path.join(self.base_path, 'figure17curve2.csv'))
         min_wavelength = 380
         max_wavelength = 780
         h_interpolated, target_wavelengths = self.interpolate_to_target_wavelengths(h_wavelengths, h_absorptions,
                                                                                     min_wavelength, max_wavelength, 5)
 
-        # Convert haematoxylin absorption to molar extinction coefficient
-        h_interpolated /= 1.72e-5 # TODO double check value
-
-        if show_plots:
-            plt.subplot(2, 1, 2)
-            plt.plot(target_wavelengths, h_interpolated, 'purple', label='Haematoxylin')
-            plt.xlabel('Wavelength (nm)')
-            plt.ylabel('$\epsilon$ [l/(mol$\cdot$cm)]')
-            plt.title('Interpolated Stain Spectra')
-            plt.grid(True)
-            plt.legend()
-
-            plt.tight_layout()
-            output_png_path = os.path.join(self.base_path, 'spectra_visualization.png')
-            plt.savefig(output_png_path)
-
         return {
-            'wavelengths': target_wavelengths,
-            'haematoxylin': h_interpolated,
+            'absorbances': h_interpolated,
+            'wavelengths': target_wavelengths
         }
 
     def load_csv_to_numpy(self, filename):
