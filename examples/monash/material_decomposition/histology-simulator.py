@@ -93,7 +93,7 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-color_hex = colorizer.concentration_to_color(wavelengths, hematin_epsilon, concentration=test_concentration, thickness_um=20, light_color=6500)
+color = colorizer.concentration_to_color(wavelengths, hematin_epsilon, concentration=test_concentration, thickness_um=20, light_color=6500)
 
 #colorizer.display_data(wavelengths, hematin, concentration=10e-4)
 #color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[800:-800, 800:-800], thickness_um=100)

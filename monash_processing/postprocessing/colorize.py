@@ -43,7 +43,7 @@ class Colorizer:
             )
             rgb_colors.append(rgb)
 
-        return np.array(rgb_colors).reshape(shape)
+        return np.array(rgb_colors).reshape(*shape, 3)
 
     def calculate_transmitted_spectrum(self, wavelengths, epsilon,
                                        thickness_um, concentration, light_color):
