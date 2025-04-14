@@ -68,19 +68,36 @@ import matplotlib.colors as mcolors
 #base_path = '/Users/dominikjohn/Library/Mobile Documents/com~apple~CloudDocs/Documents/1_Projects/Paper Material Decomposition/visiblelight'
 base_path = '/user/home'
 colorizer = Colorizer(base_path)
-result_dict = colorizer.importer(base_path)
+result_dict = colorizer.import_absorbances()
 
 wavelengths = result_dict['wavelengths']
-hematin = result_dict['haematoxylin']
+hematin_absorbance = result_dict['absorbances']
+hematin_epsilon = hematin_absorbance * 2.2e4
 
-plt.plot(wavelengths, hematin)
+plt.plot(wavelengths, hematin_epsilon)
 plt.ylabel('$\epsilon$ [1/(cm * M)]')
 plt.show()
 
+color_hex_test = colorizer.concentration_to_color(wavelengths, hematin_absorbance, concentration=10e-4, thickness_um=100)
+test_concentration = 1e-3 # 1 mM
+
+test = colorizer.calculate_transmitted_spectrum(wavelengths, hematin_absorbance, thickness_um=100, concentration=test_concentration, light_color=6500)
+plt.plot(test['wavelengths'], test['source_spectrum'], label='Source Spectrum')
+#plt.plot(test['wavelengths'], test['transmitted_spectrum'].flatten(), label='Transmitted Spectrum')
+
+plt.xlabel('Wavelength (nm)')
+plt.ylabel('Intensity')
+plt.title('Source and Transmitted Spectrum')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+print(colorizer.concentration_to_color(wavelengths, hematin_absorbance, concentration=test_concentration, thickness_um=5))
+
 #colorizer.display_data(wavelengths, hematin, concentration=10e-4)
 #color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[800:-800, 800:-800], thickness_um=100)
-color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[850:1200, 600:900], thickness_um=3, light_color=5500)
-
+color_hex = colorizer.concentration_to_color(wavelengths, hematin_epsilon, concentration=c_m[850:1200, 600:900], thickness_um=3, light_color=6500)
 
 plt.clf()  # Clear current figure
 plt.figure()

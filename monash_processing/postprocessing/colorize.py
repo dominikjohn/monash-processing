@@ -10,7 +10,7 @@ class Colorizer:
     def __init__(self, base_path):
         self.base_path = base_path
 
-    def concentration_to_color(self, wavelengths, extinction_coefficients, concentration, thickness_um, light_color=6500):
+    def concentration_to_color(self, wavelengths, epsilon, concentration, thickness_um, light_color=6500):
         # Load color matching functions
         cmf_data = np.loadtxt(os.path.join(self.base_path, 'cie-cmf.txt'))
 
@@ -25,7 +25,7 @@ class Colorizer:
 
         result = self.calculate_transmitted_spectrum(
             wavelengths,
-            extinction_coefficients,
+            epsilon,
             thickness_um=thickness_um,
             concentration=concentration,
             light_color=light_color
@@ -48,7 +48,7 @@ class Colorizer:
 
         return np.array(hex_colors).reshape(shape)
 
-    def calculate_transmitted_spectrum(self, wavelengths, extinction_coefficients,
+    def calculate_transmitted_spectrum(self, wavelengths, epsilon,
                                        thickness_um, concentration, light_color):
         """Vectorized version of transmitted spectrum using Beer-Lambert law."""
 
@@ -68,7 +68,7 @@ class Colorizer:
         # ε shape: (λ,)
         # concentration/thickness shape: (N,)
         # absorbance shape: (N, λ)
-        absorbance = np.outer(concentration * thickness_cm, extinction_coefficients)
+        absorbance = np.outer(concentration * thickness_cm, epsilon)
 
         # Transmittance: T = 10^(-A)
         transmittance = 10 ** (-absorbance)
