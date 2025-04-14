@@ -37,10 +37,13 @@ class Colorizer:
         # Build color array
         hex_colors = []
         for i in range(len(trans)):
-            color = self.get_color_with_transmittance(
-                wavelengths, trans[i], result['source_spectrum'], cs_srgb
+            rgb = cs_srgb.spec_to_rgb(
+                wavelengths,
+                trans[i],
+                clip_negative=True,
+                gamma_correct=True,
             )
-            hex_colors.append(color)
+            hex_colors.append(rgb)
 
         return np.array(hex_colors).reshape(shape)
 
@@ -82,16 +85,6 @@ class Colorizer:
             'source_spectrum': source_spectrum,
             'shape': shape
         }
-
-    def get_color_with_transmittance(self, wavelengths, transmitted_spectrum, source_spectrum, cs):
-        """Get RGB color scaled by transmittance."""
-        # Get the chromaticity (normalized color) - this ignores brightness
-        return cs.spec_to_rgb(
-            wavelengths,
-            transmitted_spectrum,
-            clip_negative=True,
-            gamma_correct=True,
-        )
 
     @staticmethod
     def planck(lam, T):
