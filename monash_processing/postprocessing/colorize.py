@@ -79,6 +79,11 @@ class Colorizer:
         # Transmitted spectrum: (N, λ)
         transmitted_spectrum = transmittance * source_spectrum
 
+        print(f"epsilon range: {epsilon.min()} to {epsilon.max()}")
+        print(f"concentration: {concentration}")
+        print(f"thickness_cm: {thickness_cm}")
+        print(f"absorbance range: {absorbance.min()} to {absorbance.max()}")
+
         return {
             'wavelengths': wavelengths,
             'transmittance': transmittance,

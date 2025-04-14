@@ -79,10 +79,11 @@ plt.ylabel('$\epsilon$ [1/(cm * M)]')
 plt.show()
 
 color_hex_test = colorizer.concentration_to_color(wavelengths, hematin_absorbance, concentration=10e-4, thickness_um=100)
-test_concentration = 1e-3 # 1 mM
+test_concentration = np.array(0.1) # M
 
-test = colorizer.calculate_transmitted_spectrum(wavelengths, hematin_absorbance, thickness_um=100, concentration=test_concentration, light_color=6500)
-plt.plot(test['wavelengths'], test['source_spectrum'], label='Source Spectrum')
+test = colorizer.calculate_transmitted_spectrum(wavelengths, hematin_absorbance, thickness_um=20, concentration=test_concentration, light_color=6500)
+spectrum_changes = np.squeeze(test['transmitted_spectrum'] / test['source_spectrum'])
+plt.plot(test['wavelengths'], spectrum_changes, label='Source Spectrum')
 #plt.plot(test['wavelengths'], test['transmitted_spectrum'].flatten(), label='Transmitted Spectrum')
 
 plt.xlabel('Wavelength (nm)')
