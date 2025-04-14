@@ -147,13 +147,12 @@ class ColourSystem:
             self.cmf_wavelengths = None
             self.cmf = None
 
-        # The chromaticity matrix (rgb -> xyz) and its inverse
-        self.M = np.vstack((self.red, self.green, self.blue)).T
-        self.MI = np.linalg.inv(self.M)
-        # White scaling array
-        self.wscale = self.MI.dot(self.white)
-        # xyz -> rgb transformation matrix
-        self.T = self.MI / self.wscale[:, np.newaxis]
+        # xyz -> rgb transformation matrix # TODO DOUBLE CHECK VALUES
+        self.T = np.array([
+            [3.2406, -1.5372, -0.4986],
+            [-0.9689, 1.8758, 0.0415],
+            [0.0557, -0.2040, 1.0570]
+        ])
 
     def compute_luminance(self, spectrum):
         """Compute luminance (Y value) using the CMF y-bar curve."""

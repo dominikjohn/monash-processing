@@ -78,7 +78,7 @@ plt.plot(wavelengths, hematin_epsilon)
 plt.ylabel('$\epsilon$ [1/(cm * M)]')
 plt.show()
 
-test_concentration = 1e-3 # M
+test_concentration = 0.1 # M
 test = colorizer.calculate_transmitted_spectrum(wavelengths, hematin_epsilon, thickness_um=5, concentration=test_concentration, light_color=6500)
 #spectrum_changes = np.squeeze(test['transmitted_spectrum'] / test['source_spectrum'])
 #plt.plot(test['wavelengths'], spectrum_changes, label='Spectrum change')
@@ -92,6 +92,8 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
+from monash_processing.postprocessing.colorize import ColourSystem
 
 color = colorizer.concentration_to_color(wavelengths, hematin_epsilon, concentration=test_concentration, thickness_um=20, light_color=6500)
 
