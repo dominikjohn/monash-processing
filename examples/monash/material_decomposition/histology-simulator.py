@@ -1,13 +1,8 @@
-from monash_processing.core.data_loader import DataLoader
 import scipy.constants
 import numpy as np
 from pathlib import Path
-from matplotlib_scalebar.scalebar import ScaleBar
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import os
 from monash_processing.postprocessing.calibration_analysis import CalibrationAnalysis
-import matplotlib.pyplot as plt
-from tqdm import tqdm
 import tifffile
 import glob
 
@@ -17,76 +12,8 @@ energy = 25000
 energy_keV = energy / 1000
 wavevec = 2 * np.pi * energy / (scipy.constants.physical_constants['Planck constant in eV s'][0] * scipy.constants.c)
 wavelength = 1.24e-9 / energy_keV
-#preview_slice = 971
 preview_slice = 150
 home_dir = os.path.expanduser('~')
-
-def plot_slice(data, slice_idx, pixel_size,
-               cmap='grey',
-               title=None,
-               vmin=None,
-               vmax=None,
-               figsize=(10, 8),
-               fontsize=16,
-               percent=False,
-               colorbar_position='right'):  # New parameter for colorbar position
-
-    # Set the font size globally
-    plt.rcParams.update({'font.size': fontsize})
-
-    # Create figure and axis
-    fig, ax = plt.subplots(figsize=figsize)
-
-    # Get the slice
-    slice_data = data[slice_idx] if len(data.shape) == 3 else data
-
-    if percent:
-        # Plot the image
-        im = ax.imshow(slice_data * 100,
-                       cmap=cmap,
-                       vmin=vmin,
-                       vmax=vmax)
-    else:
-        # Plot the image
-        im = ax.imshow(slice_data,
-                       cmap=cmap,
-                       vmin=vmin,
-                       vmax=vmax)
-
-    # Add scalebar
-    scalebar = ScaleBar(pixel_size,  # meters per pixel
-                        "m",  # meter unit
-                        length_fraction=.2,
-                        color='white',
-                        box_alpha=0,
-                        location='lower right',
-                        font_properties={'size': fontsize})
-    ax.add_artist(scalebar)
-
-    # Add colorbar with matching height and title
-    divider = make_axes_locatable(ax)
-
-    # Position the colorbar according to the parameter
-    if colorbar_position.lower() == 'left':
-        cax = divider.append_axes("left", size="5%", pad=0.15)
-        cbar = plt.colorbar(im, cax=cax)
-        # For left position, we need to adjust the orientation of ticks
-        cbar.ax.yaxis.set_ticks_position('left')
-        cbar.ax.yaxis.set_label_position('left')
-    else:  # Default to right
-        cax = divider.append_axes("right", size="5%", pad=0.15)
-        cbar = plt.colorbar(im, cax=cax)
-
-    cbar.set_label(f'{title}', size=fontsize, labelpad=15)
-    cbar.ax.tick_params(labelsize=fontsize)
-
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_xticklabels([])
-    ax.set_yticklabels([])
-
-    plt.tight_layout()
-    return fig, ax
 
 def load_single_tiff(subfolder, channel, binning_factor=1, preview_slice=0) -> np.ndarray:
     tiff_path = Path("/data/mct/22203/results/K3_3H_ReverseOrder") / subfolder / channel
@@ -138,8 +65,8 @@ rho_m = lead['density']
 M_m = 207.2 # Lead
 c_m = v_m * rho_m / M_m
 
-plot_slice(c_m * 1000, slice_idx=0, pixel_size=psize, title="Lead concentration [mmol/L]", vmin=0.0, vmax=1)
-plt.show()
+#plot_slice(c_m * 1000, slice_idx=0, pixel_size=psize, title="Lead concentration [mmol/L]", vmin=0.0, vmax=1)
+#plt.show()
 
 from monash_processing.postprocessing.colorize import Colorizer
 #base_path = '/Users/dominikjohn/Library/Mobile Documents/com~apple~CloudDocs/Documents/1_Projects/Paper Material Decomposition/visiblelight'
@@ -152,7 +79,7 @@ hematin = result_dict['haematoxylin']
 
 #colorizer.display_data(wavelengths, hematin, concentration=10e-4)
 #color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[800:-800, 800:-800], thickness_um=100)
-color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m, thickness_um=3, light_color=6500)
+color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[850:1000, 600:700], thickness_um=3, light_color=6500)
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors

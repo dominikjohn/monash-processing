@@ -396,3 +396,71 @@ class ColourSystem:
         """Convert a spectrum to an rgb value."""
         xyz = self.spec_to_xyz(wavelengths, spec, normalize=normalize)
         return self.xyz_to_rgb(xyz, out_fmt, clip_negative, gamma_correct)
+
+    @staticmethod
+    def plot_slice(data, slice_idx, pixel_size,
+                   cmap='grey',
+                   title=None,
+                   vmin=None,
+                   vmax=None,
+                   figsize=(10, 8),
+                   fontsize=16,
+                   percent=False,
+                   colorbar_position='right'):  # New parameter for colorbar position
+
+        # Set the font size globally
+        plt.rcParams.update({'font.size': fontsize})
+
+        # Create figure and axis
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # Get the slice
+        slice_data = data[slice_idx] if len(data.shape) == 3 else data
+
+        if percent:
+            # Plot the image
+            im = ax.imshow(slice_data * 100,
+                           cmap=cmap,
+                           vmin=vmin,
+                           vmax=vmax)
+        else:
+            # Plot the image
+            im = ax.imshow(slice_data,
+                           cmap=cmap,
+                           vmin=vmin,
+                           vmax=vmax)
+
+        # Add scalebar
+        scalebar = ScaleBar(pixel_size,  # meters per pixel
+                            "m",  # meter unit
+                            length_fraction=.2,
+                            color='white',
+                            box_alpha=0,
+                            location='lower right',
+                            font_properties={'size': fontsize})
+        ax.add_artist(scalebar)
+
+        # Add colorbar with matching height and title
+        divider = make_axes_locatable(ax)
+
+        # Position the colorbar according to the parameter
+        if colorbar_position.lower() == 'left':
+            cax = divider.append_axes("left", size="5%", pad=0.15)
+            cbar = plt.colorbar(im, cax=cax)
+            # For left position, we need to adjust the orientation of ticks
+            cbar.ax.yaxis.set_ticks_position('left')
+            cbar.ax.yaxis.set_label_position('left')
+        else:  # Default to right
+            cax = divider.append_axes("right", size="5%", pad=0.15)
+            cbar = plt.colorbar(im, cax=cax)
+
+        cbar.set_label(f'{title}', size=fontsize, labelpad=15)
+        cbar.ax.tick_params(labelsize=fontsize)
+
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+
+        plt.tight_layout()
+        return fig, ax
