@@ -138,7 +138,7 @@ rho_m = lead['density']
 M_m = 207.2 # Lead
 c_m = v_m * rho_m / M_m
 
-plot_slice(c_m, slice_idx=0, pixel_size=psize, title="Lead concentration [mol/l]")
+plot_slice(c_m * 1000, slice_idx=0, pixel_size=psize, title="Lead concentration [mmol/L]", vmin=0.0, vmax=1)
 plt.show()
 
 from monash_processing.postprocessing.colorize import Colorizer
@@ -152,7 +152,7 @@ hematin = result_dict['haematoxylin']
 
 #colorizer.display_data(wavelengths, hematin, concentration=10e-4)
 #color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[800:-800, 800:-800], thickness_um=100)
-color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m, thickness_um=50)
+color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m, thickness_um=100, light_color=6500)
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors

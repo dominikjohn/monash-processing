@@ -266,7 +266,8 @@ class Colorizer:
         # ε shape: (λ,)
         # concentration/thickness shape: (N,)
         # absorbance shape: (N, λ)
-        absorbance = np.outer(concentration * thickness_cm, extinction_coefficients)
+        concentration_per_cm_cubed = concentration * 1000  # Convert to mol/cm^3 from mol/L
+        absorbance = np.outer(concentration_per_cm_cubed * thickness_cm, extinction_coefficients)
 
         # Transmittance: T = 10^(-A)
         transmittance = 10 ** (-absorbance)
