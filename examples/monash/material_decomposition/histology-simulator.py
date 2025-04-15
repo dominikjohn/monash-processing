@@ -62,6 +62,7 @@ c_m = v_m * rho_m / M_m
 #plt.show()
 
 from monash_processing.postprocessing.colorize import Colorizer
+from monash_processing.postprocessing.colorize import ColourSystem
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
@@ -78,47 +79,71 @@ plt.plot(wavelengths, hematin_epsilon)
 plt.ylabel('$\epsilon$ [1/(cm * M)]')
 plt.show()
 
-test_concentration = 0.1 # M
-test = colorizer.calculate_transmitted_spectrum(wavelengths, hematin_epsilon, thickness_um=5, concentration=test_concentration, light_color=6500)
-#spectrum_changes = np.squeeze(test['transmitted_spectrum'] / test['source_spectrum'])
-#plt.plot(test['wavelengths'], spectrum_changes, label='Spectrum change')
-plt.plot(test['wavelengths'], test['source_spectrum'], label='Source Spectrum')
-plt.plot(test['wavelengths'], test['transmitted_spectrum'].flatten(), label='Transmitted Spectrum')
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
 
-plt.xlabel('Wavelength (nm)')
-plt.ylabel('Intensity')
-plt.title('Source and Transmitted Spectrum')
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
+# Example 2D concentration array
+concentrations_2d = c_m[1000:1600, 800:1400]
+thickness_um = 100
+
+concentrations_2d = np.ones_like(concentrations_2d)[10:50, 10:50] * 0.1
+
+# Load CMF data
+cmf_path = os.path.join(colorizer.base_path, 'cie-cmf.txt')
+cmf_data = np.loadtxt(cmf_path)
+
+output = colorizer.calculate_transmitted_spectrum(
+            wavelengths, hematin_epsilon,
+            thickness_um=thickness_um,
+            concentration=1,
+            light_color=6500
+        )
+
+wavelengths = result_dict['wavelengths']
+transmitted_spectrum = output['transmitted_spectrum'][0]
+plt.plot(wavelengths, output['transmitted_spectrum'][0])
+plt.plot(wavelengths, output['source_spectrum'])
 plt.show()
 
-from monash_processing.postprocessing.colorize import ColourSystem
 
-color = colorizer.concentration_to_color(wavelengths, hematin_epsilon, concentration=test_concentration, thickness_um=20, light_color=6500)
 
-#colorizer.display_data(wavelengths, hematin, concentration=10e-4)
-#color_hex = colorizer.concentration_to_color(wavelengths, hematin, concentration=c_m[800:-800, 800:-800], thickness_um=100)
-color_hex = colorizer.concentration_to_color(wavelengths, hematin_epsilon, concentration=c_m[850:1200, 600:900], thickness_um=3, light_color=6500)
+def spectrum_to_rgb(wavelengths, spectrum, cmf_data, scale_brightness=True):
+    interp_cmf = interp1d(cmf_data[:, 0], cmf_data[:, 1:], axis=0, bounds_error=False, fill_value=0)
+    cmf_interp = interp_cmf(wavelengths)
+    XYZ = np.trapz(spectrum[:, np.newaxis] * cmf_interp, wavelengths, axis=0)
+    XYZ /= XYZ[1] + 1e-10  # normalize to luminance = 1
+    M = np.array([[ 3.2406, -1.5372, -0.4986],
+                  [-0.9689,  1.8758,  0.0415],
+                  [ 0.0557, -0.2040,  1.0570]])
+    rgb_linear = M @ XYZ
+    rgb_linear = np.clip(rgb_linear, 0, 1)
+    if scale_brightness:
+        brightness = XYZ[1]
+        rgb_linear *= brightness / (np.max(rgb_linear) + 1e-10)
+    print("XYZ", XYZ)
+    print("RGB", rgb_linear)
+    return np.clip(rgb_linear, 0, 1)
 
-plt.clf()  # Clear current figure
-plt.figure()
+# Convert 2D concentration map to RGB image
+h, w = concentrations_2d.shape
+img = np.zeros((h, w, 3))
 
-if isinstance(color_hex, str):
-    rgb = mcolors.to_rgb(color_hex)  # Converts to (r, g, b) in [0, 1]
-    img = np.ones((100, 100, 3)) * rgb
-    plt.imshow(img)
-    plt.axis('off')
-    plt.title(f"{color_hex.upper()} → RGB: {tuple(np.round(rgb, 2))}")
-elif isinstance(color_hex, np.ndarray) and color_hex.ndim == 2:
-    # Assume 2D array of hex strings
-    h, w = color_hex.shape
-    img = np.zeros((h, w, 3))
-    for i in range(h):
-        for j in range(w):
-            img[i, j] = mcolors.to_rgb(color_hex[i, j])
-    plt.imshow(img)
-    plt.tight_layout()
-    plt.title("RGB image from hex array")
+for i in range(h):
+    for j in range(w):
+        c = concentrations_2d[i, j]
+        output = colorizer.calculate_transmitted_spectrum(
+            wavelengths, hematin_epsilon,
+            thickness_um=thickness_um,
+            concentration=c,
+            light_color=6500
+        )
+        spectrum = output['transmitted_spectrum'][0]
+        img[i, j] = spectrum_to_rgb(wavelengths, spectrum, cmf_data)
 
+# Display image
+plt.imshow(img)
+plt.axis('off')
+plt.title("Color map of concentration")
 plt.show()

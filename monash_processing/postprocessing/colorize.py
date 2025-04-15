@@ -94,7 +94,7 @@ class Colorizer:
         lam_m = lam / 1.e9
         fac = h * c / lam_m / k / T
         B = 2 * h * c ** 2 / lam_m ** 5 / (np.exp(fac) - 1)
-        return B
+        return B / B.max()
 
     def interpolate_to_target_wavelengths(self, source_wavelengths, source_values, min_wavelength, max_wavelength,
                                           step):
