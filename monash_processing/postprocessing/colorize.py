@@ -71,7 +71,9 @@ class Colorizer:
         transmittance = 10 ** (-absorbance)
 
         # Source spectrum: Planck at light_color K
-        source_spectrum = self.planck(wavelengths, light_color, normalize_area=normalize_area)  # shape: (λ,)
+        source_spectrum = self.planck(wavelengths, light_color)  # shape: (λ,)
+        if normalize_area:
+            source_spectrum /= source_spectrum.sum()
 
         # Transmitted spectrum: (N, λ)
         transmitted_spectrum = transmittance * source_spectrum
@@ -85,7 +87,7 @@ class Colorizer:
         }
 
     @staticmethod
-    def planck(lam, T, normalize_area=True):
+    def planck(lam, T):
         """ Returns the spectral radiance of a black body at temperature T.
 
         Returns the spectral radiance, B(lam, T), in W.sr-1.m-2 of a black body
@@ -95,10 +97,7 @@ class Colorizer:
         lam_m = lam / 1.e9
         fac = h * c / lam_m / k / T
         B = 2 * h * c ** 2 / lam_m ** 5 / (np.exp(fac) - 1)
-        if normalize_area:
-            return B / np.trapz(B, lam_m)
-        else:
-            return B / B.max()
+        return B / B.max()
 
     def interpolate_to_target_wavelengths(self, source_wavelengths, source_values, min_wavelength, max_wavelength,
                                           step):
