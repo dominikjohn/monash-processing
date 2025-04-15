@@ -96,7 +96,7 @@ class Colorizer:
         fac = h * c / lam_m / k / T
         B = 2 * h * c ** 2 / lam_m ** 5 / (np.exp(fac) - 1)
         if normalize_area:
-            B /= np.trapz(B, lam_m)
+            return B / np.trapz(B, lam_m)
         else:
             return B / B.max()
 
