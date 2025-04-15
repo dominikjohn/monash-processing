@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from numpy.random import normal
 from scipy import interpolate
 import os
 from scipy.constants import h, c, k
@@ -46,7 +47,7 @@ class Colorizer:
         return np.array(rgb_colors).reshape(*shape, 3)
 
     def calculate_transmitted_spectrum(self, wavelengths, epsilon,
-                                       thickness_um, concentration, light_color):
+                                       thickness_um, concentration, light_color, normalize_area=True):
         """Vectorized version of transmitted spectrum using Beer-Lambert law."""
 
         # Ensure arrays
@@ -70,7 +71,7 @@ class Colorizer:
         transmittance = 10 ** (-absorbance)
 
         # Source spectrum: Planck at light_color K
-        source_spectrum = self.planck(wavelengths, light_color)  # shape: (λ,)
+        source_spectrum = self.planck(wavelengths, light_color, normalize_area=normalize_area)  # shape: (λ,)
 
         # Transmitted spectrum: (N, λ)
         transmitted_spectrum = transmittance * source_spectrum
@@ -84,7 +85,7 @@ class Colorizer:
         }
 
     @staticmethod
-    def planck(lam, T):
+    def planck(lam, T, normalize_area=True):
         """ Returns the spectral radiance of a black body at temperature T.
 
         Returns the spectral radiance, B(lam, T), in W.sr-1.m-2 of a black body
@@ -94,7 +95,10 @@ class Colorizer:
         lam_m = lam / 1.e9
         fac = h * c / lam_m / k / T
         B = 2 * h * c ** 2 / lam_m ** 5 / (np.exp(fac) - 1)
-        return B / B.max()
+        if normalize_area:
+            B /= np.trapz(B, lam_m)
+        else:
+            return B / B.max()
 
     def interpolate_to_target_wavelengths(self, source_wavelengths, source_values, min_wavelength, max_wavelength,
                                           step):

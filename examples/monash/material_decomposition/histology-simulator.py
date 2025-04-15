@@ -85,10 +85,8 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
 # Example 2D concentration array
-concentrations_2d = c_m[1000:1600, 800:1400]
-thickness_um = 100
-
-concentrations_2d = np.ones_like(concentrations_2d)[10:50, 10:50] * 0.1
+concentrations_2d = c_m
+thickness_um = 5
 
 # Load CMF data
 cmf_path = os.path.join(colorizer.base_path, 'cie-cmf.txt')
@@ -97,7 +95,7 @@ cmf_data = np.loadtxt(cmf_path)
 output = colorizer.calculate_transmitted_spectrum(
             wavelengths, hematin_epsilon,
             thickness_um=thickness_um,
-            concentration=1,
+            concentration=.5e-3,
             light_color=6500
         )
 
@@ -107,43 +105,106 @@ plt.plot(wavelengths, output['transmitted_spectrum'][0])
 plt.plot(wavelengths, output['source_spectrum'])
 plt.show()
 
+x_bar = np.interp(wavelengths, cmf_data[:, 0], cmf_data[:, 1])
+y_bar = np.interp(wavelengths, cmf_data[:, 0], cmf_data[:, 2])
+z_bar = np.interp(wavelengths, cmf_data[:, 0], cmf_data[:, 3])
 
+# Compute cone (XYZ) activations via integration
+X = np.trapz(transmitted_spectrum * x_bar, wavelengths)
+Y = np.trapz(transmitted_spectrum * y_bar, wavelengths)
+Z = np.trapz(transmitted_spectrum * z_bar, wavelengths)
 
-def spectrum_to_rgb(wavelengths, spectrum, cmf_data, scale_brightness=True):
-    interp_cmf = interp1d(cmf_data[:, 0], cmf_data[:, 1:], axis=0, bounds_error=False, fill_value=0)
-    cmf_interp = interp_cmf(wavelengths)
-    XYZ = np.trapz(spectrum[:, np.newaxis] * cmf_interp, wavelengths, axis=0)
-    XYZ /= XYZ[1] + 1e-10  # normalize to luminance = 1
-    M = np.array([[ 3.2406, -1.5372, -0.4986],
-                  [-0.9689,  1.8758,  0.0415],
-                  [ 0.0557, -0.2040,  1.0570]])
-    rgb_linear = M @ XYZ
-    rgb_linear = np.clip(rgb_linear, 0, 1)
-    if scale_brightness:
-        brightness = XYZ[1]
-        rgb_linear *= brightness / (np.max(rgb_linear) + 1e-10)
-    print("XYZ", XYZ)
-    print("RGB", rgb_linear)
-    return np.clip(rgb_linear, 0, 1)
+cone_labels = ['X', 'Y', 'Z']
+cone_values = [X, Y, Z]
 
-# Convert 2D concentration map to RGB image
-h, w = concentrations_2d.shape
-img = np.zeros((h, w, 3))
+plt.bar(cone_labels, cone_values, color=['#555555', '#777777', '#999999'])
+plt.ylabel("Activation")
+plt.title("XYZ activation")
+plt.tight_layout()
+plt.show()
 
-for i in range(h):
-    for j in range(w):
-        c = concentrations_2d[i, j]
-        output = colorizer.calculate_transmitted_spectrum(
+# Source: https://stackoverflow.com/questions/66360637/which-matrix-is-correct-to-map-xyz-to-linear-rgb-for-srgb
+M_XYZ_to_RGB = np.array([
+    [3.2406, -1.5372, -0.4986],
+    [-0.9689, 1.8758, 0.0415],
+    [0.0557, -0.2040, 1.0570],
+])
+
+XYZ = np.array([X, Y, Z])
+RGB = M_XYZ_to_RGB @ XYZ
+
+plt.figure()
+plt.bar(cone_labels, RGB, color=['red', 'green', 'blue'])
+plt.ylabel("Activation")
+plt.title("RGB")
+plt.show()
+
+#concentrations_2d = np.clip(c_m, 0, None)
+
+#concentrations_2d = np.tile(np.array([0, 0.0001, 0.001, 0.005]), (50, 50))
+concentrations_2d = c_m
+
+output = colorizer.calculate_transmitted_spectrum(
             wavelengths, hematin_epsilon,
-            thickness_um=thickness_um,
-            concentration=c,
+            thickness_um=1000,
+            concentration=concentrations_2d,
             light_color=6500
         )
-        spectrum = output['transmitted_spectrum'][0]
-        img[i, j] = spectrum_to_rgb(wavelengths, spectrum, cmf_data)
 
-# Display image
-plt.imshow(img)
-plt.axis('off')
-plt.title("Color map of concentration")
+spectra = output['transmitted_spectrum'].reshape(*concentrations_2d.shape, len(wavelengths))
+X = np.trapz(spectra * x_bar, wavelengths)
+Y = np.trapz(spectra * y_bar, wavelengths)
+Z = np.trapz(spectra * z_bar, wavelengths)
+
+original_shape = concentrations_2d.shape
+
+XYZ_values = np.stack([X.flatten(), Y.flatten(), Z.flatten()], axis=1)  # Shape: (100, 3)
+# Perform the matrix multiplication for all values at once
+RGB_flat = XYZ_values @ M_XYZ_to_RGB.T  # Shape: (100, 3)
+# Reshape back to original 10×10 grid
+
+RGB = RGB_flat.reshape(*original_shape, 3).astype(int) / np.array([98, 93, 97])
+
+def gamma_correct(rgb):
+    rgb = np.clip(rgb, 0, 1)
+    threshold = 0.0031308
+    return np.where(
+        rgb <= threshold,
+        12.92 * rgb,
+        1.055 * np.power(rgb, 1/2.4) - 0.055
+    )
+
+RGB_corrected = gamma_correct(RGB)
+plt.imshow(RGB_corrected)
+plt.show()
+
+plt.figure(figsize=(10, 8))
+
+# Background RGB image
+#plt.imshow(RGB_corrected)
+
+# Overlay n2_slice with a solid pink colormap
+pink_rgb = np.array([200, 81, 204]) / 255
+
+# Convert grayscale to RGB tinted pink
+pink_overlay = np.clip(n1_slice, 0, 1)[..., np.newaxis] * pink_rgb
+
+plt.imshow(pink_overlay, alpha=0.2)  # semi-transparent overlay
+
+edensity_range = (0.8, 1)
+edensity_norm = (n1_slice - edensity_range[0]) / (edensity_range[1] - edensity_range[0])
+edensity_norm = np.clip(edensity_norm, 0, 1)
+
+from matplotlib.colors import to_rgb
+pink_color = to_rgb('#e7acc5')  # Pink for electron density
+rgb_image = np.ones((*n1_slice.shape, 3))
+for i in range(3):
+    # Linear interpolation from white to pink based on normalized intensity
+    rgb_image[..., i] = rgb_image[..., i] * (1 - edensity_norm) + pink_color[i] * edensity_norm
+
+plt.imshow(RGB_corrected, alpha=1)
+plt.imshow(rgb_image, alpha=.6)
+plt.title("RGB with Eosin Overlay")
+plt.axis("off")
+plt.tight_layout()
 plt.show()
