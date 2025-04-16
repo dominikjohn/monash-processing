@@ -108,15 +108,18 @@ class Colorizer:
         interpolated_values = f(target_wavelengths)
         return interpolated_values, target_wavelengths
 
-    def import_absorbances(self):
-        h_wavelengths, h_absorptions = self.load_csv_to_numpy(os.path.join(self.base_path, 'figure17curve2.csv'))
+    def import_absorbances(self, stain='h'):
+        if stain == 'h':
+            wavelengths, absorptions = self.load_csv_to_numpy(os.path.join(self.base_path, 'figure17curve2.csv'))
+        else:
+            wavelengths, absorptions = self.load_csv_to_numpy(os.path.join(self.base_path, 'eosin.csv'))
         min_wavelength = 380
         max_wavelength = 780
-        h_interpolated, target_wavelengths = self.interpolate_to_target_wavelengths(h_wavelengths, h_absorptions,
+        interpolated_absorbances, target_wavelengths = self.interpolate_to_target_wavelengths(wavelengths, absorptions,
                                                                                     min_wavelength, max_wavelength, 5)
 
         return {
-            'absorbances': h_interpolated,
+            'absorbances': interpolated_absorbances,
             'wavelengths': target_wavelengths
         }
 

@@ -56,7 +56,8 @@ n2_slice = inverse[1, 0] * edensity_slice + inverse[1, 1] * mu_slice
 v_m = n2_slice
 rho_m = lead['density']
 M_m = 207.2 # Lead
-c_m = v_m * rho_m / M_m
+
+n_m = v_m * rho_m * psize**3 * 6.022e23 / M_m
 
 #plot_slice(c_m * 1000, slice_idx=0, pixel_size=psize, title="Lead concentration [mmol/L]", vmin=0.0, vmax=1)
 #plt.show()
@@ -81,12 +82,9 @@ plt.show()
 
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
-
-# Example 2D concentration array
-concentrations_2d = c_m
-thickness_um = 5
+import matplotlib
+import matplotlib.pyplot as plt
 
 # Load CMF data
 cmf_path = os.path.join(colorizer.base_path, 'cie-cmf.txt')
@@ -94,15 +92,17 @@ cmf_data = np.loadtxt(cmf_path)
 
 output = colorizer.calculate_transmitted_spectrum(
             wavelengths, hematin_epsilon,
-            thickness_um=thickness_um,
-            concentration=.5e-3,
-            light_color=6500
+            thickness_um=5,
+            concentration=.12e-2,
+            light_color=5500,
+            normalize_area=False
         )
 
 wavelengths = result_dict['wavelengths']
 transmitted_spectrum = output['transmitted_spectrum'][0]
 plt.plot(wavelengths, output['transmitted_spectrum'][0])
 plt.plot(wavelengths, output['source_spectrum'])
+#plt.plot(wavelengths, transmitted_spectrum/output['source_spectrum'])
 plt.show()
 
 x_bar = np.interp(wavelengths, cmf_data[:, 0], cmf_data[:, 1])
@@ -141,14 +141,15 @@ plt.show()
 
 #concentrations_2d = np.clip(c_m, 0, None)
 
-#concentrations_2d = np.tile(np.array([0, 0.0001, 0.001, 0.005]), (50, 50))
+#concentrations_2d = np.tile(np.array([0, 0, 0, 0, 0, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.005, 0.005, 0.005, 0.005, 0.005, 0.01, 0.01, 0.01, 0.01, 0.01, 0.013, 0.013, 0.013, 0.013, 0.013]), (1000, 50))
 concentrations_2d = c_m
 
 output = colorizer.calculate_transmitted_spectrum(
             wavelengths, hematin_epsilon,
-            thickness_um=1000,
+            thickness_um=1.444,
             concentration=concentrations_2d,
-            light_color=6500
+            light_color=6500,
+            normalize_area=False
         )
 
 spectra = output['transmitted_spectrum'].reshape(*concentrations_2d.shape, len(wavelengths))
@@ -161,9 +162,8 @@ original_shape = concentrations_2d.shape
 XYZ_values = np.stack([X.flatten(), Y.flatten(), Z.flatten()], axis=1)  # Shape: (100, 3)
 # Perform the matrix multiplication for all values at once
 RGB_flat = XYZ_values @ M_XYZ_to_RGB.T  # Shape: (100, 3)
-# Reshape back to original 10×10 grid
 
-RGB = RGB_flat.reshape(*original_shape, 3).astype(int) / np.array([98, 93, 97])
+RGB = RGB_flat.reshape(*original_shape, 3) #/ 98# / np.array([98, 93, 97])
 
 def gamma_correct(rgb):
     rgb = np.clip(rgb, 0, 1)
@@ -174,7 +174,33 @@ def gamma_correct(rgb):
         1.055 * np.power(rgb, 1/2.4) - 0.055
     )
 
-RGB_corrected = gamma_correct(RGB)
+corrected_RGB = gamma_correct(RGB/RGB.max())
+plt.imshow(corrected_RGB)
+plt.show()
+
+import matplotlib.pyplot as plt
+from matplotlib_scalebar.scalebar import ScaleBar
+
+# Display the image
+fig, ax = plt.subplots()
+ax.imshow(corrected_RGB[1700:2000, 2150:2550])
+scalebar = ScaleBar(psize,  # meters per pixel
+                        "m",  # meter unit
+                        length_fraction=.2,
+                        color='black',
+                        box_alpha=1.,
+                        location='lower right',
+                        font_properties={'size': 18})
+ax.add_artist(scalebar)
+
+# Remove axis ticks for cleaner look
+plt.axis('off')
+plt.savefig('microscope_image_with_scalebar.png', dpi=1200, bbox_inches='tight')
+
+plt.tight_layout()
+plt.show()
+
+RGB_corrected = gamma_correct(RGB/100)
 plt.imshow(RGB_corrected)
 plt.show()
 
@@ -185,7 +211,6 @@ plt.figure(figsize=(10, 8))
 
 # Overlay n2_slice with a solid pink colormap
 pink_rgb = np.array([200, 81, 204]) / 255
-
 # Convert grayscale to RGB tinted pink
 pink_overlay = np.clip(n1_slice, 0, 1)[..., np.newaxis] * pink_rgb
 
