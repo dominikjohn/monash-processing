@@ -56,7 +56,7 @@ n2_slice = inverse[1, 0] * edensity_slice + inverse[1, 1] * mu_slice
 v_m = n2_slice
 rho_m = lead['density']
 M_m = 207.2 # Lead
-
+c_m = v_m * rho_m * 1000 / M_m
 n_m = v_m * rho_m * psize**3 * 6.022e23 / M_m
 
 #plot_slice(c_m * 1000, slice_idx=0, pixel_size=psize, title="Lead concentration [mmol/L]", vmin=0.0, vmax=1)
@@ -70,7 +70,7 @@ import matplotlib.colors as mcolors
 #base_path = '/Users/dominikjohn/Library/Mobile Documents/com~apple~CloudDocs/Documents/1_Projects/Paper Material Decomposition/visiblelight'
 base_path = '/user/home'
 colorizer = Colorizer(base_path)
-result_dict = colorizer.import_absorbances()
+result_dict = colorizer.import_absorbances(stain='h')
 
 wavelengths = result_dict['wavelengths']
 hematin_absorbance = result_dict['absorbances']
@@ -159,12 +159,11 @@ Z = np.trapz(spectra * z_bar, wavelengths)
 
 original_shape = concentrations_2d.shape
 
-XYZ_values = np.stack([X.flatten(), Y.flatten(), Z.flatten()], axis=1)  # Shape: (100, 3)
+XYZ_values = np.stack([X.flatten(), Y.flatten(), Z.flatten()], axis=1) / Y.max() # Shape: (100, 3)
 # Perform the matrix multiplication for all values at once
 RGB_flat = XYZ_values @ M_XYZ_to_RGB.T  # Shape: (100, 3)
 
 RGB = RGB_flat.reshape(*original_shape, 3) #/ 98# / np.array([98, 93, 97])
-
 def gamma_correct(rgb):
     rgb = np.clip(rgb, 0, 1)
     threshold = 0.0031308
@@ -174,37 +173,29 @@ def gamma_correct(rgb):
         1.055 * np.power(rgb, 1/2.4) - 0.055
     )
 
-corrected_RGB = gamma_correct(RGB/RGB.max())
-plt.imshow(corrected_RGB)
-plt.show()
+gamma_corrected_RGB = gamma_correct(RGB)
 
 import matplotlib.pyplot as plt
 from matplotlib_scalebar.scalebar import ScaleBar
+plt.rcParams['font.family'] = 'Arial'
 
 # Display the image
 fig, ax = plt.subplots()
-ax.imshow(corrected_RGB[1700:2000, 2150:2550])
+ax.imshow(gamma_corrected_RGB[1700:2000, 2150:2550])
 scalebar = ScaleBar(psize,  # meters per pixel
                         "m",  # meter unit
                         length_fraction=.2,
                         color='black',
                         box_alpha=1.,
                         location='lower right',
-                        font_properties={'size': 18})
+                        font_properties={'size': 20})
 ax.add_artist(scalebar)
 
 # Remove axis ticks for cleaner look
 plt.axis('off')
 plt.savefig('microscope_image_with_scalebar.png', dpi=1200, bbox_inches='tight')
-
 plt.tight_layout()
 plt.show()
-
-RGB_corrected = gamma_correct(RGB/100)
-plt.imshow(RGB_corrected)
-plt.show()
-
-plt.figure(figsize=(10, 8))
 
 # Background RGB image
 #plt.imshow(RGB_corrected)
