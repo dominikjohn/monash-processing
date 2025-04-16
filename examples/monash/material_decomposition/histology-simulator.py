@@ -70,7 +70,7 @@ import matplotlib.colors as mcolors
 #base_path = '/Users/dominikjohn/Library/Mobile Documents/com~apple~CloudDocs/Documents/1_Projects/Paper Material Decomposition/visiblelight'
 base_path = '/user/home'
 colorizer = Colorizer(base_path)
-result_dict = colorizer.import_absorbances(stain='h')
+result_dict = colorizer.import_absorbances(stain='h_alt')
 
 wavelengths = result_dict['wavelengths']
 hematin_absorbance = result_dict['absorbances']
@@ -94,7 +94,7 @@ output = colorizer.calculate_transmitted_spectrum(
             wavelengths, hematin_epsilon,
             thickness_um=5,
             concentration=.12e-2,
-            light_color=5500,
+            light_color=6500,
             normalize_area=False
         )
 

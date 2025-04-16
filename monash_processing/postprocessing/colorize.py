@@ -111,7 +111,7 @@ class Colorizer:
     def import_absorbances(self, stain='h'):
         if stain == 'h_alt':
             wavelengths, absorptions = self.load_csv_to_numpy(os.path.join(self.base_path, 'fig17curve1.csv'))
-        if stain == 'h':
+        elif stain == 'h':
             wavelengths, absorptions = self.load_csv_to_numpy(os.path.join(self.base_path, 'figure17curve2.csv'))
         else:
             wavelengths, absorptions = self.load_csv_to_numpy(os.path.join(self.base_path, 'eosin.csv'))
